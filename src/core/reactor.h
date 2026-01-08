@@ -10,11 +10,15 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <unordered_map>
 #include <vector>
+
+#include "base/types.h"
 
 namespace chad {
 namespace core {
+
+// Maximum file descriptors supported (can be adjusted)
+inline constexpr size_t kMaxFds = 65536;
 
 // Event types (portable, libuv-compatible)
 enum class EventType : uint32_t {
@@ -82,6 +86,7 @@ struct PollData {
 };
 
 // Reactor - single-threaded libuv event loop
+// Optimized with FdTable for O(1) handler lookup
 class Reactor {
  public:
   explicit Reactor(const ReactorConfig& config = {});
@@ -123,7 +128,7 @@ class Reactor {
   void Post(std::function<void()> callback);
 
   // Get number of registered handlers
-  size_t handler_count() const { return handlers_.size(); }
+  size_t handler_count() const { return fd_table_.Count(); }
 
   // Access the underlying loop (for advanced use)
   uv_loop_t* loop() { return loop_; }
@@ -144,7 +149,8 @@ class Reactor {
   std::atomic<bool> running_{false};
   uint64_t now_ms_ = 0;
 
-  std::unordered_map<int, std::unique_ptr<PollData>> handlers_;
+  // O(1) fd -> PollData lookup (replaces unordered_map)
+  FdTable<PollData, kMaxFds> fd_table_;
 
   // Posted callbacks (thread-safe addition, processed on event loop thread)
   std::vector<std::function<void()>> posted_callbacks_;

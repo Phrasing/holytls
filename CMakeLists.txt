@@ -80,6 +80,17 @@ if(CHAD_BUILD_TESTS)
   add_subdirectory(tests)
 endif()
 
+# Benchmarks
+if(CHAD_BUILD_BENCHMARKS)
+  add_executable(bench_core bench/bench_core.cc)
+  target_include_directories(bench_core PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/bench
+  )
+  target_link_libraries(bench_core PRIVATE chad-tls)
+  target_compile_options(bench_core PRIVATE -O3 -march=native)
+endif()
+
 # Install targets
 install(TARGETS chad-tls chad
   RUNTIME DESTINATION bin

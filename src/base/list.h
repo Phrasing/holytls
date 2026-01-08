@@ -189,12 +189,27 @@ inline SLLNode* SLLPopFront(SLLList* list) {
 
 }  // namespace chad
 
+// Prefetch hint for better cache performance
+#define Prefetch(ptr) __builtin_prefetch(ptr, 0, 3)
+#define PrefetchWrite(ptr) __builtin_prefetch(ptr, 1, 3)
+
 // Iteration macros (outside namespace for proper type resolution)
 #define DLLForEach(list, node) \
   for (chad::DLLNode* node = (list)->first; node != nullptr; node = node->next)
 
+// Iteration with prefetch (better cache performance for large lists)
+#define DLLForEachPrefetch(list, node) \
+  for (chad::DLLNode* node = (list)->first; \
+       node != nullptr; \
+       (node->next ? Prefetch(node->next->next) : (void)0), node = node->next)
+
 #define SLLForEach(list, node) \
   for (chad::SLLNode* node = (list)->first; node != nullptr; node = node->next)
+
+#define SLLForEachPrefetch(list, node) \
+  for (chad::SLLNode* node = (list)->first; \
+       node != nullptr; \
+       (node->next ? Prefetch(node->next->next) : (void)0), node = node->next)
 
 // Type-safe iteration (requires node member name)
 #define DLLForEachType(list, type, member, var) \

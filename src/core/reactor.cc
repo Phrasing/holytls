@@ -8,8 +8,13 @@
 #include <stdexcept>
 #include <utility>
 
+#include "memory/slab_allocator.h"
+
 namespace chad {
 namespace core {
+
+// Slab allocator for PollData - avoids per-fd heap allocations
+static memory::SlabAllocator<PollData, 256> g_poll_data_allocator;
 
 Reactor::Reactor(const ReactorConfig& config) : config_(config) {
   // Allocate and initialize a new event loop
@@ -41,11 +46,15 @@ Reactor::Reactor(const ReactorConfig& config) : config_(config) {
 }
 
 Reactor::~Reactor() {
-  // Stop all poll handles
-  for (auto& pair : handlers_) {
-    uv_poll_stop(&pair.second->handle);
+  // Stop and deallocate all poll handles
+  for (size_t fd = 0; fd < kMaxFds; ++fd) {
+    PollData* poll_data = fd_table_.Get(static_cast<int>(fd));
+    if (poll_data) {
+      uv_poll_stop(&poll_data->handle);
+      g_poll_data_allocator.Deallocate(poll_data);
+    }
   }
-  handlers_.clear();
+  fd_table_.Clear();
 
   // Stop and close the timer
   uv_timer_stop(&run_timer_);
@@ -69,30 +78,32 @@ bool Reactor::Add(EventHandler* handler, EventType events) {
 
   int fd = handler->fd();
 
-  // Check if already registered
-  if (handlers_.find(fd) != handlers_.end()) {
+  // Check bounds and if already registered
+  if (static_cast<size_t>(fd) >= kMaxFds || fd_table_.Contains(fd)) {
     return false;
   }
 
-  // Create poll data
-  auto poll_data = std::make_unique<PollData>();
+  // Allocate poll data from slab allocator
+  PollData* poll_data = g_poll_data_allocator.Allocate();
   poll_data->handler = handler;
   poll_data->reactor = this;
 
   // Initialize poll handle
   if (uv_poll_init(loop_, &poll_data->handle, fd) != 0) {
+    g_poll_data_allocator.Deallocate(poll_data);
     return false;
   }
-  poll_data->handle.data = poll_data.get();
+  poll_data->handle.data = poll_data;
 
   // Start polling
   int uv_events = static_cast<int>(events);
   if (uv_poll_start(&poll_data->handle, uv_events, OnPollEvent) != 0) {
     uv_close(reinterpret_cast<uv_handle_t*>(&poll_data->handle), nullptr);
+    g_poll_data_allocator.Deallocate(poll_data);
     return false;
   }
 
-  handlers_[fd] = std::move(poll_data);
+  fd_table_.Set(fd, poll_data);
   return true;
 }
 
@@ -102,16 +113,14 @@ bool Reactor::Modify(EventHandler* handler, EventType events) {
   }
 
   int fd = handler->fd();
-
-  // Check if registered
-  auto it = handlers_.find(fd);
-  if (it == handlers_.end()) {
+  PollData* poll_data = fd_table_.Get(fd);
+  if (!poll_data) {
     return false;
   }
 
   // Modify the poll events
   int uv_events = static_cast<int>(events);
-  return uv_poll_start(&it->second->handle, uv_events, OnPollEvent) == 0;
+  return uv_poll_start(&poll_data->handle, uv_events, OnPollEvent) == 0;
 }
 
 bool Reactor::Remove(EventHandler* handler) {
@@ -120,22 +129,22 @@ bool Reactor::Remove(EventHandler* handler) {
   }
 
   int fd = handler->fd();
-
-  auto it = handlers_.find(fd);
-  if (it == handlers_.end()) {
+  PollData* poll_data = fd_table_.Get(fd);
+  if (!poll_data) {
     return false;
   }
 
   // Stop polling and close the handle
-  uv_poll_stop(&it->second->handle);
-  uv_close(reinterpret_cast<uv_handle_t*>(&it->second->handle), OnCloseCallback);
+  uv_poll_stop(&poll_data->handle);
+  uv_close(reinterpret_cast<uv_handle_t*>(&poll_data->handle), OnCloseCallback);
 
-  handlers_.erase(it);
+  fd_table_.Remove(fd);
+  g_poll_data_allocator.Deallocate(poll_data);
   return true;
 }
 
 bool Reactor::Contains(int fd) const {
-  return handlers_.find(fd) != handlers_.end();
+  return fd_table_.Contains(fd);
 }
 
 void Reactor::Run() {
@@ -252,7 +261,7 @@ void Reactor::OnAsyncCallback(uv_async_t* handle) {
 }
 
 void Reactor::OnCloseCallback(uv_handle_t* /*handle*/) {
-  // Handle is automatically freed when the PollData unique_ptr is destroyed
+  // PollData is deallocated in Remove()
 }
 
 }  // namespace core

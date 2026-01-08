@@ -17,6 +17,9 @@ namespace chad {
 // Default arena block size (64KB)
 inline constexpr size_t kArenaDefaultBlockSize = 64 * 1024;
 
+// Cache line size for aligned allocations
+inline constexpr size_t kCacheLineSize = 64;
+
 // Arena - Simple bump allocator
 // All allocations are 8-byte aligned by default.
 // Memory is freed in bulk when the arena is destroyed or reset.
@@ -75,40 +78,61 @@ inline void ArenaClear(Arena* arena) {
   arena->pos = arena->base;
 }
 
-// Allocate from arena (8-byte aligned)
+// Allocate from arena (fully inline for maximum performance)
 inline void* ArenaPush(Arena* arena, size_t size) {
   // Align to 8 bytes
   size_t aligned_size = (size + 7) & ~size_t{7};
 
-  // Check if we need a new block
-  if (arena->pos + aligned_size > arena->end) {
-    // Allocate new block (at least as big as requested)
-    size_t new_block_size = arena->block_size;
-    if (aligned_size > new_block_size) {
-      new_block_size = aligned_size;
-    }
+  // Fast path: fits in current block (likely)
+  uint8_t* result = arena->pos;
+  uint8_t* new_pos = result + aligned_size;
 
-    Arena* new_arena = Arena::Create(new_block_size);
-    if (!new_arena) return nullptr;
-
-    new_arena->prev = arena->prev;
-    new_arena->block_size = arena->block_size;  // Keep original block size
-    arena->prev = new_arena;
-
-    // Swap the memory regions
-    uint8_t* old_base = arena->base;
-    uint8_t* old_end = arena->end;
-    arena->base = new_arena->base;
-    arena->end = new_arena->end;
-    arena->pos = new_arena->base;
-    new_arena->base = old_base;
-    new_arena->end = old_end;
-    new_arena->pos = old_end;  // Mark as full
+  if (__builtin_expect(new_pos <= arena->end, 1)) {
+    arena->pos = new_pos;
+    return result;
   }
 
-  void* result = arena->pos;
-  arena->pos += aligned_size;
+  // Slow path: need new block (inline to avoid function call overhead)
+  size_t new_block_size = arena->block_size * 2;
+  if (aligned_size > new_block_size) {
+    new_block_size = aligned_size;
+  }
+
+  Arena* new_arena = Arena::Create(new_block_size);
+  if (__builtin_expect(!new_arena, 0)) return nullptr;
+
+  // Chain old block by swapping (keeps arena pointer stable)
+  new_arena->prev = arena->prev;
+  new_arena->block_size = arena->block_size;
+  arena->prev = new_arena;
+
+  // Swap memory regions
+  uint8_t* old_base = arena->base;
+  uint8_t* old_end = arena->end;
+  uint8_t* old_pos = arena->pos;
+
+  arena->base = new_arena->base;
+  arena->end = new_arena->end;
+  arena->block_size = new_block_size;
+
+  new_arena->base = old_base;
+  new_arena->end = old_end;
+  new_arena->pos = old_pos;
+
+  // Allocate from new block
+  result = arena->base;
+  arena->pos = arena->base + aligned_size;
   return result;
+}
+
+// Cache-line aligned allocation
+inline void* ArenaPushAligned(Arena* arena, size_t size, size_t alignment) {
+  // Align current position
+  uintptr_t pos = reinterpret_cast<uintptr_t>(arena->pos);
+  uintptr_t aligned_pos = (pos + alignment - 1) & ~(alignment - 1);
+  size_t padding = aligned_pos - pos;
+
+  return ArenaPush(arena, size + padding);
 }
 
 // Allocate and zero-initialize
@@ -129,6 +153,9 @@ inline void* ArenaPushZero(Arena* arena, size_t size) {
 
 #define PushStruct(arena, T) PushArray(arena, T, 1)
 #define PushStructZero(arena, T) PushArrayZero(arena, T, 1)
+
+#define PushStructAligned(arena, T) \
+  static_cast<T*>(ArenaPushAligned((arena), sizeof(T), alignof(T)))
 
 // Temp scope - captures arena position for later restoration
 struct Temp {
