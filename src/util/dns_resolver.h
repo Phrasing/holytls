@@ -25,8 +25,22 @@ using DnsCallback =
     std::function<void(const std::vector<ResolvedAddress>& addresses,
                        const std::string& error)>;
 
-// DNS resolver using libuv's async getaddrinfo
-// Uses the libuv thread pool for non-blocking resolution
+// Cache configuration
+inline constexpr size_t kMaxCacheEntries = 256;
+inline constexpr size_t kMaxAddressesPerEntry = 8;
+inline constexpr uint64_t kDefaultCacheTtlMs = 60000;  // 60 seconds
+
+// DNS cache entry (fixed-size, no heap allocation)
+struct DnsCacheEntry {
+  char hostname[256];
+  uint64_t expires_at_ms;
+  ResolvedAddress addresses[kMaxAddressesPerEntry];
+  uint8_t address_count;
+  bool valid;
+};
+
+// DNS resolver with caching using libuv's async getaddrinfo
+// Cache uses fixed-size array for zero allocation in hot path
 class DnsResolver {
  public:
   // Create resolver attached to a libuv loop
@@ -37,13 +51,23 @@ class DnsResolver {
   DnsResolver(const DnsResolver&) = delete;
   DnsResolver& operator=(const DnsResolver&) = delete;
 
-  // Blocking resolve (for simple use cases)
+  // Blocking resolve (for simple use cases, bypasses cache)
   std::vector<ResolvedAddress> Resolve(const std::string& hostname,
                                        std::string* error);
 
-  // Async resolve using libuv thread pool
+  // Async resolve - checks cache first, then libuv thread pool
   // Callback is invoked on the event loop thread
   void ResolveAsync(const std::string& hostname, DnsCallback callback);
+
+  // Set cache TTL (default 60 seconds)
+  void SetCacheTtl(uint64_t ttl_ms) { cache_ttl_ms_ = ttl_ms; }
+
+  // Clear all cached entries
+  void ClearCache();
+
+  // Get cache statistics
+  size_t CacheHits() const { return cache_hits_; }
+  size_t CacheMisses() const { return cache_misses_; }
 
   // Cancel all pending async requests
   void CancelAll();
@@ -52,7 +76,20 @@ class DnsResolver {
   static void OnResolved(uv_getaddrinfo_t* req, int status, struct addrinfo* res);
   static std::vector<ResolvedAddress> ParseAddrinfo(struct addrinfo* res);
 
+  // Cache operations
+  DnsCacheEntry* FindCached(const std::string& hostname, uint64_t now_ms);
+  DnsCacheEntry* FindSlotForInsert(uint64_t now_ms);
+  void StoreInCache(const std::string& hostname,
+                    const std::vector<ResolvedAddress>& addrs,
+                    uint64_t now_ms);
+
   uv_loop_t* loop_;
+
+  // DNS cache (fixed-size array, no dynamic allocation)
+  DnsCacheEntry cache_[kMaxCacheEntries] = {};
+  uint64_t cache_ttl_ms_ = kDefaultCacheTtlMs;
+  size_t cache_hits_ = 0;
+  size_t cache_misses_ = 0;
 };
 
 }  // namespace util

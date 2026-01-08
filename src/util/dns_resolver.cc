@@ -18,9 +18,15 @@ struct DnsRequest {
   uv_getaddrinfo_t req;
   DnsCallback callback;
   DnsResolver* resolver;
+  std::string hostname;  // For caching the result
 };
 
-DnsResolver::DnsResolver(uv_loop_t* loop) : loop_(loop) {}
+DnsResolver::DnsResolver(uv_loop_t* loop) : loop_(loop) {
+  // Initialize cache entries
+  for (auto& entry : cache_) {
+    entry.valid = false;
+  }
+}
 
 DnsResolver::~DnsResolver() {
   // Note: Any pending requests will be cancelled when the loop closes
@@ -53,8 +59,84 @@ std::vector<ResolvedAddress> DnsResolver::ParseAddrinfo(struct addrinfo* res) {
   return results;
 }
 
+// Cache lookup - returns cached entry if valid and not expired
+DnsCacheEntry* DnsResolver::FindCached(const std::string& hostname,
+                                        uint64_t now_ms) {
+  for (auto& entry : cache_) {
+    if (entry.valid &&
+        entry.expires_at_ms > now_ms &&
+        std::strcmp(entry.hostname, hostname.c_str()) == 0) {
+      return &entry;
+    }
+  }
+  return nullptr;
+}
+
+// Find slot for new cache entry - prefer expired, then oldest
+DnsCacheEntry* DnsResolver::FindSlotForInsert(uint64_t now_ms) {
+  DnsCacheEntry* oldest_expired = nullptr;
+  DnsCacheEntry* oldest_valid = nullptr;
+  uint64_t oldest_time = UINT64_MAX;
+
+  for (auto& entry : cache_) {
+    if (!entry.valid) {
+      // Empty slot - use immediately
+      return &entry;
+    }
+
+    if (entry.expires_at_ms <= now_ms) {
+      // Expired entry - prefer these
+      if (!oldest_expired || entry.expires_at_ms < oldest_expired->expires_at_ms) {
+        oldest_expired = &entry;
+      }
+    } else {
+      // Valid entry - track oldest for eviction
+      if (entry.expires_at_ms < oldest_time) {
+        oldest_time = entry.expires_at_ms;
+        oldest_valid = &entry;
+      }
+    }
+  }
+
+  // Prefer expired entry, fall back to oldest valid
+  return oldest_expired ? oldest_expired : oldest_valid;
+}
+
+// Store resolution result in cache
+void DnsResolver::StoreInCache(const std::string& hostname,
+                                const std::vector<ResolvedAddress>& addrs,
+                                uint64_t now_ms) {
+  DnsCacheEntry* slot = FindSlotForInsert(now_ms);
+  if (!slot) {
+    return;  // Shouldn't happen with fixed-size cache
+  }
+
+  // Copy hostname
+  std::strncpy(slot->hostname, hostname.c_str(), sizeof(slot->hostname) - 1);
+  slot->hostname[sizeof(slot->hostname) - 1] = '\0';
+
+  // Copy addresses (up to max)
+  slot->address_count = static_cast<uint8_t>(
+      std::min(addrs.size(), kMaxAddressesPerEntry));
+  for (size_t i = 0; i < slot->address_count; ++i) {
+    slot->addresses[i] = addrs[i];
+  }
+
+  slot->expires_at_ms = now_ms + cache_ttl_ms_;
+  slot->valid = true;
+}
+
+void DnsResolver::ClearCache() {
+  for (auto& entry : cache_) {
+    entry.valid = false;
+  }
+  cache_hits_ = 0;
+  cache_misses_ = 0;
+}
+
 std::vector<ResolvedAddress> DnsResolver::Resolve(const std::string& hostname,
                                                   std::string* error) {
+  // Blocking resolve bypasses cache (used for simple cases)
   struct addrinfo hints;
   std::memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;      // IPv4 or IPv6
@@ -81,12 +163,17 @@ void DnsResolver::OnResolved(uv_getaddrinfo_t* req, int status,
   auto* dns_req = static_cast<DnsRequest*>(req->data);
 
   if (status < 0) {
-    // Error
+    // Error - don't cache failures
     dns_req->callback({}, uv_strerror(status));
   } else {
-    // Success - parse results
+    // Success - parse and cache results
     auto results = ParseAddrinfo(res);
     uv_freeaddrinfo(res);
+
+    // Store in cache
+    uint64_t now_ms = uv_now(dns_req->resolver->loop_);
+    dns_req->resolver->StoreInCache(dns_req->hostname, results, now_ms);
+
     dns_req->callback(results, "");
   }
 
@@ -95,9 +182,25 @@ void DnsResolver::OnResolved(uv_getaddrinfo_t* req, int status,
 
 void DnsResolver::ResolveAsync(const std::string& hostname,
                                DnsCallback callback) {
+  uint64_t now_ms = uv_now(loop_);
+
+  // Check cache first
+  if (auto* entry = FindCached(hostname, now_ms)) {
+    ++cache_hits_;
+    // Return cached results
+    std::vector<ResolvedAddress> results(
+        entry->addresses, entry->addresses + entry->address_count);
+    callback(results, "");
+    return;
+  }
+
+  ++cache_misses_;
+
+  // Cache miss - do async lookup
   auto* dns_req = new DnsRequest();
   dns_req->callback = std::move(callback);
   dns_req->resolver = this;
+  dns_req->hostname = hostname;
   dns_req->req.data = dns_req;
 
   struct addrinfo hints;

@@ -123,6 +123,28 @@ int main(int argc, char* argv[]) {
   // 7. Run event loop (handles DNS, connect, TLS, HTTP/2)
   reactor.Run();
 
+  // 8. Show DNS cache statistics
+  std::cout << "\n=== DNS Cache Stats ===\n";
+  std::cout << "Cache hits: " << resolver.CacheHits() << "\n";
+  std::cout << "Cache misses: " << resolver.CacheMisses() << "\n";
+
+  // 9. Test cache hit - resolve same hostname again
+  std::cout << "\nTesting cache (resolving tls.peet.ws again)...\n";
+  resolver.ResolveAsync("tls.peet.ws",
+      [&](const std::vector<chad::util::ResolvedAddress>& addresses,
+          const std::string& error) {
+        if (!error.empty() || addresses.empty()) {
+          std::cerr << "DNS resolution failed: " << error << "\n";
+        } else {
+          std::cout << "Resolved to: " << addresses[0].ip << " (from cache)\n";
+        }
+        reactor.Stop();
+      });
+  reactor.Run();
+
+  std::cout << "Cache hits: " << resolver.CacheHits() << "\n";
+  std::cout << "Cache misses: " << resolver.CacheMisses() << "\n";
+
   std::cout << "\n=== Done ===\n";
   return 0;
 }
