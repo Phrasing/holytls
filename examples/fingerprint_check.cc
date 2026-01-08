@@ -1,0 +1,118 @@
+// Copyright 2024 Chad-TLS Authors
+// SPDX-License-Identifier: MIT
+
+// Example: Check TLS fingerprint against tls.peet.ws
+//
+// This example demonstrates the full TLS + HTTP/2 stack by making
+// a request to tls.peet.ws/api/all which returns the fingerprint
+// information of the connecting client.
+//
+// Usage: ./fingerprint_check [chrome_version]
+//   chrome_version: 120, 125, 130, 131, or 143 (default: 143)
+
+#include <iostream>
+#include <string>
+
+#include "chad/config.h"
+#include "core/connection.h"
+#include "core/reactor.h"
+#include "tls/tls_context.h"
+#include "util/dns_resolver.h"
+
+namespace {
+
+void PrintUsage(const char* prog) {
+  std::cerr << "Usage: " << prog << " [chrome_version]\n";
+  std::cerr << "  chrome_version: 120, 125, 130, 131, or 143 (default: 143)\n";
+}
+
+chad::ChromeVersion ParseChromeVersion(const std::string& arg) {
+  if (arg == "120") return chad::ChromeVersion::kChrome120;
+  if (arg == "125") return chad::ChromeVersion::kChrome125;
+  if (arg == "130") return chad::ChromeVersion::kChrome130;
+  if (arg == "131") return chad::ChromeVersion::kChrome131;
+  if (arg == "143") return chad::ChromeVersion::kChrome143;
+  return chad::ChromeVersion::kChrome143;
+}
+
+}  // namespace
+
+int main(int argc, char* argv[]) {
+  // Parse command line
+  chad::ChromeVersion version = chad::ChromeVersion::kChrome143;
+  if (argc > 1) {
+    std::string arg = argv[1];
+    if (arg == "-h" || arg == "--help") {
+      PrintUsage(argv[0]);
+      return 0;
+    }
+    version = ParseChromeVersion(arg);
+  }
+
+  std::cout << "=== TLS Fingerprint Check ===\n";
+  std::cout << "Impersonating Chrome " << static_cast<int>(version) << "\n";
+  std::cout << "Target: https://tls.peet.ws/api/all\n\n";
+
+  // 1. DNS resolution
+  std::cout << "Resolving tls.peet.ws...\n";
+  chad::util::DnsResolver resolver;
+  std::string dns_error;
+  auto addresses = resolver.Resolve("tls.peet.ws", &dns_error);
+
+  if (addresses.empty()) {
+    std::cerr << "DNS resolution failed: " << dns_error << "\n";
+    return 1;
+  }
+
+  std::cout << "Resolved to: " << addresses[0].ip;
+  if (addresses[0].is_ipv6) {
+    std::cout << " (IPv6)";
+  }
+  std::cout << "\n\n";
+
+  // 2. Create TLS context with Chrome profile
+  chad::TlsConfig tls_config;
+  tls_config.chrome_version = version;
+  tls_config.verify_certificates = true;
+
+  chad::tls::TlsContextFactory tls_factory(tls_config);
+  std::cout << "TLS context created for Chrome " << static_cast<int>(version) << "\n";
+
+  // 3. Create reactor and connection
+  chad::core::Reactor reactor;
+  chad::core::Connection conn(&reactor, &tls_factory, "tls.peet.ws", 443);
+
+  std::cout << "Connecting...\n";
+
+  // 4. Connect to server
+  if (!conn.Connect(addresses[0].ip, addresses[0].is_ipv6)) {
+    std::cerr << "Connection failed\n";
+    return 1;
+  }
+
+  // 5. Send request
+  conn.SendRequest(
+      "GET", "/api/all",
+      {
+          {"accept", "application/json"},
+          {"accept-language", "en-US,en;q=0.9"},
+          {"user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"},
+      },
+      [](const chad::core::Response& response) {
+        std::cout << "\n=== Response ===\n";
+        std::cout << "Status: " << response.status_code << "\n";
+        std::cout << "Body length: " << response.body.size() << " bytes\n\n";
+        std::cout << "=== Fingerprint Data ===\n";
+        std::cout << response.body_string() << "\n";
+      },
+      [](const std::string& error) {
+        std::cerr << "Request error: " << error << "\n";
+      });
+
+  // 6. Run event loop
+  std::cout << "Performing TLS handshake and HTTP/2 request...\n";
+  reactor.Run();
+
+  std::cout << "\n=== Done ===\n";
+  return 0;
+}

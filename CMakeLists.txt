@@ -32,6 +32,8 @@ add_library(chad-tls STATIC
   src/core/reactor.cc
   src/core/timer.cc
   src/core/io_buffer.cc
+  src/core/connection.cc
+  src/util/socket_utils.cc
   src/memory/slab_allocator.cc
   src/memory/buffer_pool.cc
   src/tls/tls_context.cc
@@ -90,6 +92,12 @@ if(CHAD_BUILD_BENCHMARKS)
   target_link_libraries(bench_core PRIVATE chad-tls)
   target_compile_options(bench_core PRIVATE -O3 -march=native)
 endif()
+
+# Examples
+add_executable(fingerprint_check examples/fingerprint_check.cc)
+target_include_directories(fingerprint_check PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(fingerprint_check PRIVATE chad-tls)
+target_compile_options(fingerprint_check PRIVATE ${CHAD_COMMON_FLAGS})
 
 # Install targets
 install(TARGETS chad-tls chad
