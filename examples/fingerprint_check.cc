@@ -11,6 +11,7 @@
 //   chrome_version: 120, 125, 130, 131, or 143 (default: 143)
 
 #include <iostream>
+#include <memory>
 #include <string>
 
 #include "chad/config.h"
@@ -53,64 +54,73 @@ int main(int argc, char* argv[]) {
   std::cout << "Impersonating Chrome " << static_cast<int>(version) << "\n";
   std::cout << "Target: https://tls.peet.ws/api/all\n\n";
 
-  // 1. DNS resolution
-  std::cout << "Resolving tls.peet.ws...\n";
-  chad::util::DnsResolver resolver;
-  std::string dns_error;
-  auto addresses = resolver.Resolve("tls.peet.ws", &dns_error);
-
-  if (addresses.empty()) {
-    std::cerr << "DNS resolution failed: " << dns_error << "\n";
-    return 1;
-  }
-
-  std::cout << "Resolved to: " << addresses[0].ip;
-  if (addresses[0].is_ipv6) {
-    std::cout << " (IPv6)";
-  }
-  std::cout << "\n\n";
+  // 1. Create reactor first (we need its loop for async DNS)
+  chad::core::Reactor reactor;
 
   // 2. Create TLS context with Chrome profile
   chad::TlsConfig tls_config;
   tls_config.chrome_version = version;
   tls_config.verify_certificates = true;
-
   chad::tls::TlsContextFactory tls_factory(tls_config);
   std::cout << "TLS context created for Chrome " << static_cast<int>(version) << "\n";
 
-  // 3. Create reactor and connection
-  chad::core::Reactor reactor;
-  chad::core::Connection conn(&reactor, &tls_factory, "tls.peet.ws", 443);
+  // 3. Create DNS resolver with reactor's loop (async resolution)
+  chad::util::DnsResolver resolver(reactor.loop());
 
-  std::cout << "Connecting...\n";
+  // Connection pointer (created after DNS resolves)
+  std::unique_ptr<chad::core::Connection> conn;
 
-  // 4. Connect to server
-  if (!conn.Connect(addresses[0].ip, addresses[0].is_ipv6)) {
-    std::cerr << "Connection failed\n";
-    return 1;
-  }
+  // 4. Async DNS resolution
+  std::cout << "Resolving tls.peet.ws (async)...\n";
+  resolver.ResolveAsync("tls.peet.ws",
+      [&](const std::vector<chad::util::ResolvedAddress>& addresses,
+          const std::string& error) {
+        if (!error.empty() || addresses.empty()) {
+          std::cerr << "DNS resolution failed: " << error << "\n";
+          reactor.Stop();
+          return;
+        }
 
-  // 5. Send request
-  conn.SendRequest(
-      "GET", "/api/all",
-      {
-          {"accept", "application/json"},
-          {"accept-language", "en-US,en;q=0.9"},
-          {"user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"},
-      },
-      [](const chad::core::Response& response) {
-        std::cout << "\n=== Response ===\n";
-        std::cout << "Status: " << response.status_code << "\n";
-        std::cout << "Body length: " << response.body.size() << " bytes\n\n";
-        std::cout << "=== Fingerprint Data ===\n";
-        std::cout << response.body_string() << "\n";
-      },
-      [](const std::string& error) {
-        std::cerr << "Request error: " << error << "\n";
+        std::cout << "Resolved to: " << addresses[0].ip;
+        if (addresses[0].is_ipv6) {
+          std::cout << " (IPv6)";
+        }
+        std::cout << "\n\n";
+
+        // 5. Create connection and connect
+        conn = std::make_unique<chad::core::Connection>(
+            &reactor, &tls_factory, "tls.peet.ws", 443);
+
+        std::cout << "Connecting...\n";
+        if (!conn->Connect(addresses[0].ip, addresses[0].is_ipv6)) {
+          std::cerr << "Connection failed\n";
+          reactor.Stop();
+          return;
+        }
+
+        // 6. Send request
+        conn->SendRequest(
+            "GET", "/api/all",
+            {
+                {"accept", "application/json"},
+                {"accept-language", "en-US,en;q=0.9"},
+                {"user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"},
+            },
+            [](const chad::core::Response& response) {
+              std::cout << "\n=== Response ===\n";
+              std::cout << "Status: " << response.status_code << "\n";
+              std::cout << "Body length: " << response.body.size() << " bytes\n\n";
+              std::cout << "=== Fingerprint Data ===\n";
+              std::cout << response.body_string() << "\n";
+            },
+            [](const std::string& err) {
+              std::cerr << "Request error: " << err << "\n";
+            });
+
+        std::cout << "Performing TLS handshake and HTTP/2 request...\n";
       });
 
-  // 6. Run event loop
-  std::cout << "Performing TLS handshake and HTTP/2 request...\n";
+  // 7. Run event loop (handles DNS, connect, TLS, HTTP/2)
   reactor.Run();
 
   std::cout << "\n=== Done ===\n";

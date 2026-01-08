@@ -4,6 +4,8 @@
 #ifndef CHAD_UTIL_DNS_RESOLVER_H_
 #define CHAD_UTIL_DNS_RESOLVER_H_
 
+#include <uv.h>
+
 #include <cstdint>
 #include <functional>
 #include <string>
@@ -23,19 +25,34 @@ using DnsCallback =
     std::function<void(const std::vector<ResolvedAddress>& addresses,
                        const std::string& error)>;
 
-// Simple blocking DNS resolver
-// TODO: Implement async resolver using c-ares
+// DNS resolver using libuv's async getaddrinfo
+// Uses the libuv thread pool for non-blocking resolution
 class DnsResolver {
  public:
-  DnsResolver();
+  // Create resolver attached to a libuv loop
+  explicit DnsResolver(uv_loop_t* loop);
   ~DnsResolver();
 
-  // Blocking resolve
+  // Non-copyable
+  DnsResolver(const DnsResolver&) = delete;
+  DnsResolver& operator=(const DnsResolver&) = delete;
+
+  // Blocking resolve (for simple use cases)
   std::vector<ResolvedAddress> Resolve(const std::string& hostname,
                                        std::string* error);
 
-  // Async resolve (currently just wraps blocking)
+  // Async resolve using libuv thread pool
+  // Callback is invoked on the event loop thread
   void ResolveAsync(const std::string& hostname, DnsCallback callback);
+
+  // Cancel all pending async requests
+  void CancelAll();
+
+ private:
+  static void OnResolved(uv_getaddrinfo_t* req, int status, struct addrinfo* res);
+  static std::vector<ResolvedAddress> ParseAddrinfo(struct addrinfo* res);
+
+  uv_loop_t* loop_;
 };
 
 }  // namespace util
