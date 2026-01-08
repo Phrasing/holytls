@@ -1,0 +1,273 @@
+// Copyright 2024 Chad-TLS Authors
+// SPDX-License-Identifier: MIT
+
+#include "base/arena.h"
+#include "base/list.h"
+
+#include <cassert>
+#include <cstring>
+#include <iostream>
+
+void TestArenaBasic() {
+  std::cout << "Testing arena basic allocation... ";
+
+  chad::Arena* arena = chad::Arena::Create(1024);
+  assert(arena != nullptr);
+
+  // Allocate some memory
+  int* a = PushStruct(arena, int);
+  assert(a != nullptr);
+  *a = 42;
+
+  int* b = PushArray(arena, int, 10);
+  assert(b != nullptr);
+  for (int i = 0; i < 10; ++i) {
+    b[i] = i;
+  }
+
+  // Verify values
+  assert(*a == 42);
+  for (int i = 0; i < 10; ++i) {
+    assert(b[i] == i);
+  }
+
+  chad::Arena::Destroy(arena);
+  std::cout << "PASSED\n";
+}
+
+void TestArenaZero() {
+  std::cout << "Testing arena zero allocation... ";
+
+  chad::Arena* arena = chad::Arena::Create(1024);
+  assert(arena != nullptr);
+
+  // Allocate zero-initialized memory
+  int* arr = PushArrayZero(arena, int, 100);
+  assert(arr != nullptr);
+
+  for (int i = 0; i < 100; ++i) {
+    assert(arr[i] == 0);
+  }
+
+  chad::Arena::Destroy(arena);
+  std::cout << "PASSED\n";
+}
+
+void TestArenaGrowth() {
+  std::cout << "Testing arena growth... ";
+
+  // Small block size to force growth
+  chad::Arena* arena = chad::Arena::Create(64);
+  assert(arena != nullptr);
+
+  // Allocate more than block size
+  for (int i = 0; i < 100; ++i) {
+    int* p = PushStruct(arena, int);
+    assert(p != nullptr);
+    *p = i;
+  }
+
+  chad::Arena::Destroy(arena);
+  std::cout << "PASSED\n";
+}
+
+void TestArenaLargeAllocation() {
+  std::cout << "Testing arena large allocation... ";
+
+  chad::Arena* arena = chad::Arena::Create(64);
+  assert(arena != nullptr);
+
+  // Allocate larger than block size
+  char* large = PushArray(arena, char, 1024);
+  assert(large != nullptr);
+  std::memset(large, 'X', 1024);
+
+  // Verify
+  for (int i = 0; i < 1024; ++i) {
+    assert(large[i] == 'X');
+  }
+
+  chad::Arena::Destroy(arena);
+  std::cout << "PASSED\n";
+}
+
+void TestArenaTemp() {
+  std::cout << "Testing arena temp scopes... ";
+
+  chad::Arena* arena = chad::Arena::Create(1024);
+  assert(arena != nullptr);
+
+  int* a = PushStruct(arena, int);
+  *a = 1;
+  size_t pos_before = chad::ArenaPos(arena);
+
+  {
+    chad::TempScope temp(arena);
+    int* b = PushArray(arena, int, 100);
+    assert(b != nullptr);
+    for (int i = 0; i < 100; ++i) {
+      b[i] = i;
+    }
+  }
+  // After temp scope, position should be restored
+  size_t pos_after = chad::ArenaPos(arena);
+  assert(pos_after == pos_before);
+
+  // Original allocation should still be valid
+  assert(*a == 1);
+
+  chad::Arena::Destroy(arena);
+  std::cout << "PASSED\n";
+}
+
+void TestArenaClear() {
+  std::cout << "Testing arena clear... ";
+
+  chad::Arena* arena = chad::Arena::Create(64);
+  assert(arena != nullptr);
+
+  // Force multiple blocks
+  for (int i = 0; i < 100; ++i) {
+    PushStruct(arena, int);
+  }
+
+  // Clear should free chained blocks
+  chad::ArenaClear(arena);
+
+  // Should be back to initial state
+  assert(arena->pos == arena->base);
+  assert(arena->prev == nullptr);
+
+  // Should still be usable
+  int* p = PushStruct(arena, int);
+  assert(p != nullptr);
+  *p = 123;
+  assert(*p == 123);
+
+  chad::Arena::Destroy(arena);
+  std::cout << "PASSED\n";
+}
+
+void TestDLLBasic() {
+  std::cout << "Testing doubly-linked list... ";
+
+  struct Item {
+    int value;
+    chad::DLLNode node;
+  };
+
+  chad::DLLList list;
+  chad::DLLInit(&list);
+  assert(chad::DLLIsEmpty(&list));
+
+  Item items[5];
+  for (int i = 0; i < 5; ++i) {
+    items[i].value = i;
+    chad::DLLPushBack(&list, &items[i].node);
+  }
+
+  assert(list.count == 5);
+  assert(!chad::DLLIsEmpty(&list));
+
+  // Verify order
+  int expected = 0;
+  DLLForEach(&list, n) {
+    Item* item = ContainerOf(n, Item, node);
+    assert(item->value == expected);
+    expected++;
+  }
+
+  // Remove middle element
+  chad::DLLRemove(&list, &items[2].node);
+  assert(list.count == 4);
+
+  // Pop front
+  chad::DLLNode* front = chad::DLLPopFront(&list);
+  assert(ContainerOf(front, Item, node)->value == 0);
+  assert(list.count == 3);
+
+  // Pop back
+  chad::DLLNode* back = chad::DLLPopBack(&list);
+  assert(ContainerOf(back, Item, node)->value == 4);
+  assert(list.count == 2);
+
+  std::cout << "PASSED\n";
+}
+
+void TestSLLBasic() {
+  std::cout << "Testing singly-linked list... ";
+
+  struct Item {
+    int value;
+    chad::SLLNode node;
+  };
+
+  chad::SLLList list;
+  chad::SLLInit(&list);
+  assert(chad::SLLIsEmpty(&list));
+
+  Item items[5];
+  for (int i = 0; i < 5; ++i) {
+    items[i].value = i;
+    chad::SLLPushBack(&list, &items[i].node);
+  }
+
+  assert(list.count == 5);
+
+  // Pop all in order (FIFO)
+  for (int i = 0; i < 5; ++i) {
+    chad::SLLNode* n = chad::SLLPopFront(&list);
+    assert(n != nullptr);
+    Item* item = ContainerOf(n, Item, node);
+    assert(item->value == i);
+  }
+
+  assert(chad::SLLIsEmpty(&list));
+
+  std::cout << "PASSED\n";
+}
+
+void TestSLLStack() {
+  std::cout << "Testing singly-linked list as stack... ";
+
+  struct Item {
+    int value;
+    chad::SLLNode node;
+  };
+
+  chad::SLLList stack;
+  chad::SLLInit(&stack);
+
+  Item items[5];
+  for (int i = 0; i < 5; ++i) {
+    items[i].value = i;
+    chad::SLLPushFront(&stack, &items[i].node);
+  }
+
+  // Pop all in reverse order (LIFO)
+  for (int i = 4; i >= 0; --i) {
+    chad::SLLNode* n = chad::SLLPopFront(&stack);
+    assert(n != nullptr);
+    Item* item = ContainerOf(n, Item, node);
+    assert(item->value == i);
+  }
+
+  std::cout << "PASSED\n";
+}
+
+int main() {
+  std::cout << "=== Arena and List Unit Tests ===\n\n";
+
+  TestArenaBasic();
+  TestArenaZero();
+  TestArenaGrowth();
+  TestArenaLargeAllocation();
+  TestArenaTemp();
+  TestArenaClear();
+  TestDLLBasic();
+  TestSLLBasic();
+  TestSLLStack();
+
+  std::cout << "\nAll arena and list tests passed!\n";
+  return 0;
+}
