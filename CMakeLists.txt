@@ -1,15 +1,18 @@
 cmake_minimum_required(VERSION 3.20)
+
+# Enable new MSVC runtime library selection (must be before project())
+cmake_policy(SET CMP0091 NEW)
+
+# Use static MSVC runtime (/MT instead of /MD) for standalone executables
+# Must be set before project() to affect all targets including dependencies
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 project(chad-tls VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-# Use static MSVC runtime (/MT instead of /MD) for standalone executables
-if(MSVC)
-  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-endif()
 
 # Build type defaults to Release
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
