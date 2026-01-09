@@ -31,13 +31,14 @@ if(NOT boringssl_POPULATED)
 
     # Patch 2: Fix bssl::Span conversion in handshake_client.cc
     # MSVC 2026 is stricter about implicit pointer-to-Span conversion in ternary expressions
-    # The ternary operator produces const uint16_t* but code tries to assign to Span
+    # Arrays decay to pointers in ternary, so we wrap each with explicit Span constructor
     file(READ "${boringssl_SOURCE_DIR}/ssl/handshake_client.cc" HANDSHAKE_CC)
-    # Change the variable type from Span to pointer since ternary produces pointers
-    string(REPLACE
-      "const bssl::Span<const uint16_t> ciphers ="
-      "const uint16_t* ciphers ="
-      HANDSHAKE_CC "${HANDSHAKE_CC}")
+    # Wrap each cipher array constant with explicit Span constructor to prevent decay
+    string(REPLACE "kCiphersAESHardware" "bssl::Span<const uint16_t>(kCiphersAESHardware)" HANDSHAKE_CC "${HANDSHAKE_CC}")
+    string(REPLACE "kCiphersFirefox" "bssl::Span<const uint16_t>(kCiphersFirefox)" HANDSHAKE_CC "${HANDSHAKE_CC}")
+    string(REPLACE "kCiphersChrome" "bssl::Span<const uint16_t>(kCiphersChrome)" HANDSHAKE_CC "${HANDSHAKE_CC}")
+    string(REPLACE "kCiphersEdge" "bssl::Span<const uint16_t>(kCiphersEdge)" HANDSHAKE_CC "${HANDSHAKE_CC}")
+    string(REPLACE "kCiphersSafari" "bssl::Span<const uint16_t>(kCiphersSafari)" HANDSHAKE_CC "${HANDSHAKE_CC}")
     file(WRITE "${boringssl_SOURCE_DIR}/ssl/handshake_client.cc" "${HANDSHAKE_CC}")
 
     message(STATUS "MSVC patches applied")
