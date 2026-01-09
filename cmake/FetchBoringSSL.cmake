@@ -154,11 +154,11 @@ add_library(boringssl::ssl STATIC IMPORTED GLOBAL)
 if(WIN32)
   if(CMAKE_GENERATOR MATCHES "Visual Studio")
     # Multi-config generator: set up both Release and Debug locations
-    # Visual Studio puts outputs in config-specific subdirectories
-    set(BORINGSSL_CRYPTO_LIB_RELEASE "${boringssl_BINARY_DIR}/crypto/Release/crypto.lib")
-    set(BORINGSSL_CRYPTO_LIB_DEBUG "${boringssl_BINARY_DIR}/crypto/Debug/crypto.lib")
-    set(BORINGSSL_SSL_LIB_RELEASE "${boringssl_BINARY_DIR}/ssl/Release/ssl.lib")
-    set(BORINGSSL_SSL_LIB_DEBUG "${boringssl_BINARY_DIR}/ssl/Debug/ssl.lib")
+    # BoringSSL outputs to <build_dir>/<Config>/ not <target>/<Config>/
+    set(BORINGSSL_CRYPTO_LIB_RELEASE "${boringssl_BINARY_DIR}/Release/crypto.lib")
+    set(BORINGSSL_CRYPTO_LIB_DEBUG "${boringssl_BINARY_DIR}/Debug/crypto.lib")
+    set(BORINGSSL_SSL_LIB_RELEASE "${boringssl_BINARY_DIR}/Release/ssl.lib")
+    set(BORINGSSL_SSL_LIB_DEBUG "${boringssl_BINARY_DIR}/Debug/ssl.lib")
 
     set_target_properties(boringssl::crypto PROPERTIES
       IMPORTED_CONFIGURATIONS "Release;Debug"
