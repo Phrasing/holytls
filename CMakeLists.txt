@@ -26,8 +26,9 @@ include(CompilerFlags)
 include(FetchBoringSSL)
 include(FetchNghttp2)
 include(FetchLibuv)
+include(FetchZstd)
 
-# Find Brotli for certificate compression
+# Find Brotli for response decompression
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(BROTLI REQUIRED libbrotlidec)
 
@@ -43,9 +44,13 @@ add_library(chad-tls STATIC
   src/tls/tls_context.cc
   src/tls/tls_connection.cc
   src/tls/chrome_profile.cc
+  src/tls/session_cache.cc
   src/http2/h2_session.cc
   src/http2/h2_stream.cc
   src/http2/chrome_h2_profile.cc
+  src/http2/chrome_header_profile.cc
+  src/http2/sec_ch_ua.cc
+  src/http2/chrome_header_builder.cc
   src/http2/header_ids.cc
   src/http2/packed_headers.cc
   src/pool/connection_pool.cc
@@ -55,6 +60,7 @@ add_library(chad-tls STATIC
   src/client/response.cc
   src/util/dns_resolver.cc
   src/util/url_parser.cc
+  src/util/decompressor.cc
 )
 
 target_include_directories(chad-tls
@@ -74,6 +80,8 @@ target_link_libraries(chad-tls
     pthread
   PRIVATE
     ${BROTLI_LIBRARIES}
+    zstd::zstd
+    z
 )
 
 # Apply our strict compiler flags only to our code

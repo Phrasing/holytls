@@ -18,6 +18,7 @@
 #include "chad/config.h"
 #include "core/connection.h"
 #include "core/reactor.h"
+#include "tls/session_cache.h"
 #include "tls/tls_context.h"
 #include "util/dns_resolver.h"
 
@@ -74,13 +75,11 @@ void TestEndpoint(chad::core::Reactor& reactor,
           return;
         }
 
+        // Chrome headers are now auto-generated with proper ordering
+        // and GREASE sec-ch-ua randomization. Pass empty list for defaults.
         conn->SendRequest(
             "GET", path,
-            {
-                {"accept", "application/json"},
-                {"accept-language", "en-US,en;q=0.9"},
-                {"user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"},
-            },
+            {},  // Chrome headers are auto-generated
             [&label](const chad::core::Response& response) {
               std::cout << "\n=== " << label << " Response ===\n";
               std::cout << "Status: " << response.status_code << "\n";
@@ -137,10 +136,24 @@ int main(int argc, char* argv[]) {
   TestEndpoint(reactor, tls_factory, resolver,
                "tls.browserleaks.com", "/tls?minify=1", "BrowserLeaks");
 
+  // Test session resumption by making a second request to the same host
+  std::cout << "\n=== Testing Session Resumption ===\n";
+  std::cout << "Making second request to tls.peet.ws...\n";
+  TestEndpoint(reactor, tls_factory, resolver,
+               "tls.peet.ws", "/api/all", "Peet.ws (Resumption)");
+
   // Print DNS cache stats
   std::cout << "\n=== DNS Cache Stats ===\n";
   std::cout << "Cache hits: " << resolver.CacheHits() << "\n";
   std::cout << "Cache misses: " << resolver.CacheMisses() << "\n";
+
+  // Print TLS session cache stats
+  if (auto* cache = tls_factory.session_cache()) {
+    std::cout << "\n=== TLS Session Cache Stats ===\n";
+    std::cout << "Session cache hits: " << cache->Hits() << "\n";
+    std::cout << "Session cache misses: " << cache->Misses() << "\n";
+    std::cout << "Cached sessions: " << cache->Size() << "\n";
+  }
 
   std::cout << "\n=== Done ===\n";
   return 0;

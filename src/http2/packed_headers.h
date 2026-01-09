@@ -135,12 +135,12 @@ class PackedHeadersBuilder {
  private:
   struct PendingEntry {
     HeaderId id;
-    std::string_view name;   // Only for kCustom (points to external data)
-    std::string_view value;  // Points to external data
+    std::string name;   // Own copy for kCustom
+    std::string value;  // Own copy of value
   };
 
   std::vector<PendingEntry> pending_;
-  std::string_view status_;
+  std::string status_;  // Own copy of status
   size_t total_string_bytes_ = 0;
 };
 

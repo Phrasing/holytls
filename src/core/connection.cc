@@ -7,17 +7,22 @@
 #include <cstring>
 
 #include "http2/chrome_h2_profile.h"
+#include "http2/chrome_header_profile.h"
+#include "http2/header_ids.h"
+#include "util/decompressor.h"
 #include "util/socket_utils.h"
 
 namespace chad {
 namespace core {
 
 Connection::Connection(Reactor* reactor, tls::TlsContextFactory* tls_factory,
-                       const std::string& host, uint16_t port)
+                       const std::string& host, uint16_t port,
+                       const ConnectionOptions& options)
     : reactor_(reactor),
       tls_factory_(tls_factory),
       host_(host),
-      port_(port) {}
+      port_(port),
+      options_(options) {}
 
 Connection::~Connection() {
   Close();
@@ -72,14 +77,37 @@ void Connection::SendRequest(const std::string& method, const std::string& path,
     h2_headers.authority = host_;
     h2_headers.path = path;
 
+    // Get Chrome header profile for proper ordering and defaults
+    auto chrome_version = tls_factory_->chrome_version();
+    const auto& header_profile = http2::GetChromeHeaderProfile(chrome_version);
+
+    // Determine request type and fetch metadata
+    http2::RequestType request_type = http2::RequestType::kNavigation;
+    http2::FetchSite fetch_site = http2::FetchSite::kNone;
+    http2::FetchMode fetch_mode = http2::FetchMode::kNavigate;
+    http2::FetchDest fetch_dest = http2::FetchDest::kDocument;
+    bool user_activated = true;
+
+    // Convert user headers to HeaderEntry format for custom overrides
+    std::vector<http2::HeaderEntry> custom_headers;
     for (const auto& [name, value] : headers) {
-      h2_headers.Add(name, value);
+      custom_headers.push_back({name, value});
+    }
+
+    // Build ordered Chrome headers with GREASE sec-ch-ua
+    auto chrome_headers = http2::BuildChromeHeaders(
+        header_profile, request_type, fetch_site, fetch_mode,
+        fetch_dest, user_activated, custom_headers);
+
+    // Add all headers in Chrome's exact order
+    for (const auto& header : chrome_headers) {
+      h2_headers.Add(header.name, header.value);
     }
 
     http2::H2StreamCallbacks stream_callbacks;
     int32_t stream_id = -1;
 
-    stream_callbacks.on_headers = [this, stream_id](int32_t sid, const http2::PackedHeaders& resp_headers) {
+    stream_callbacks.on_headers = [this](int32_t sid, const http2::PackedHeaders& resp_headers) {
       auto it = active_requests_.find(sid);
       if (it != active_requests_.end()) {
         it->second.response.headers = resp_headers;
@@ -98,7 +126,25 @@ void Connection::SendRequest(const std::string& method, const std::string& path,
       auto it = active_requests_.find(sid);
       if (it != active_requests_.end()) {
         if (error_code == 0 && it->second.on_response) {
-          it->second.on_response(it->second.response);
+          auto& response = it->second.response;
+
+          // Decompress response body if enabled and Content-Encoding header is present
+          if (options_.auto_decompress) {
+            auto encoding_str = response.headers.Get(http2::HeaderId::kContentEncoding);
+            auto encoding = util::ParseContentEncoding(encoding_str);
+
+            if (encoding != util::ContentEncoding::kIdentity &&
+                encoding != util::ContentEncoding::kUnknown &&
+                !response.body.empty()) {
+              std::vector<uint8_t> decompressed;
+              if (util::Decompress(encoding, response.body, decompressed)) {
+                response.body = std::move(decompressed);
+              }
+              // On decompression error, keep original compressed body
+            }
+          }
+
+          it->second.on_response(response);
         } else if (error_code != 0 && it->second.on_error) {
           it->second.on_error("Stream error: " + std::to_string(error_code));
         }
@@ -216,7 +262,7 @@ void Connection::HandleConnecting() {
   }
 
   // TCP connected, start TLS handshake
-  tls_ = std::make_unique<tls::TlsConnection>(tls_factory_, fd_, host_);
+  tls_ = std::make_unique<tls::TlsConnection>(tls_factory_, fd_, host_, port_);
   state_ = ConnectionState::kTlsHandshake;
 
   // Update reactor to watch for read and write

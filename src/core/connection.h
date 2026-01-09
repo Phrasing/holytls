@@ -42,12 +42,19 @@ struct Response {
 using ResponseCallback = std::function<void(const Response& response)>;
 using ErrorCallback = std::function<void(const std::string& error)>;
 
+// Connection configuration options
+struct ConnectionOptions {
+  // Automatically decompress response bodies (br, gzip, zstd, deflate)
+  bool auto_decompress = true;
+};
+
 // HTTP/2 connection over TLS.
 // Implements EventHandler to integrate with Reactor.
 class Connection : public EventHandler {
  public:
   Connection(Reactor* reactor, tls::TlsContextFactory* tls_factory,
-             const std::string& host, uint16_t port);
+             const std::string& host, uint16_t port,
+             const ConnectionOptions& options = {});
   ~Connection() override;
 
   // Non-copyable, non-movable
@@ -117,6 +124,9 @@ class Connection : public EventHandler {
   std::unordered_map<int32_t, ActiveRequest> active_requests_;
 
   std::string last_error_;
+
+  // Configuration
+  ConnectionOptions options_;
 };
 
 }  // namespace core

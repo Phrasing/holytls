@@ -40,6 +40,9 @@ struct TlsConfig {
   bool enable_session_cache = true;
   size_t session_cache_size = 1024;
 
+  // 0-RTT Early Data (Chrome enables this by default)
+  bool enable_early_data = true;
+
   // Chrome 110+ randomizes TLS extension order
   bool permute_extensions = true;
 
@@ -121,6 +124,9 @@ struct ClientConfig {
   // Follow redirects
   bool follow_redirects = true;
   int max_redirects = 10;
+
+  // Automatic response body decompression (br, gzip, zstd, deflate)
+  bool auto_decompress = true;
 
   // Factory methods for common configurations
   static ClientConfig Chrome120();

@@ -8,12 +8,14 @@
 
 #include <cstring>
 
+#include "tls/session_cache.h"
+
 namespace chad {
 namespace tls {
 
 TlsConnection::TlsConnection(TlsContextFactory* factory, int fd,
-                             std::string_view hostname)
-    : fd_(fd), hostname_(hostname) {
+                             std::string_view hostname, uint16_t port)
+    : fd_(fd), port_(port), hostname_(hostname) {
   // Create SSL object
   ssl_.reset(factory->CreateSsl());
   if (!ssl_) {
@@ -30,6 +32,19 @@ TlsConnection::TlsConnection(TlsContextFactory* factory, int fd,
   // Set SNI (Server Name Indication)
   if (!hostname_.empty()) {
     SSL_set_tlsext_host_name(ssl_.get(), hostname_.c_str());
+  }
+
+  // Store port in SSL ex_data for new_session_cb
+  SSL_set_ex_data(ssl_.get(), GetPortIndex(),
+                  reinterpret_cast<void*>(static_cast<uintptr_t>(port)));
+
+  // Attempt session resumption if cache enabled
+  if (auto* cache = factory->session_cache()) {
+    SSL_SESSION* cached = cache->Lookup(std::string(hostname), port);
+    if (cached) {
+      SSL_set_session(ssl_.get(), cached);
+      SSL_SESSION_free(cached);  // SSL_set_session increments refcount
+    }
   }
 
   // Put in client mode
@@ -223,6 +238,13 @@ std::string_view TlsConnection::AlpnProtocol() const {
 
 bool TlsConnection::IsHttp2() const {
   return AlpnProtocol() == "h2";
+}
+
+bool TlsConnection::SessionResumed() const {
+  if (state_ != TlsState::kConnected) {
+    return false;
+  }
+  return SSL_session_reused(ssl_.get()) != 0;
 }
 
 TlsResult TlsConnection::HandleSslError(int ssl_ret) {

@@ -52,8 +52,10 @@ enum class TlsResult {
 // Per-connection TLS wrapper with non-blocking I/O support.
 class TlsConnection {
  public:
-  // Create TLS connection wrapping the given socket fd
-  TlsConnection(TlsContextFactory* factory, int fd, std::string_view hostname);
+  // Create TLS connection wrapping the given socket fd.
+  // Port is used for session cache keying.
+  TlsConnection(TlsContextFactory* factory, int fd, std::string_view hostname,
+                uint16_t port = 443);
   ~TlsConnection();
 
   // Non-copyable, non-movable
@@ -101,8 +103,15 @@ class TlsConnection {
   // Check if HTTP/2 was negotiated
   bool IsHttp2() const;
 
+  // Check if session was resumed (PSK handshake).
+  // Only meaningful after handshake completes.
+  bool SessionResumed() const;
+
   // Get the hostname being connected to
   const std::string& hostname() const { return hostname_; }
+
+  // Get the port
+  uint16_t port() const { return port_; }
 
   // Get underlying socket fd
   int fd() const { return fd_; }
@@ -120,6 +129,7 @@ class TlsConnection {
   SslPtr ssl_;
   TlsState state_ = TlsState::kInit;
   int fd_;
+  uint16_t port_;
   std::string hostname_;
   std::string last_error_;
 

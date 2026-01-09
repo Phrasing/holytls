@@ -15,6 +15,9 @@
 namespace chad {
 namespace tls {
 
+// Forward declaration
+class TlsSessionCache;
+
 // Custom deleters for OpenSSL types
 struct SslCtxDeleter {
   void operator()(SSL_CTX* ctx) {
@@ -51,6 +54,9 @@ class TlsContextFactory {
   // Create a new SSL object for a connection
   SSL* CreateSsl();
 
+  // Get session cache (for TlsConnection to attempt resumption)
+  TlsSessionCache* session_cache() const { return session_cache_.get(); }
+
  private:
   // Configure SSL_CTX for Chrome impersonation
   void ConfigureCipherSuites();
@@ -64,6 +70,7 @@ class TlsContextFactory {
   SslCtxPtr ctx_;
   TlsConfig config_;
   ChromeTlsProfile profile_;
+  std::unique_ptr<TlsSessionCache> session_cache_;
 };
 
 }  // namespace tls

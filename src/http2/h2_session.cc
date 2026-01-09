@@ -16,18 +16,22 @@ constexpr const char kAuthority[] = ":authority";
 constexpr const char kScheme[] = ":scheme";
 constexpr const char kPath[] = ":path";
 
-// Helper to create nghttp2_nv from strings that must remain valid
+// Helper to create nghttp2_nv from strings that must remain valid.
+// Uses NO_COPY flags to prevent nghttp2 from reordering headers.
+// CRITICAL: Caller must ensure strings remain valid until frame is sent.
 nghttp2_nv MakeNv(const std::string& name, const std::string& value) {
   nghttp2_nv nv;
   nv.name = reinterpret_cast<uint8_t*>(const_cast<char*>(name.data()));
   nv.namelen = name.size();
   nv.value = reinterpret_cast<uint8_t*>(const_cast<char*>(value.data()));
   nv.valuelen = value.size();
-  nv.flags = NGHTTP2_NV_FLAG_NONE;
+  // NO_COPY flags preserve insertion order - nghttp2 won't copy or reorder
+  nv.flags = NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE;
   return nv;
 }
 
 // Helper for static name with string value (name is static storage)
+// Uses NO_COPY flags to prevent nghttp2 from reordering headers.
 nghttp2_nv MakeNvStatic(const char* name, size_t namelen,
                         const std::string& value) {
   nghttp2_nv nv;
@@ -35,7 +39,8 @@ nghttp2_nv MakeNvStatic(const char* name, size_t namelen,
   nv.namelen = namelen;
   nv.value = reinterpret_cast<uint8_t*>(const_cast<char*>(value.data()));
   nv.valuelen = value.size();
-  nv.flags = NGHTTP2_NV_FLAG_NO_COPY_NAME;
+  // NO_COPY flags preserve insertion order - nghttp2 won't copy or reorder
+  nv.flags = NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE;
   return nv;
 }
 

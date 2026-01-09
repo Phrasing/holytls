@@ -11,6 +11,8 @@
 #include <stdexcept>
 #include <vector>
 
+#include "tls/session_cache.h"
+
 namespace chad {
 namespace tls {
 
@@ -36,6 +38,31 @@ int BrotliDecompressCert(SSL* /*ssl*/, CRYPTO_BUFFER** out,
 
   *out = CRYPTO_BUFFER_new(buf.data(), decoded_size, nullptr);
   return *out != nullptr ? 1 : 0;
+}
+
+// Callback for new session tickets (TLS 1.3 PSK).
+// Called after handshake when server sends NewSessionTicket.
+int NewSessionCallback(SSL* ssl, SSL_SESSION* session) {
+  SSL_CTX* ctx = SSL_get_SSL_CTX(ssl);
+  auto* cache = static_cast<TlsSessionCache*>(
+      SSL_CTX_get_ex_data(ctx, GetSessionCacheIndex()));
+
+  if (!cache) {
+    return 0;  // No cache configured
+  }
+
+  const char* hostname = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+  if (!hostname) {
+    return 0;  // No SNI, can't cache
+  }
+
+  // Get port from SSL ex_data
+  auto port = static_cast<uint16_t>(reinterpret_cast<uintptr_t>(
+      SSL_get_ex_data(ssl, GetPortIndex())));
+
+  cache->Store(hostname, port, session);
+
+  return 0;  // Return 0: SSL library retains ownership of session
 }
 
 }  // namespace
@@ -162,15 +189,29 @@ void TlsContextFactory::ConfigureAlpn() {
 }
 
 void TlsContextFactory::ConfigureSessionCache() {
-  if (config_.enable_session_cache) {
-    // Enable client-side session caching
-    SSL_CTX_set_session_cache_mode(ctx_.get(), SSL_SESS_CACHE_CLIENT);
-
-    // Set cache size (cast carefully to avoid sign warnings)
-    auto cache_size = static_cast<unsigned long>(config_.session_cache_size);
-    SSL_CTX_sess_set_cache_size(ctx_.get(), cache_size);
-  } else {
+  if (!config_.enable_session_cache) {
     SSL_CTX_set_session_cache_mode(ctx_.get(), SSL_SESS_CACHE_OFF);
+    return;
+  }
+
+  // Chrome-style: external cache only, no internal BoringSSL storage
+  // This matches Chrome's SSLClientSocketImpl behavior
+  SSL_CTX_set_session_cache_mode(ctx_.get(),
+      SSL_SESS_CACHE_CLIENT | SSL_SESS_CACHE_NO_INTERNAL_STORE);
+
+  // Create external session cache
+  session_cache_ = std::make_unique<TlsSessionCache>(
+      ctx_.get(), config_.session_cache_size);
+
+  // Store cache pointer in SSL_CTX for new_session_cb access
+  SSL_CTX_set_ex_data(ctx_.get(), GetSessionCacheIndex(), session_cache_.get());
+
+  // Install callback for new session tickets
+  SSL_CTX_sess_set_new_cb(ctx_.get(), NewSessionCallback);
+
+  // Enable 0-RTT early data (Chrome 143 enables this by default)
+  if (config_.enable_early_data) {
+    SSL_CTX_set_early_data_enabled(ctx_.get(), 1);
   }
 }
 
