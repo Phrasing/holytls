@@ -119,7 +119,7 @@ target_link_libraries(chad-tls
 
 # Platform-specific libraries
 if(WIN32)
-  target_link_libraries(chad-tls PUBLIC ws2_32 iphlpapi)
+  target_link_libraries(chad-tls PUBLIC ws2_32 iphlpapi crypt32)
 endif()
 
 # Link zlib (cross-platform)

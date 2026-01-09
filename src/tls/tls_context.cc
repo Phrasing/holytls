@@ -11,10 +11,42 @@
 #include <stdexcept>
 #include <vector>
 
+#ifdef _WIN32
+#include <windows.h>
+#include <wincrypt.h>
+#endif
+
 #include "tls/session_cache.h"
 
 namespace chad {
 namespace tls {
+
+#ifdef _WIN32
+// Load root certificates from Windows Certificate Store into BoringSSL
+// This is necessary because BoringSSL doesn't automatically access the
+// Windows certificate store like it does /etc/ssl/certs on Linux
+void LoadWindowsRootCerts(SSL_CTX* ctx) {
+  HCERTSTORE hStore = CertOpenSystemStoreA(0, "ROOT");
+  if (!hStore) {
+    return;
+  }
+
+  X509_STORE* store = SSL_CTX_get_cert_store(ctx);
+  PCCERT_CONTEXT pContext = nullptr;
+
+  while ((pContext = CertEnumCertificatesInStore(hStore, pContext)) != nullptr) {
+    const unsigned char* cert_data = pContext->pbCertEncoded;
+    X509* x509 = d2i_X509(nullptr, &cert_data,
+                          static_cast<long>(pContext->cbCertEncoded));
+    if (x509) {
+      X509_STORE_add_cert(store, x509);
+      X509_free(x509);
+    }
+  }
+
+  CertCloseStore(hStore, 0);
+}
+#endif
 
 namespace {
 
@@ -229,10 +261,15 @@ void TlsContextFactory::ConfigureCertificateVerification() {
                                  config_.ca_bundle_path);
       }
     } else {
-      // Use default CA paths
+#ifdef _WIN32
+      // On Windows, load root certificates from the Windows Certificate Store
+      LoadWindowsRootCerts(ctx_.get());
+#else
+      // On Unix, use default CA paths (/etc/ssl/certs, etc.)
       if (SSL_CTX_set_default_verify_paths(ctx_.get()) != 1) {
         throw std::runtime_error("Failed to set default CA paths");
       }
+#endif
     }
   } else {
     // Disable verification (not recommended for production)
