@@ -31,14 +31,19 @@ if(NOT boringssl_POPULATED)
 
     # Patch 2: Fix bssl::Span conversion in handshake_client.cc
     # MSVC 2026 is stricter about implicit pointer-to-Span conversion in ternary expressions
-    # Arrays decay to pointers in ternary, so we wrap each with explicit Span constructor
+    # Only replace usages (followed by : or ;), not declarations (followed by [)
     file(READ "${boringssl_SOURCE_DIR}/ssl/handshake_client.cc" HANDSHAKE_CC)
-    # Wrap each cipher array constant with explicit Span constructor to prevent decay
-    string(REPLACE "kCiphersAESHardware" "bssl::Span<const uint16_t>(kCiphersAESHardware)" HANDSHAKE_CC "${HANDSHAKE_CC}")
-    string(REPLACE "kCiphersFirefox" "bssl::Span<const uint16_t>(kCiphersFirefox)" HANDSHAKE_CC "${HANDSHAKE_CC}")
-    string(REPLACE "kCiphersChrome" "bssl::Span<const uint16_t>(kCiphersChrome)" HANDSHAKE_CC "${HANDSHAKE_CC}")
-    string(REPLACE "kCiphersEdge" "bssl::Span<const uint16_t>(kCiphersEdge)" HANDSHAKE_CC "${HANDSHAKE_CC}")
-    string(REPLACE "kCiphersSafari" "bssl::Span<const uint16_t>(kCiphersSafari)" HANDSHAKE_CC "${HANDSHAKE_CC}")
+    # Replace ternary branch usages (name followed by colon or semicolon with optional whitespace)
+    string(REPLACE "kCiphersAESHardware :" "bssl::Span<const uint16_t>(kCiphersAESHardware) :" HANDSHAKE_CC "${HANDSHAKE_CC}")
+    string(REPLACE "kCiphersAESHardware;" "bssl::Span<const uint16_t>(kCiphersAESHardware);" HANDSHAKE_CC "${HANDSHAKE_CC}")
+    string(REPLACE "kCiphersFirefox :" "bssl::Span<const uint16_t>(kCiphersFirefox) :" HANDSHAKE_CC "${HANDSHAKE_CC}")
+    string(REPLACE "kCiphersFirefox;" "bssl::Span<const uint16_t>(kCiphersFirefox);" HANDSHAKE_CC "${HANDSHAKE_CC}")
+    string(REPLACE "kCiphersChrome :" "bssl::Span<const uint16_t>(kCiphersChrome) :" HANDSHAKE_CC "${HANDSHAKE_CC}")
+    string(REPLACE "kCiphersChrome;" "bssl::Span<const uint16_t>(kCiphersChrome);" HANDSHAKE_CC "${HANDSHAKE_CC}")
+    string(REPLACE "kCiphersEdge :" "bssl::Span<const uint16_t>(kCiphersEdge) :" HANDSHAKE_CC "${HANDSHAKE_CC}")
+    string(REPLACE "kCiphersEdge;" "bssl::Span<const uint16_t>(kCiphersEdge);" HANDSHAKE_CC "${HANDSHAKE_CC}")
+    string(REPLACE "kCiphersSafari :" "bssl::Span<const uint16_t>(kCiphersSafari) :" HANDSHAKE_CC "${HANDSHAKE_CC}")
+    string(REPLACE "kCiphersSafari;" "bssl::Span<const uint16_t>(kCiphersSafari);" HANDSHAKE_CC "${HANDSHAKE_CC}")
     file(WRITE "${boringssl_SOURCE_DIR}/ssl/handshake_client.cc" "${HANDSHAKE_CC}")
 
     message(STATUS "MSVC patches applied")
