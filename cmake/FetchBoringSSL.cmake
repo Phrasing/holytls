@@ -30,13 +30,13 @@ if(NOT boringssl_POPULATED)
     file(WRITE "${boringssl_SOURCE_DIR}/ssl/extensions.cc" "${EXTENSIONS_CC}")
 
     # Patch 2: Fix bssl::Span conversion in handshake_client.cc
-    # The issue is that MSVC 2026 is stricter about implicit pointer-to-Span conversion
+    # MSVC 2026 is stricter about implicit pointer-to-Span conversion in ternary expressions
+    # The ternary operator produces const uint16_t* but code tries to assign to Span
     file(READ "${boringssl_SOURCE_DIR}/ssl/handshake_client.cc" HANDSHAKE_CC)
-    # Replace the problematic line - SSL_get_group_ids returns a pointer and count
-    # but the code tries to assign just the pointer to a Span
+    # Change the variable type from Span to pointer since ternary produces pointers
     string(REPLACE
-      "bssl::Span<const uint16_t> groups = SSL_get_group_ids(ssl);"
-      "size_t groups_len; const uint16_t* groups_ptr = SSL_get_group_ids(ssl, &groups_len); bssl::Span<const uint16_t> groups(groups_ptr, groups_len);"
+      "const bssl::Span<const uint16_t> ciphers ="
+      "const uint16_t* ciphers ="
       HANDSHAKE_CC "${HANDSHAKE_CC}")
     file(WRITE "${boringssl_SOURCE_DIR}/ssl/handshake_client.cc" "${HANDSHAKE_CC}")
 
