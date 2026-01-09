@@ -107,22 +107,11 @@ if(NOT boringssl_POPULATED)
     set(NPROC 4)
   endif()
 
-  # For multi-config generators (Visual Studio), we need to build both Debug and Release
-  # so that linking works regardless of which config is selected in the IDE
+  # Build BoringSSL - use Release config for multi-config generators
+  # BoringSSL outputs to the same location regardless of config
   if(CMAKE_GENERATOR MATCHES "Visual Studio")
-    message(STATUS "Building BoringSSL Release...")
     execute_process(
       COMMAND ${CMAKE_COMMAND} --build . --config Release --parallel ${NPROC}
-      WORKING_DIRECTORY ${boringssl_BINARY_DIR}
-      RESULT_VARIABLE boringssl_build_result
-    )
-    if(NOT boringssl_build_result EQUAL 0)
-      message(FATAL_ERROR "BoringSSL Release build failed")
-    endif()
-
-    message(STATUS "Building BoringSSL Debug...")
-    execute_process(
-      COMMAND ${CMAKE_COMMAND} --build . --config Debug --parallel ${NPROC}
       WORKING_DIRECTORY ${boringssl_BINARY_DIR}
       RESULT_VARIABLE boringssl_build_result
     )
@@ -146,42 +135,17 @@ add_library(boringssl::crypto STATIC IMPORTED GLOBAL)
 add_library(boringssl::ssl STATIC IMPORTED GLOBAL)
 
 if(WIN32)
-  if(CMAKE_GENERATOR MATCHES "Visual Studio")
-    # Multi-config generator: set paths for each configuration
-    set_target_properties(boringssl::crypto PROPERTIES
-      IMPORTED_LOCATION_DEBUG "${boringssl_BINARY_DIR}/crypto/Debug/crypto.lib"
-      IMPORTED_LOCATION_RELEASE "${boringssl_BINARY_DIR}/crypto/Release/crypto.lib"
-      IMPORTED_LOCATION_RELWITHDEBINFO "${boringssl_BINARY_DIR}/crypto/Release/crypto.lib"
-      IMPORTED_LOCATION_MINSIZEREL "${boringssl_BINARY_DIR}/crypto/Release/crypto.lib"
-      INTERFACE_INCLUDE_DIRECTORIES "${boringssl_SOURCE_DIR}/include"
-    )
-    set_target_properties(boringssl::ssl PROPERTIES
-      IMPORTED_LOCATION_DEBUG "${boringssl_BINARY_DIR}/ssl/Debug/ssl.lib"
-      IMPORTED_LOCATION_RELEASE "${boringssl_BINARY_DIR}/ssl/Release/ssl.lib"
-      IMPORTED_LOCATION_RELWITHDEBINFO "${boringssl_BINARY_DIR}/ssl/Release/ssl.lib"
-      IMPORTED_LOCATION_MINSIZEREL "${boringssl_BINARY_DIR}/ssl/Release/ssl.lib"
-      INTERFACE_INCLUDE_DIRECTORIES "${boringssl_SOURCE_DIR}/include"
-    )
-    set(BORINGSSL_SSL_LIB "${boringssl_BINARY_DIR}/ssl/Release/ssl.lib")
-    set(BORINGSSL_CRYPTO_LIB "${boringssl_BINARY_DIR}/crypto/Release/crypto.lib")
-  else()
-    # Single-config generator on Windows (Ninja, etc.)
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-      set(BORINGSSL_CRYPTO_LIB "${boringssl_BINARY_DIR}/crypto/crypto.lib")
-      set(BORINGSSL_SSL_LIB "${boringssl_BINARY_DIR}/ssl/ssl.lib")
-    else()
-      set(BORINGSSL_CRYPTO_LIB "${boringssl_BINARY_DIR}/crypto/crypto.lib")
-      set(BORINGSSL_SSL_LIB "${boringssl_BINARY_DIR}/ssl/ssl.lib")
-    endif()
-    set_target_properties(boringssl::crypto PROPERTIES
-      IMPORTED_LOCATION "${BORINGSSL_CRYPTO_LIB}"
-      INTERFACE_INCLUDE_DIRECTORIES "${boringssl_SOURCE_DIR}/include"
-    )
-    set_target_properties(boringssl::ssl PROPERTIES
-      IMPORTED_LOCATION "${BORINGSSL_SSL_LIB}"
-      INTERFACE_INCLUDE_DIRECTORIES "${boringssl_SOURCE_DIR}/include"
-    )
-  endif()
+  # BoringSSL outputs libs directly to ssl/ and crypto/ regardless of generator
+  set(BORINGSSL_CRYPTO_LIB "${boringssl_BINARY_DIR}/crypto/crypto.lib")
+  set(BORINGSSL_SSL_LIB "${boringssl_BINARY_DIR}/ssl/ssl.lib")
+  set_target_properties(boringssl::crypto PROPERTIES
+    IMPORTED_LOCATION "${BORINGSSL_CRYPTO_LIB}"
+    INTERFACE_INCLUDE_DIRECTORIES "${boringssl_SOURCE_DIR}/include"
+  )
+  set_target_properties(boringssl::ssl PROPERTIES
+    IMPORTED_LOCATION "${BORINGSSL_SSL_LIB}"
+    INTERFACE_INCLUDE_DIRECTORIES "${boringssl_SOURCE_DIR}/include"
+  )
 else()
   # Unix
   set(BORINGSSL_CRYPTO_LIB "${boringssl_BINARY_DIR}/crypto/libcrypto.a")
