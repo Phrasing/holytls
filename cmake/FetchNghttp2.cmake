@@ -31,18 +31,22 @@ if(NOT nghttp2_POPULATED)
   add_subdirectory(${nghttp2_SOURCE_DIR} ${nghttp2_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 
-# nghttp2 exports nghttp2::nghttp2 target automatically in recent versions
-# Just verify it exists
-if(NOT TARGET nghttp2::nghttp2)
-  if(TARGET nghttp2)
-    # Older versions might just have 'nghttp2' target
-    add_library(nghttp2::nghttp2 ALIAS nghttp2)
-    message(STATUS "nghttp2 configured (aliased from nghttp2)")
-  else()
-    message(FATAL_ERROR "nghttp2 target not found")
+# nghttp2 creates different targets for static/shared
+# We want static to avoid DLL dependencies on Windows
+if(TARGET nghttp2_static)
+  # Use static library target
+  if(NOT TARGET nghttp2::nghttp2)
+    add_library(nghttp2::nghttp2 ALIAS nghttp2_static)
   endif()
-else()
+  message(STATUS "nghttp2 configured (static library)")
+elseif(TARGET nghttp2::nghttp2)
   message(STATUS "nghttp2 configured (nghttp2::nghttp2)")
+elseif(TARGET nghttp2)
+  # Older versions might just have 'nghttp2' target
+  add_library(nghttp2::nghttp2 ALIAS nghttp2)
+  message(STATUS "nghttp2 configured (aliased from nghttp2)")
+else()
+  message(FATAL_ERROR "nghttp2 target not found")
 endif()
 
 message(STATUS "nghttp2 include dir: ${nghttp2_SOURCE_DIR}/lib/includes")
