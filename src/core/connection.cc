@@ -4,6 +4,7 @@
 #include "core/connection.h"
 
 #include <cstring>
+#include <iostream>
 
 #include "http2/chrome_h2_profile.h"
 #include "http2/chrome_header_profile.h"
@@ -40,6 +41,7 @@ bool Connection::Connect(const std::string& ip, bool ipv6) {
 
   // Start non-blocking connect
   int ret = util::ConnectNonBlocking(fd_, ip, port_, ipv6);
+  std::cerr << "[DEBUG] ConnectNonBlocking returned: " << ret << "\n";
   if (ret < 0) {
     SetError("Connect failed: " + util::GetLastSocketErrorString());
     util::CloseSocket(fd_);
@@ -50,7 +52,12 @@ bool Connection::Connect(const std::string& ip, bool ipv6) {
   state_ = ConnectionState::kConnecting;
 
   // Register with reactor - watch for writable to know when connect completes
+  // On Windows, AFD_POLL may need both read+write to properly detect connect completion
+#ifdef _WIN32
+  if (!reactor_->Add(this, EventType::kReadWrite)) {
+#else
   if (!reactor_->Add(this, EventType::kWrite)) {
+#endif
     SetError("Failed to register with reactor");
     util::CloseSocket(fd_);
     fd_ = util::kInvalidSocket;
@@ -194,7 +201,12 @@ void Connection::Close() {
 }
 
 void Connection::OnReadable() {
+  std::cerr << "[DEBUG] OnReadable called, state=" << static_cast<int>(state_) << "\n";
   switch (state_) {
+    case ConnectionState::kConnecting:
+      // On Windows, readable during connect means we should check connection status
+      HandleConnecting();
+      break;
     case ConnectionState::kTlsHandshake:
       HandleTlsHandshake();
       break;
@@ -207,6 +219,7 @@ void Connection::OnReadable() {
 }
 
 void Connection::OnWritable() {
+  std::cerr << "[DEBUG] OnWritable called, state=" << static_cast<int>(state_) << "\n";
   switch (state_) {
     case ConnectionState::kConnecting:
       HandleConnecting();
@@ -223,6 +236,7 @@ void Connection::OnWritable() {
 }
 
 void Connection::OnError(int error_code) {
+  std::cerr << "[DEBUG] OnError called, code=" << error_code << "\n";
   SetError("Socket error: " + std::to_string(error_code));
   state_ = ConnectionState::kError;
   Close();

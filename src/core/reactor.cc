@@ -5,6 +5,7 @@
 
 #include <cerrno>
 #include <cstring>
+#include <iostream>
 #include <stdexcept>
 #include <utility>
 
@@ -77,9 +78,12 @@ bool Reactor::Add(EventHandler* handler, EventType events) {
   }
 
   int fd = handler->fd();
+  std::cerr << "[DEBUG] Reactor::Add fd=" << fd
+            << " events=" << static_cast<int>(events) << "\n";
 
   // Check bounds and if already registered
   if (static_cast<size_t>(fd) >= kMaxFds || fd_table_.Contains(fd)) {
+    std::cerr << "[DEBUG] Reactor::Add failed: bounds or already registered\n";
     return false;
   }
 
@@ -92,7 +96,9 @@ bool Reactor::Add(EventHandler* handler, EventType events) {
   // Windows requires uv_poll_init_socket() for socket handles
   // Unix uses uv_poll_init() for file descriptors
 #ifdef _WIN32
-  if (uv_poll_init_socket(loop_, &poll_data->handle, fd) != 0) {
+  int init_result = uv_poll_init_socket(loop_, &poll_data->handle, fd);
+  std::cerr << "[DEBUG] uv_poll_init_socket returned: " << init_result << "\n";
+  if (init_result != 0) {
 #else
   if (uv_poll_init(loop_, &poll_data->handle, fd) != 0) {
 #endif
@@ -103,7 +109,9 @@ bool Reactor::Add(EventHandler* handler, EventType events) {
 
   // Start polling
   int uv_events = static_cast<int>(events);
-  if (uv_poll_start(&poll_data->handle, uv_events, OnPollEvent) != 0) {
+  int start_result = uv_poll_start(&poll_data->handle, uv_events, OnPollEvent);
+  std::cerr << "[DEBUG] uv_poll_start returned: " << start_result << "\n";
+  if (start_result != 0) {
     uv_close(reinterpret_cast<uv_handle_t*>(&poll_data->handle), nullptr);
     g_poll_data_allocator.Deallocate(poll_data);
     return false;
@@ -228,8 +236,15 @@ void Reactor::ProcessPostedCallbacks() {
 }
 
 void Reactor::OnPollEvent(uv_poll_t* handle, int status, int events) {
+  std::cerr << "[DEBUG] OnPollEvent: status=" << status
+            << " events=" << events
+            << " (R=" << (events & UV_READABLE)
+            << " W=" << (events & UV_WRITABLE)
+            << " D=" << (events & UV_DISCONNECT) << ")\n";
+
   auto* poll_data = static_cast<PollData*>(handle->data);
   if (!poll_data || !poll_data->handler) {
+    std::cerr << "[DEBUG] OnPollEvent: no handler!\n";
     return;
   }
 
@@ -237,6 +252,7 @@ void Reactor::OnPollEvent(uv_poll_t* handle, int status, int events) {
 
   // Handle error
   if (status < 0) {
+    std::cerr << "[DEBUG] OnPollEvent: error status, calling OnError\n";
     handler->OnError(-status);
     return;
   }

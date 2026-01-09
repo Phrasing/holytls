@@ -33,14 +33,14 @@ socket_t CreateTcpSocket(bool ipv6) {
   }
 #endif
 
-  // Set non-blocking and close-on-exec
-  // On Windows with libuv/IOCP, do NOT set FIONBIO - IOCP handles async internally
-  // Setting FIONBIO breaks IOCP completion notifications
-#ifndef _WIN32
+  // Set non-blocking mode (required for async connect)
+  // Note: libuv's uv_poll_init_socket() also sets FIONBIO, but we set it explicitly
   if (!SetNonBlocking(sock)) {
     CloseSocket(sock);
     return kInvalidSocket;
   }
+#ifndef _WIN32
+  // Close-on-exec only needed on Unix
   if (!SetCloseOnExec(sock)) {
     CloseSocket(sock);
     return kInvalidSocket;
