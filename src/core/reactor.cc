@@ -46,12 +46,12 @@ Reactor::Reactor(const ReactorConfig& config) : config_(config) {
 }
 
 Reactor::~Reactor() {
-  // Stop and deallocate all poll handles
+  // Stop and close all poll handles
   for (size_t fd = 0; fd < kMaxFds; ++fd) {
     PollData* poll_data = fd_table_.Get(static_cast<int>(fd));
     if (poll_data) {
       uv_poll_stop(&poll_data->handle);
-      g_poll_data_allocator.Deallocate(poll_data);
+      uv_close(reinterpret_cast<uv_handle_t*>(&poll_data->handle), OnCloseCallback);
     }
   }
   fd_table_.Clear();
@@ -63,7 +63,7 @@ Reactor::~Reactor() {
   // Close the async handle
   uv_close(reinterpret_cast<uv_handle_t*>(&async_), nullptr);
 
-  // Run the loop one more time to process close callbacks
+  // Run the loop one more time to process close callbacks (including PollData deallocation)
   uv_run(loop_, UV_RUN_DEFAULT);
 
   // Close and free the loop
@@ -150,7 +150,7 @@ bool Reactor::Remove(EventHandler* handler) {
   uv_close(reinterpret_cast<uv_handle_t*>(&poll_data->handle), OnCloseCallback);
 
   fd_table_.Remove(fd);
-  g_poll_data_allocator.Deallocate(poll_data);
+  // Note: PollData is deallocated in OnCloseCallback after uv_close completes
   return true;
 }
 
@@ -271,8 +271,12 @@ void Reactor::OnAsyncCallback(uv_async_t* handle) {
   }
 }
 
-void Reactor::OnCloseCallback(uv_handle_t* /*handle*/) {
-  // PollData is deallocated in Remove()
+void Reactor::OnCloseCallback(uv_handle_t* handle) {
+  // Deallocate PollData after uv_close completes (must be deferred, not immediate)
+  auto* poll_data = static_cast<PollData*>(handle->data);
+  if (poll_data) {
+    g_poll_data_allocator.Deallocate(poll_data);
+  }
 }
 
 }  // namespace core
