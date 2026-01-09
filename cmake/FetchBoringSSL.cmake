@@ -20,14 +20,34 @@ FetchContent_GetProperties(boringssl)
 if(NOT boringssl_POPULATED)
   FetchContent_Populate(boringssl)
 
+  # Apply MSVC-specific patches to BoringSSL source
+  if(MSVC)
+    message(STATUS "Applying MSVC patches to BoringSSL...")
+
+    # Patch 1: Fix strdup -> _strdup in extensions.cc
+    file(READ "${boringssl_SOURCE_DIR}/ssl/extensions.cc" EXTENSIONS_CC)
+    string(REPLACE "strdup(" "_strdup(" EXTENSIONS_CC "${EXTENSIONS_CC}")
+    file(WRITE "${boringssl_SOURCE_DIR}/ssl/extensions.cc" "${EXTENSIONS_CC}")
+
+    # Patch 2: Fix bssl::Span conversion in handshake_client.cc
+    # The issue is that MSVC 2026 is stricter about implicit pointer-to-Span conversion
+    file(READ "${boringssl_SOURCE_DIR}/ssl/handshake_client.cc" HANDSHAKE_CC)
+    # Replace the problematic line - SSL_get_group_ids returns a pointer and count
+    # but the code tries to assign just the pointer to a Span
+    string(REPLACE
+      "bssl::Span<const uint16_t> groups = SSL_get_group_ids(ssl);"
+      "size_t groups_len; const uint16_t* groups_ptr = SSL_get_group_ids(ssl, &groups_len); bssl::Span<const uint16_t> groups(groups_ptr, groups_len);"
+      HANDSHAKE_CC "${HANDSHAKE_CC}")
+    file(WRITE "${boringssl_SOURCE_DIR}/ssl/handshake_client.cc" "${HANDSHAKE_CC}")
+
+    message(STATUS "MSVC patches applied")
+  endif()
+
   # Platform-specific compiler flags for BoringSSL
   if(MSVC)
-    # MSVC: Disable warnings-as-errors and suppress specific warnings
-    # /WX- disables treating warnings as errors
-    # /wd4996 suppresses deprecation warnings (strdup -> _strdup)
-    # /wd4267 suppresses size_t to int conversion warnings
-    set(BORINGSSL_C_FLAGS "/WX- /wd4996 /wd4267")
-    set(BORINGSSL_CXX_FLAGS "/WX- /wd4996 /wd4267")
+    # MSVC: Use standard flags
+    set(BORINGSSL_C_FLAGS "")
+    set(BORINGSSL_CXX_FLAGS "")
   else()
     # GCC/Clang: Use position-independent code
     set(BORINGSSL_C_FLAGS "-fPIC")
