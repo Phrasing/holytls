@@ -27,6 +27,10 @@ include(FetchBoringSSL)
 include(FetchNghttp2)
 include(FetchLibuv)
 
+# Find Brotli for certificate compression
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(BROTLI REQUIRED libbrotlidec)
+
 # Main library
 add_library(chad-tls STATIC
   src/core/reactor.cc
@@ -42,6 +46,8 @@ add_library(chad-tls STATIC
   src/http2/h2_session.cc
   src/http2/h2_stream.cc
   src/http2/chrome_h2_profile.cc
+  src/http2/header_ids.cc
+  src/http2/packed_headers.cc
   src/pool/connection_pool.cc
   src/pool/host_pool.cc
   src/client/http_client.cc
@@ -56,6 +62,7 @@ target_include_directories(chad-tls
     ${CMAKE_SOURCE_DIR}/include
   PRIVATE
     ${CMAKE_SOURCE_DIR}/src
+    ${BROTLI_INCLUDE_DIRS}
 )
 
 target_link_libraries(chad-tls
@@ -65,6 +72,8 @@ target_link_libraries(chad-tls
     nghttp2::nghttp2
     libuv::libuv
     pthread
+  PRIVATE
+    ${BROTLI_LIBRARIES}
 )
 
 # Apply our strict compiler flags only to our code
