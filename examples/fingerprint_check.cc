@@ -21,6 +21,7 @@
 #include "tls/session_cache.h"
 #include "tls/tls_context.h"
 #include "util/dns_resolver.h"
+#include "util/platform.h"
 
 namespace {
 
@@ -98,6 +99,12 @@ void TestEndpoint(chad::core::Reactor& reactor,
 }  // namespace
 
 int main(int argc, char* argv[]) {
+  // Initialize platform-specific networking (Winsock on Windows)
+  if (!chad::util::InitializeNetworking()) {
+    std::cerr << "Failed to initialize networking\n";
+    return 1;
+  }
+
   // Parse command line
   chad::ChromeVersion version = chad::ChromeVersion::kChrome143;
   if (argc > 1) {
@@ -156,5 +163,9 @@ int main(int argc, char* argv[]) {
   }
 
   std::cout << "\n=== Done ===\n";
+
+  // Cleanup platform-specific networking
+  chad::util::CleanupNetworking();
+
   return 0;
 }
