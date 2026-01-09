@@ -14,19 +14,39 @@
 #include <string>
 #include <vector>
 
+#ifdef _MSC_VER
+  #include <intrin.h>
+#endif
+
 namespace chad {
 namespace bench {
 
 // Prevent compiler from optimizing away a value
+#ifdef _MSC_VER
+template <typename T>
+inline void DoNotOptimize(T&& value) {
+  // Use volatile to prevent optimization
+  volatile auto* p = &value;
+  (void)p;
+  _ReadWriteBarrier();
+}
+#else
 template <typename T>
 inline void DoNotOptimize(T&& value) {
   asm volatile("" : : "r,m"(value) : "memory");
 }
+#endif
 
 // Memory barrier to prevent reordering
+#ifdef _MSC_VER
+inline void ClobberMemory() {
+  _ReadWriteBarrier();
+}
+#else
 inline void ClobberMemory() {
   asm volatile("" : : : "memory");
 }
+#endif
 
 // High-resolution timer
 struct Timer {
@@ -56,8 +76,9 @@ struct Result {
   double ops_per_sec;
 
   void Print() const {
-    printf("%-40s %12lu iters %12.2f ns/op %12.2f M ops/sec\n",
-           name.c_str(), iterations, ns_per_op, ops_per_sec / 1e6);
+    printf("%-40s %12llu iters %12.2f ns/op %12.2f M ops/sec\n",
+           name.c_str(), static_cast<unsigned long long>(iterations),
+           ns_per_op, ops_per_sec / 1e6);
     fflush(stdout);
   }
 };

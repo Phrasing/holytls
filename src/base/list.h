@@ -190,8 +190,14 @@ inline SLLNode* SLLPopFront(SLLList* list) {
 }  // namespace chad
 
 // Prefetch hint for better cache performance
-#define Prefetch(ptr) __builtin_prefetch(ptr, 0, 3)
-#define PrefetchWrite(ptr) __builtin_prefetch(ptr, 1, 3)
+#ifdef _MSC_VER
+  #include <xmmintrin.h>
+  #define Prefetch(ptr) _mm_prefetch(reinterpret_cast<const char*>(ptr), _MM_HINT_T0)
+  #define PrefetchWrite(ptr) _mm_prefetch(reinterpret_cast<const char*>(ptr), _MM_HINT_T0)
+#else
+  #define Prefetch(ptr) __builtin_prefetch(ptr, 0, 3)
+  #define PrefetchWrite(ptr) __builtin_prefetch(ptr, 1, 3)
+#endif
 
 // Iteration macros (outside namespace for proper type resolution)
 #define DLLForEach(list, node) \

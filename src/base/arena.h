@@ -12,6 +12,15 @@
 #include <cstdlib>
 #include <cstring>
 
+// Branch prediction hints - MSVC doesn't have __builtin_expect
+#ifdef _MSC_VER
+  #define CHAD_LIKELY(x) (x)
+  #define CHAD_UNLIKELY(x) (x)
+#else
+  #define CHAD_LIKELY(x) __builtin_expect(!!(x), 1)
+  #define CHAD_UNLIKELY(x) __builtin_expect(!!(x), 0)
+#endif
+
 namespace chad {
 
 // Default arena block size (64KB)
@@ -87,7 +96,7 @@ inline void* ArenaPush(Arena* arena, size_t size) {
   uint8_t* result = arena->pos;
   uint8_t* new_pos = result + aligned_size;
 
-  if (__builtin_expect(new_pos <= arena->end, 1)) {
+  if (CHAD_LIKELY(new_pos <= arena->end)) {
     arena->pos = new_pos;
     return result;
   }
@@ -99,7 +108,7 @@ inline void* ArenaPush(Arena* arena, size_t size) {
   }
 
   Arena* new_arena = Arena::Create(new_block_size);
-  if (__builtin_expect(!new_arena, 0)) return nullptr;
+  if (CHAD_UNLIKELY(!new_arena)) return nullptr;
 
   // Chain old block by swapping (keeps arena pointer stable)
   new_arena->prev = arena->prev;
