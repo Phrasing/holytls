@@ -25,7 +25,9 @@ if(NOT boringssl_POPULATED)
     message(STATUS "Applying MSVC patches to BoringSSL...")
 
     # Patch 1: Fix strdup -> _strdup in extensions.cc
+    # Make idempotent: first normalize any previous patches, then apply
     file(READ "${boringssl_SOURCE_DIR}/ssl/extensions.cc" EXTENSIONS_CC)
+    string(REPLACE "_strdup(" "strdup(" EXTENSIONS_CC "${EXTENSIONS_CC}")
     string(REPLACE "strdup(" "_strdup(" EXTENSIONS_CC "${EXTENSIONS_CC}")
     file(WRITE "${boringssl_SOURCE_DIR}/ssl/extensions.cc" "${EXTENSIONS_CC}")
 
