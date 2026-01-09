@@ -42,9 +42,19 @@ if(WIN32)
     # Fallback: user must provide BROTLI_LIBRARIES and BROTLI_INCLUDE_DIRS
     message(WARNING "Brotli not found via vcpkg. Install with: vcpkg install brotli")
   endif()
+
+  # Find zlib on Windows via vcpkg
+  find_package(ZLIB)
+  if(ZLIB_FOUND)
+    set(ZLIB_LIBRARIES ZLIB::ZLIB)
+  else()
+    message(WARNING "zlib not found via vcpkg. Install with: vcpkg install zlib")
+    set(ZLIB_LIBRARIES "")
+  endif()
 else()
   find_package(PkgConfig REQUIRED)
   pkg_check_modules(BROTLI REQUIRED libbrotlidec)
+  set(ZLIB_LIBRARIES z)
 endif()
 
 # Main library
@@ -102,9 +112,10 @@ target_link_libraries(chad-tls
 # Platform-specific libraries
 if(WIN32)
   target_link_libraries(chad-tls PUBLIC ws2_32 iphlpapi)
-else()
-  target_link_libraries(chad-tls PRIVATE z)
 endif()
+
+# Link zlib (cross-platform)
+target_link_libraries(chad-tls PRIVATE ${ZLIB_LIBRARIES})
 
 # Apply our strict compiler flags only to our code
 target_compile_options(chad-tls PRIVATE ${CHAD_COMMON_FLAGS})

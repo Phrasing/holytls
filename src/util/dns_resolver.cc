@@ -3,10 +3,11 @@
 
 #include "util/dns_resolver.h"
 
-#include <arpa/inet.h>
+#include "util/platform.h"
+
+#ifndef _WIN32
 #include <netdb.h>
-#include <sys/socket.h>
-#include <sys/types.h>
+#endif
 
 #include <cstring>
 

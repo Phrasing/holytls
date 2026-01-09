@@ -4,6 +4,9 @@
 #ifndef CHAD_TLS_TLS_CONTEXT_H_
 #define CHAD_TLS_TLS_CONTEXT_H_
 
+// Include platform.h first for Windows compatibility
+#include "util/platform.h"
+
 #include <openssl/ssl.h>
 
 #include <memory>

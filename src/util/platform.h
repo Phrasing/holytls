@@ -16,9 +16,18 @@
   #ifndef NOMINMAX
     #define NOMINMAX
   #endif
+  // Prevent Windows headers from defining X509_NAME which conflicts with BoringSSL
+  #define X509_NAME OPENSSL_X509_NAME_CONFLICT_GUARD
+  #define X509_EXTENSIONS OPENSSL_X509_EXTENSIONS_CONFLICT_GUARD
   #include <winsock2.h>
   #include <ws2tcpip.h>
   #include <windows.h>
+  #undef X509_NAME
+  #undef X509_EXTENSIONS
+
+  // Windows doesn't define ssize_t
+  #include <BaseTsd.h>
+  using ssize_t = SSIZE_T;
 
   // Error code macros
   #define CHAD_SOCKET_ERROR_CODE WSAGetLastError()
