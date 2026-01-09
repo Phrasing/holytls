@@ -4,6 +4,9 @@
 #ifndef CHAD_UTIL_DNS_RESOLVER_H_
 #define CHAD_UTIL_DNS_RESOLVER_H_
 
+// Include platform.h first for Windows compatibility
+#include "util/platform.h"
+
 #include <uv.h>
 
 #include <cstdint>

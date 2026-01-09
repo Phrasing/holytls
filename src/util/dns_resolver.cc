@@ -9,6 +9,7 @@
 #include <netdb.h>
 #endif
 
+#include <algorithm>
 #include <cstring>
 
 namespace chad {

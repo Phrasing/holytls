@@ -4,6 +4,9 @@
 #ifndef CHAD_HTTP2_H2_SESSION_H_
 #define CHAD_HTTP2_H2_SESSION_H_
 
+// Include platform.h first for Windows compatibility and standard types
+#include "util/platform.h"
+
 #include <nghttp2/nghttp2.h>
 
 #include <cstdint>

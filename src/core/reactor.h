@@ -4,6 +4,9 @@
 #ifndef CHAD_CORE_REACTOR_H_
 #define CHAD_CORE_REACTOR_H_
 
+// Include platform.h first for Windows compatibility
+#include "util/platform.h"
+
 #include <uv.h>
 
 #include <atomic>

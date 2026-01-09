@@ -120,6 +120,17 @@ target_link_libraries(chad-tls PRIVATE ${ZLIB_LIBRARIES})
 # Apply our strict compiler flags only to our code
 target_compile_options(chad-tls PRIVATE ${CHAD_COMMON_FLAGS})
 
+# Windows-specific compile definitions to prevent header conflicts
+if(WIN32)
+  target_compile_definitions(chad-tls
+    PUBLIC
+      WIN32_LEAN_AND_MEAN  # Exclude rarely-used Windows headers
+      NOMINMAX             # Prevent Windows from defining min/max macros
+      NOGDI                # Prevent GDI definitions
+      _CRT_SECURE_NO_WARNINGS  # Disable MSVC secure function warnings
+  )
+endif()
+
 # Main executable
 add_executable(chad src/main.cc)
 target_include_directories(chad PRIVATE ${CMAKE_SOURCE_DIR}/src)

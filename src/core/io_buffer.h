@@ -4,6 +4,9 @@
 #ifndef CHAD_CORE_IO_BUFFER_H_
 #define CHAD_CORE_IO_BUFFER_H_
 
+// Include platform.h first for Windows compatibility
+#include "util/platform.h"
+
 #include <cstddef>
 #include <cstdint>
 #include <deque>
@@ -14,10 +17,10 @@
 
 // Platform-specific iovec definition
 #ifdef _WIN32
-  #include <winsock2.h>
   namespace chad {
   namespace core {
   // Windows uses WSABUF for scatter-gather I/O
+  // Note: We define our own iovec_t for portability instead of using WSABUF
   struct iovec_t {
     void* iov_base;
     size_t iov_len;

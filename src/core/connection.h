@@ -4,6 +4,9 @@
 #ifndef CHAD_CORE_CONNECTION_H_
 #define CHAD_CORE_CONNECTION_H_
 
+// Include platform.h first for Windows compatibility
+#include "util/platform.h"
+
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -13,7 +16,6 @@
 #include "core/reactor.h"
 #include "http2/h2_session.h"
 #include "tls/tls_connection.h"
-#include "util/platform.h"
 
 namespace chad {
 namespace core {

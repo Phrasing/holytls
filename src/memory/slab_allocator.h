@@ -4,6 +4,7 @@
 #ifndef CHAD_MEMORY_SLAB_ALLOCATOR_H_
 #define CHAD_MEMORY_SLAB_ALLOCATOR_H_
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <memory>

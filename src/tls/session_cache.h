@@ -4,6 +4,9 @@
 #ifndef CHAD_TLS_SESSION_CACHE_H_
 #define CHAD_TLS_SESSION_CACHE_H_
 
+// Include platform.h first for Windows compatibility
+#include "util/platform.h"
+
 #include <openssl/ssl.h>
 
 #include <atomic>

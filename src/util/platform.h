@@ -3,31 +3,72 @@
 
 // Platform abstraction layer for cross-platform socket operations.
 // Provides unified types and macros for Windows and Unix platforms.
+//
+// IMPORTANT: This header must be included BEFORE any OpenSSL/BoringSSL headers
+// to prevent Windows macro conflicts (X509_NAME, X509_EXTENSIONS, etc).
 
 #ifndef CHAD_UTIL_PLATFORM_H_
 #define CHAD_UTIL_PLATFORM_H_
 
+// Standard types - include both C and C++ headers for compatibility
+// nghttp2 is a C library and needs types in global namespace
+#include <stddef.h>
+#include <stdint.h>
+#include <cstddef>
+#include <cstdint>
 #include <string>
 
 #ifdef _WIN32
+  // These MUST be defined before including any Windows headers
+  // They are also set via target_compile_definitions in CMakeLists.txt
+  // but we define them here as a fallback for any edge cases
   #ifndef WIN32_LEAN_AND_MEAN
     #define WIN32_LEAN_AND_MEAN
   #endif
   #ifndef NOMINMAX
     #define NOMINMAX
   #endif
-  // Prevent Windows headers from defining X509_NAME which conflicts with BoringSSL
-  #define X509_NAME OPENSSL_X509_NAME_CONFLICT_GUARD
-  #define X509_EXTENSIONS OPENSSL_X509_EXTENSIONS_CONFLICT_GUARD
+  #ifndef NOGDI
+    #define NOGDI
+  #endif
+
+  // Must include winsock2.h BEFORE windows.h
   #include <winsock2.h>
   #include <ws2tcpip.h>
   #include <windows.h>
-  #undef X509_NAME
-  #undef X509_EXTENSIONS
 
   // Windows doesn't define ssize_t
   #include <BaseTsd.h>
   using ssize_t = SSIZE_T;
+
+  // CRITICAL: Undefine ALL conflicting Windows macros AFTER all Windows headers
+  // These macros from wincrypt.h conflict with BoringSSL types
+  #ifdef X509_NAME
+    #undef X509_NAME
+  #endif
+  #ifdef X509_EXTENSIONS
+    #undef X509_EXTENSIONS
+  #endif
+  #ifdef X509_CERT_PAIR
+    #undef X509_CERT_PAIR
+  #endif
+  #ifdef PKCS7_SIGNER_INFO
+    #undef PKCS7_SIGNER_INFO
+  #endif
+  #ifdef OCSP_REQUEST
+    #undef OCSP_REQUEST
+  #endif
+  #ifdef OCSP_RESPONSE
+    #undef OCSP_RESPONSE
+  #endif
+
+  // Undefine min/max macros that conflict with std::min/std::max
+  #ifdef min
+    #undef min
+  #endif
+  #ifdef max
+    #undef max
+  #endif
 
   // Error code macros
   #define CHAD_SOCKET_ERROR_CODE WSAGetLastError()

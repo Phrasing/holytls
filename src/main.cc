@@ -6,6 +6,7 @@
 // This is a demonstration of the library's capabilities.
 // The library impersonates Chrome's TLS (JA3/JA4) and HTTP/2 fingerprints.
 
+#include <algorithm>
 #include <iostream>
 
 #include "chad/client.h"
