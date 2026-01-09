@@ -125,6 +125,11 @@ bool Reactor::Modify(EventHandler* handler, EventType events) {
   }
 
   // Modify the poll events
+  // On Windows IOCP, we must stop before re-starting with new events
+  // Otherwise event notifications are lost
+#ifdef _WIN32
+  uv_poll_stop(&poll_data->handle);
+#endif
   int uv_events = static_cast<int>(events);
   return uv_poll_start(&poll_data->handle, uv_events, OnPollEvent) == 0;
 }
