@@ -13,6 +13,7 @@
 #include "core/reactor.h"
 #include "http2/h2_session.h"
 #include "tls/tls_connection.h"
+#include "util/platform.h"
 
 namespace chad {
 namespace core {
@@ -85,7 +86,7 @@ class Connection : public EventHandler {
   void OnWritable() override;
   void OnError(int error_code) override;
   void OnClose() override;
-  int fd() const override { return fd_; }
+  int fd() const override { return static_cast<int>(fd_); }
 
  private:
   void HandleConnecting();
@@ -99,7 +100,7 @@ class Connection : public EventHandler {
   std::string host_;
   uint16_t port_;
 
-  int fd_ = -1;
+  util::socket_t fd_ = util::kInvalidSocket;
   ConnectionState state_ = ConnectionState::kClosed;
 
   std::unique_ptr<tls::TlsConnection> tls_;

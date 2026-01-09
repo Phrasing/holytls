@@ -3,13 +3,13 @@
 
 #include "core/connection.h"
 
-#include <cerrno>
 #include <cstring>
 
 #include "http2/chrome_h2_profile.h"
 #include "http2/chrome_header_profile.h"
 #include "http2/header_ids.h"
 #include "util/decompressor.h"
+#include "util/platform.h"
 #include "util/socket_utils.h"
 
 namespace chad {
@@ -31,7 +31,7 @@ Connection::~Connection() {
 bool Connection::Connect(const std::string& ip, bool ipv6) {
   // Create socket
   fd_ = util::CreateTcpSocket(ipv6);
-  if (fd_ < 0) {
+  if (fd_ == util::kInvalidSocket) {
     SetError("Failed to create socket");
     return false;
   }
@@ -41,9 +41,9 @@ bool Connection::Connect(const std::string& ip, bool ipv6) {
   // Start non-blocking connect
   int ret = util::ConnectNonBlocking(fd_, ip, port_, ipv6);
   if (ret < 0) {
-    SetError("Connect failed: " + std::string(std::strerror(errno)));
+    SetError("Connect failed: " + util::GetLastSocketErrorString());
     util::CloseSocket(fd_);
-    fd_ = -1;
+    fd_ = util::kInvalidSocket;
     return false;
   }
 
@@ -53,7 +53,7 @@ bool Connection::Connect(const std::string& ip, bool ipv6) {
   if (!reactor_->Add(this, EventType::kWrite)) {
     SetError("Failed to register with reactor");
     util::CloseSocket(fd_);
-    fd_ = -1;
+    fd_ = util::kInvalidSocket;
     state_ = ConnectionState::kError;
     return false;
   }
@@ -180,13 +180,13 @@ void Connection::SendRequest(const std::string& method, const std::string& path,
 }
 
 void Connection::Close() {
-  if (fd_ >= 0) {
+  if (fd_ != util::kInvalidSocket) {
     reactor_->Remove(this);
     if (tls_) {
       tls_->Shutdown();
     }
     util::CloseSocket(fd_);
-    fd_ = -1;
+    fd_ = util::kInvalidSocket;
   }
   state_ = ConnectionState::kClosed;
   h2_.reset();
@@ -254,7 +254,7 @@ void Connection::OnClose() {
 void Connection::HandleConnecting() {
   // Check if connect completed
   if (!util::IsConnected(fd_)) {
-    SetError("Connection failed: " + std::string(std::strerror(errno)));
+    SetError("Connection failed: " + util::GetLastSocketErrorString());
     state_ = ConnectionState::kError;
     Close();
     reactor_->Stop();

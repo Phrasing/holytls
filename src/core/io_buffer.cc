@@ -172,13 +172,13 @@ void IoBuffer::Skip(size_t len) {
   }
 }
 
-std::vector<struct iovec> IoBuffer::GetReadableIovec() const {
-  std::vector<struct iovec> iovecs;
+std::vector<iovec_t> IoBuffer::GetReadableIovec() const {
+  std::vector<iovec_t> iovecs;
   iovecs.reserve(chunks_.size());
 
   for (const auto& chunk : chunks_) {
     if (chunk.ReadableSize() > 0) {
-      struct iovec iov;
+      iovec_t iov;
       iov.iov_base = chunk.data.get() + chunk.start;
       iov.iov_len = chunk.ReadableSize();
       iovecs.push_back(iov);
@@ -188,10 +188,10 @@ std::vector<struct iovec> IoBuffer::GetReadableIovec() const {
   return iovecs;
 }
 
-std::vector<struct iovec> IoBuffer::GetWritableIovec(size_t len) {
+std::vector<iovec_t> IoBuffer::GetWritableIovec(size_t len) {
   EnsureCapacity(len);
 
-  std::vector<struct iovec> iovecs;
+  std::vector<iovec_t> iovecs;
   size_t remaining = len;
 
   for (auto& chunk : chunks_) {
@@ -201,7 +201,7 @@ std::vector<struct iovec> IoBuffer::GetWritableIovec(size_t len) {
 
     size_t writable = chunk.WritableSize();
     if (writable > 0) {
-      struct iovec iov;
+      iovec_t iov;
       iov.iov_base = chunk.data.get() + chunk.end;
       iov.iov_len = std::min(writable, remaining);
       iovecs.push_back(iov);

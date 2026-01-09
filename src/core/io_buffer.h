@@ -4,14 +4,33 @@
 #ifndef CHAD_CORE_IO_BUFFER_H_
 #define CHAD_CORE_IO_BUFFER_H_
 
-#include <sys/uio.h>
-
 #include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <memory>
 #include <string_view>
 #include <vector>
+
+// Platform-specific iovec definition
+#ifdef _WIN32
+  #include <winsock2.h>
+  namespace chad {
+  namespace core {
+  // Windows uses WSABUF for scatter-gather I/O
+  struct iovec_t {
+    void* iov_base;
+    size_t iov_len;
+  };
+  }  // namespace core
+  }  // namespace chad
+#else
+  #include <sys/uio.h>
+  namespace chad {
+  namespace core {
+  using iovec_t = struct iovec;
+  }  // namespace core
+  }  // namespace chad
+#endif
 
 namespace chad {
 namespace core {
@@ -54,8 +73,8 @@ class IoBuffer {
 
   // Get scatter-gather iovec for writev/readv
   // Note: Returns internal pointers, valid until next modification
-  std::vector<struct iovec> GetReadableIovec() const;
-  std::vector<struct iovec> GetWritableIovec(size_t len);
+  std::vector<iovec_t> GetReadableIovec() const;
+  std::vector<iovec_t> GetWritableIovec(size_t len);
 
   // Size information
   size_t Size() const { return size_; }

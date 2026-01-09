@@ -9,6 +9,7 @@
 #include <cstring>
 
 #include "tls/session_cache.h"
+#include "util/platform.h"
 
 namespace chad {
 namespace tls {
@@ -269,7 +270,7 @@ TlsResult TlsConnection::HandleSslError(int ssl_ret) {
         return TlsResult::kEof;
       }
       // System error
-      SetError(std::string("SSL syscall error: ") + std::strerror(errno));
+      SetError("SSL syscall error: " + util::GetLastSocketErrorString());
       return TlsResult::kError;
     }
 

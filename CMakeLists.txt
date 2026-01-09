@@ -28,9 +28,24 @@ include(FetchNghttp2)
 include(FetchLibuv)
 include(FetchZstd)
 
+# Find threading library (cross-platform)
+find_package(Threads REQUIRED)
+
 # Find Brotli for response decompression
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(BROTLI REQUIRED libbrotlidec)
+if(WIN32)
+  # On Windows, try find_package (vcpkg) first
+  find_package(unofficial-brotli CONFIG)
+  if(unofficial-brotli_FOUND)
+    set(BROTLI_LIBRARIES unofficial::brotli::brotlidec)
+    set(BROTLI_INCLUDE_DIRS "")  # vcpkg handles includes
+  else()
+    # Fallback: user must provide BROTLI_LIBRARIES and BROTLI_INCLUDE_DIRS
+    message(WARNING "Brotli not found via vcpkg. Install with: vcpkg install brotli")
+  endif()
+else()
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(BROTLI REQUIRED libbrotlidec)
+endif()
 
 # Main library
 add_library(chad-tls STATIC
@@ -61,6 +76,7 @@ add_library(chad-tls STATIC
   src/util/dns_resolver.cc
   src/util/url_parser.cc
   src/util/decompressor.cc
+  src/util/platform.cc
 )
 
 target_include_directories(chad-tls
@@ -77,12 +93,18 @@ target_link_libraries(chad-tls
     boringssl::crypto
     nghttp2::nghttp2
     libuv::libuv
-    pthread
+    Threads::Threads
   PRIVATE
     ${BROTLI_LIBRARIES}
     zstd::zstd
-    z
 )
+
+# Platform-specific libraries
+if(WIN32)
+  target_link_libraries(chad-tls PUBLIC ws2_32 iphlpapi)
+else()
+  target_link_libraries(chad-tls PRIVATE z)
+endif()
 
 # Apply our strict compiler flags only to our code
 target_compile_options(chad-tls PRIVATE ${CHAD_COMMON_FLAGS})
@@ -107,7 +129,11 @@ if(CHAD_BUILD_BENCHMARKS)
     ${CMAKE_SOURCE_DIR}/bench
   )
   target_link_libraries(bench_core PRIVATE chad-tls)
-  target_compile_options(bench_core PRIVATE -O3 -march=native)
+  if(MSVC)
+    target_compile_options(bench_core PRIVATE /O2)
+  else()
+    target_compile_options(bench_core PRIVATE -O3 -march=native)
+  endif()
 endif()
 
 # Examples
