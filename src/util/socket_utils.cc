@@ -34,6 +34,9 @@ socket_t CreateTcpSocket(bool ipv6) {
 #endif
 
   // Set non-blocking and close-on-exec
+  // On Windows with libuv/IOCP, do NOT set FIONBIO - IOCP handles async internally
+  // Setting FIONBIO breaks IOCP completion notifications
+#ifndef _WIN32
   if (!SetNonBlocking(sock)) {
     CloseSocket(sock);
     return kInvalidSocket;
@@ -42,6 +45,7 @@ socket_t CreateTcpSocket(bool ipv6) {
     CloseSocket(sock);
     return kInvalidSocket;
   }
+#endif
 
   return sock;
 }
