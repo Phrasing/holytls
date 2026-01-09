@@ -89,7 +89,13 @@ bool Reactor::Add(EventHandler* handler, EventType events) {
   poll_data->reactor = this;
 
   // Initialize poll handle
+  // Windows requires uv_poll_init_socket() for socket handles
+  // Unix uses uv_poll_init() for file descriptors
+#ifdef _WIN32
+  if (uv_poll_init_socket(loop_, &poll_data->handle, fd) != 0) {
+#else
   if (uv_poll_init(loop_, &poll_data->handle, fd) != 0) {
+#endif
     g_poll_data_allocator.Deallocate(poll_data);
     return false;
   }
