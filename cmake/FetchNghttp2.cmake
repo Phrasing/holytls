@@ -4,6 +4,18 @@ include(FetchContent)
 
 message(STATUS "Fetching nghttp2...")
 
+# Configure nghttp2 BEFORE declaring - these must be set before add_subdirectory
+set(ENABLE_LIB_ONLY ON CACHE BOOL "" FORCE)
+set(ENABLE_STATIC_LIB ON CACHE BOOL "" FORCE)
+set(ENABLE_SHARED_LIB OFF CACHE BOOL "" FORCE)
+set(ENABLE_DOC OFF CACHE BOOL "" FORCE)
+set(ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(ENABLE_FAILMALLOC OFF CACHE BOOL "" FORCE)
+set(ENABLE_HTTP3 OFF CACHE BOOL "" FORCE)
+set(ENABLE_APP OFF CACHE BOOL "" FORCE)
+set(ENABLE_HPACK_TOOLS OFF CACHE BOOL "" FORCE)
+set(ENABLE_ASIO_LIB OFF CACHE BOOL "" FORCE)
+
 FetchContent_Declare(
   nghttp2
   GIT_REPOSITORY https://github.com/nghttp2/nghttp2.git
@@ -12,24 +24,7 @@ FetchContent_Declare(
   GIT_PROGRESS   TRUE
 )
 
-FetchContent_GetProperties(nghttp2)
-if(NOT nghttp2_POPULATED)
-  FetchContent_Populate(nghttp2)
-
-  # Configure nghttp2 - library only, no tools
-  set(ENABLE_LIB_ONLY ON CACHE BOOL "" FORCE)
-  set(ENABLE_STATIC_LIB ON CACHE BOOL "" FORCE)
-  set(ENABLE_SHARED_LIB OFF CACHE BOOL "" FORCE)
-  set(ENABLE_DOC OFF CACHE BOOL "" FORCE)
-  set(ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE)
-  set(ENABLE_FAILMALLOC OFF CACHE BOOL "" FORCE)
-  set(ENABLE_HTTP3 OFF CACHE BOOL "" FORCE)
-  set(ENABLE_APP OFF CACHE BOOL "" FORCE)
-  set(ENABLE_HPACK_TOOLS OFF CACHE BOOL "" FORCE)
-  set(ENABLE_ASIO_LIB OFF CACHE BOOL "" FORCE)
-
-  add_subdirectory(${nghttp2_SOURCE_DIR} ${nghttp2_BINARY_DIR} EXCLUDE_FROM_ALL)
-endif()
+FetchContent_MakeAvailable(nghttp2)
 
 # nghttp2 creates different targets for static/shared
 # We want static to avoid DLL dependencies on Windows
