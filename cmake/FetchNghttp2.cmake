@@ -4,18 +4,6 @@ include(FetchContent)
 
 message(STATUS "Fetching nghttp2...")
 
-# Configure nghttp2 BEFORE declaring - these must be set before add_subdirectory
-set(ENABLE_LIB_ONLY ON CACHE BOOL "" FORCE)
-set(ENABLE_STATIC_LIB ON CACHE BOOL "" FORCE)
-set(ENABLE_SHARED_LIB OFF CACHE BOOL "" FORCE)
-set(ENABLE_DOC OFF CACHE BOOL "" FORCE)
-set(ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(ENABLE_FAILMALLOC OFF CACHE BOOL "" FORCE)
-set(ENABLE_HTTP3 OFF CACHE BOOL "" FORCE)
-set(ENABLE_APP OFF CACHE BOOL "" FORCE)
-set(ENABLE_HPACK_TOOLS OFF CACHE BOOL "" FORCE)
-set(ENABLE_ASIO_LIB OFF CACHE BOOL "" FORCE)
-
 FetchContent_Declare(
   nghttp2
   GIT_REPOSITORY https://github.com/nghttp2/nghttp2.git
@@ -24,22 +12,39 @@ FetchContent_Declare(
   GIT_PROGRESS   TRUE
 )
 
-FetchContent_MakeAvailable(nghttp2)
+FetchContent_GetProperties(nghttp2)
+if(NOT nghttp2_POPULATED)
+  FetchContent_Populate(nghttp2)
 
-# nghttp2 creates different targets for static/shared
-# We want static to avoid DLL dependencies on Windows
+  # Force static library build - must use CACHE INTERNAL to override option() defaults
+  set(ENABLE_LIB_ONLY ON CACHE INTERNAL "")
+  set(ENABLE_STATIC_LIB ON CACHE INTERNAL "")
+  set(ENABLE_SHARED_LIB OFF CACHE INTERNAL "")
+  set(ENABLE_DOC OFF CACHE INTERNAL "")
+  set(ENABLE_EXAMPLES OFF CACHE INTERNAL "")
+  set(ENABLE_FAILMALLOC OFF CACHE INTERNAL "")
+  set(ENABLE_HTTP3 OFF CACHE INTERNAL "")
+  set(ENABLE_APP OFF CACHE INTERNAL "")
+  set(ENABLE_HPACK_TOOLS OFF CACHE INTERNAL "")
+  set(ENABLE_ASIO_LIB OFF CACHE INTERNAL "")
+  set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "")
+  set(BUILD_STATIC_LIBS ON CACHE INTERNAL "")
+
+  add_subdirectory(${nghttp2_SOURCE_DIR} ${nghttp2_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
+
+# nghttp2 creates nghttp2_static when ENABLE_STATIC_LIB is ON
 if(TARGET nghttp2_static)
-  # Use static library target
   if(NOT TARGET nghttp2::nghttp2)
     add_library(nghttp2::nghttp2 ALIAS nghttp2_static)
   endif()
-  message(STATUS "nghttp2 configured (static library)")
-elseif(TARGET nghttp2::nghttp2)
-  message(STATUS "nghttp2 configured (nghttp2::nghttp2)")
+  message(STATUS "nghttp2 configured (static library: nghttp2_static)")
 elseif(TARGET nghttp2)
-  # Older versions might just have 'nghttp2' target
-  add_library(nghttp2::nghttp2 ALIAS nghttp2)
-  message(STATUS "nghttp2 configured (aliased from nghttp2)")
+  # If only shared was built, we still need to use it (will require DLL)
+  if(NOT TARGET nghttp2::nghttp2)
+    add_library(nghttp2::nghttp2 ALIAS nghttp2)
+  endif()
+  message(STATUS "nghttp2 configured (shared library: nghttp2)")
 else()
   message(FATAL_ERROR "nghttp2 target not found")
 endif()
