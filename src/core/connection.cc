@@ -4,7 +4,6 @@
 #include "core/connection.h"
 
 #include <cstring>
-#include <iostream>
 
 #include "http2/chrome_h2_profile.h"
 #include "http2/chrome_header_profile.h"
@@ -41,7 +40,6 @@ bool Connection::Connect(const std::string& ip, bool ipv6) {
 
   // Start non-blocking connect
   int ret = util::ConnectNonBlocking(fd_, ip, port_, ipv6);
-  std::cerr << "[DEBUG] ConnectNonBlocking returned: " << ret << "\n";
   if (ret < 0) {
     SetError("Connect failed: " + util::GetLastSocketErrorString());
     util::CloseSocket(fd_);
@@ -201,7 +199,6 @@ void Connection::Close() {
 }
 
 void Connection::OnReadable() {
-  std::cerr << "[DEBUG] OnReadable called, state=" << static_cast<int>(state_) << "\n";
   switch (state_) {
     case ConnectionState::kConnecting:
       // On Windows, readable during connect means we should check connection status
@@ -219,7 +216,6 @@ void Connection::OnReadable() {
 }
 
 void Connection::OnWritable() {
-  std::cerr << "[DEBUG] OnWritable called, state=" << static_cast<int>(state_) << "\n";
   switch (state_) {
     case ConnectionState::kConnecting:
       HandleConnecting();
@@ -236,7 +232,6 @@ void Connection::OnWritable() {
 }
 
 void Connection::OnError(int error_code) {
-  std::cerr << "[DEBUG] OnError called, code=" << error_code << "\n";
   SetError("Socket error: " + std::to_string(error_code));
   state_ = ConnectionState::kError;
   Close();
@@ -288,11 +283,9 @@ void Connection::HandleConnecting() {
 
 void Connection::HandleTlsHandshake() {
   tls::TlsResult result = tls_->DoHandshake();
-  std::cerr << "[DEBUG] DoHandshake returned: " << static_cast<int>(result) << "\n";
 
   switch (result) {
     case tls::TlsResult::kOk:
-      std::cerr << "[DEBUG] TLS handshake complete!\n";
       // Handshake complete
       state_ = ConnectionState::kConnected;
 
@@ -332,17 +325,14 @@ void Connection::HandleTlsHandshake() {
       break;
 
     case tls::TlsResult::kWantRead:
-      std::cerr << "[DEBUG] TLS wants read, calling Modify(kRead)\n";
       reactor_->Modify(this, EventType::kRead);
       break;
 
     case tls::TlsResult::kWantWrite:
-      std::cerr << "[DEBUG] TLS wants write, calling Modify(kWrite)\n";
       reactor_->Modify(this, EventType::kWrite);
       break;
 
     case tls::TlsResult::kError:
-      std::cerr << "[DEBUG] TLS error: " << tls_->last_error() << "\n";
       SetError("TLS handshake failed: " + tls_->last_error());
       state_ = ConnectionState::kError;
       Close();
