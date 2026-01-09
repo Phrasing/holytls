@@ -20,6 +20,20 @@ FetchContent_GetProperties(boringssl)
 if(NOT boringssl_POPULATED)
   FetchContent_Populate(boringssl)
 
+  # Platform-specific compiler flags for BoringSSL
+  if(MSVC)
+    # MSVC: Disable warnings-as-errors and suppress specific warnings
+    # /WX- disables treating warnings as errors
+    # /wd4996 suppresses deprecation warnings (strdup -> _strdup)
+    # /wd4267 suppresses size_t to int conversion warnings
+    set(BORINGSSL_C_FLAGS "/WX- /wd4996 /wd4267")
+    set(BORINGSSL_CXX_FLAGS "/WX- /wd4996 /wd4267")
+  else()
+    # GCC/Clang: Use position-independent code
+    set(BORINGSSL_C_FLAGS "-fPIC")
+    set(BORINGSSL_CXX_FLAGS "-fPIC")
+  endif()
+
   # Build BoringSSL
   message(STATUS "Configuring BoringSSL...")
   execute_process(
@@ -29,8 +43,8 @@ if(NOT boringssl_POPULATED)
       -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
       -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
       -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-      -DCMAKE_C_FLAGS=-fPIC
-      -DCMAKE_CXX_FLAGS=-fPIC
+      "-DCMAKE_C_FLAGS=${BORINGSSL_C_FLAGS}"
+      "-DCMAKE_CXX_FLAGS=${BORINGSSL_CXX_FLAGS}"
       ${boringssl_SOURCE_DIR}
     WORKING_DIRECTORY ${boringssl_BINARY_DIR}
     RESULT_VARIABLE boringssl_config_result
@@ -60,19 +74,38 @@ if(NOT boringssl_POPULATED)
   message(STATUS "BoringSSL build complete")
 endif()
 
+# Determine library paths based on platform
+if(WIN32)
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(BORINGSSL_CRYPTO_LIB "${boringssl_BINARY_DIR}/crypto/Debug/crypto.lib")
+    set(BORINGSSL_SSL_LIB "${boringssl_BINARY_DIR}/ssl/Debug/ssl.lib")
+  else()
+    set(BORINGSSL_CRYPTO_LIB "${boringssl_BINARY_DIR}/crypto/Release/crypto.lib")
+    set(BORINGSSL_SSL_LIB "${boringssl_BINARY_DIR}/ssl/Release/ssl.lib")
+  endif()
+  # For Ninja generator, libs are in crypto/ and ssl/ directly
+  if(NOT EXISTS "${BORINGSSL_CRYPTO_LIB}")
+    set(BORINGSSL_CRYPTO_LIB "${boringssl_BINARY_DIR}/crypto/crypto.lib")
+    set(BORINGSSL_SSL_LIB "${boringssl_BINARY_DIR}/ssl/ssl.lib")
+  endif()
+else()
+  set(BORINGSSL_CRYPTO_LIB "${boringssl_BINARY_DIR}/crypto/libcrypto.a")
+  set(BORINGSSL_SSL_LIB "${boringssl_BINARY_DIR}/ssl/libssl.a")
+endif()
+
 # Create imported targets
 add_library(boringssl::crypto STATIC IMPORTED GLOBAL)
 set_target_properties(boringssl::crypto PROPERTIES
-  IMPORTED_LOCATION "${boringssl_BINARY_DIR}/crypto/libcrypto.a"
+  IMPORTED_LOCATION "${BORINGSSL_CRYPTO_LIB}"
   INTERFACE_INCLUDE_DIRECTORIES "${boringssl_SOURCE_DIR}/include"
 )
 
 add_library(boringssl::ssl STATIC IMPORTED GLOBAL)
 set_target_properties(boringssl::ssl PROPERTIES
-  IMPORTED_LOCATION "${boringssl_BINARY_DIR}/ssl/libssl.a"
+  IMPORTED_LOCATION "${BORINGSSL_SSL_LIB}"
   INTERFACE_INCLUDE_DIRECTORIES "${boringssl_SOURCE_DIR}/include"
 )
 target_link_libraries(boringssl::ssl INTERFACE boringssl::crypto)
 
 message(STATUS "BoringSSL include dir: ${boringssl_SOURCE_DIR}/include")
-message(STATUS "BoringSSL libraries: ${boringssl_BINARY_DIR}/ssl/libssl.a, ${boringssl_BINARY_DIR}/crypto/libcrypto.a")
+message(STATUS "BoringSSL libraries: ${BORINGSSL_SSL_LIB}, ${BORINGSSL_CRYPTO_LIB}")
