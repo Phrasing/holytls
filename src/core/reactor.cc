@@ -127,8 +127,11 @@ bool Reactor::Modify(EventHandler* handler, EventType events) {
   }
 
   int fd = handler->fd();
+  std::cerr << "[DEBUG] Reactor::Modify fd=" << fd
+            << " events=" << static_cast<int>(events) << "\n";
   PollData* poll_data = fd_table_.Get(fd);
   if (!poll_data) {
+    std::cerr << "[DEBUG] Modify failed: poll_data not found\n";
     return false;
   }
 
@@ -139,7 +142,9 @@ bool Reactor::Modify(EventHandler* handler, EventType events) {
   uv_poll_stop(&poll_data->handle);
 #endif
   int uv_events = static_cast<int>(events);
-  return uv_poll_start(&poll_data->handle, uv_events, OnPollEvent) == 0;
+  int result = uv_poll_start(&poll_data->handle, uv_events, OnPollEvent);
+  std::cerr << "[DEBUG] Modify uv_poll_start returned: " << result << "\n";
+  return result == 0;
 }
 
 bool Reactor::Remove(EventHandler* handler) {

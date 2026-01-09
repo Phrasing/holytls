@@ -288,9 +288,11 @@ void Connection::HandleConnecting() {
 
 void Connection::HandleTlsHandshake() {
   tls::TlsResult result = tls_->DoHandshake();
+  std::cerr << "[DEBUG] DoHandshake returned: " << static_cast<int>(result) << "\n";
 
   switch (result) {
     case tls::TlsResult::kOk:
+      std::cerr << "[DEBUG] TLS handshake complete!\n";
       // Handshake complete
       state_ = ConnectionState::kConnected;
 
@@ -330,14 +332,17 @@ void Connection::HandleTlsHandshake() {
       break;
 
     case tls::TlsResult::kWantRead:
+      std::cerr << "[DEBUG] TLS wants read, calling Modify(kRead)\n";
       reactor_->Modify(this, EventType::kRead);
       break;
 
     case tls::TlsResult::kWantWrite:
+      std::cerr << "[DEBUG] TLS wants write, calling Modify(kWrite)\n";
       reactor_->Modify(this, EventType::kWrite);
       break;
 
     case tls::TlsResult::kError:
+      std::cerr << "[DEBUG] TLS error: " << tls_->last_error() << "\n";
       SetError("TLS handshake failed: " + tls_->last_error());
       state_ = ConnectionState::kError;
       Close();
