@@ -79,13 +79,11 @@ void Connection::SendRequest(const std::string& method, const std::string& path,
     http2::H2StreamCallbacks stream_callbacks;
     int32_t stream_id = -1;
 
-    stream_callbacks.on_headers = [this, stream_id](int32_t sid, const http2::H2Headers& resp_headers) {
+    stream_callbacks.on_headers = [this, stream_id](int32_t sid, const http2::PackedHeaders& resp_headers) {
       auto it = active_requests_.find(sid);
       if (it != active_requests_.end()) {
         it->second.response.headers = resp_headers;
-        if (!resp_headers.status.empty()) {
-          it->second.response.status_code = std::stoi(resp_headers.status);
-        }
+        it->second.response.status_code = resp_headers.status_code();
       }
     };
 

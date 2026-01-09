@@ -11,6 +11,7 @@
 
 #include "chad/types.h"
 #include "core/io_buffer.h"
+#include "http2/packed_headers.h"
 
 namespace chad {
 namespace http2 {
@@ -54,7 +55,7 @@ struct H2Headers {
 // Callbacks for stream events
 struct H2StreamCallbacks {
   // Called when response headers are complete
-  std::function<void(int32_t stream_id, const H2Headers& headers)> on_headers;
+  std::function<void(int32_t stream_id, const PackedHeaders& headers)> on_headers;
 
   // Called when response data chunk received
   std::function<void(int32_t stream_id, const uint8_t* data, size_t len)>
@@ -85,14 +86,14 @@ class H2Stream {
   bool IsClosed() const { return state_ == H2StreamState::kClosed; }
 
   // Response data
-  const H2Headers& response_headers() const { return response_headers_; }
+  const PackedHeaders& response_headers() const { return response_headers_; }
   const core::IoBuffer& response_body() const { return response_body_; }
 
   // Response status code (0 if not yet received)
   int status_code() const;
 
   // Called by H2Session when headers are received
-  void OnHeadersReceived(const H2Headers& headers);
+  void OnHeadersReceived(PackedHeaders&& headers);
 
   // Called by H2Session when data is received
   void OnDataReceived(const uint8_t* data, size_t len);
@@ -108,7 +109,7 @@ class H2Stream {
   H2StreamState state_ = H2StreamState::kIdle;
   H2StreamCallbacks callbacks_;
 
-  H2Headers response_headers_;
+  PackedHeaders response_headers_;
   core::IoBuffer response_body_;
 };
 

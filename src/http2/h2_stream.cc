@@ -77,17 +77,14 @@ H2Stream::H2Stream(int32_t stream_id, H2StreamCallbacks callbacks)
 H2Stream::~H2Stream() = default;
 
 int H2Stream::status_code() const {
-  if (response_headers_.status.empty()) {
-    return 0;
-  }
-  return std::atoi(response_headers_.status.c_str());
+  return response_headers_.status_code();
 }
 
-void H2Stream::OnHeadersReceived(const H2Headers& headers) {
-  response_headers_ = headers;
+void H2Stream::OnHeadersReceived(PackedHeaders&& headers) {
+  response_headers_ = std::move(headers);
 
   if (callbacks_.on_headers) {
-    callbacks_.on_headers(stream_id_, headers);
+    callbacks_.on_headers(stream_id_, response_headers_);
   }
 }
 

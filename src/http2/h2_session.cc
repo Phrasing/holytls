@@ -10,15 +10,32 @@ namespace http2 {
 
 namespace {
 
-// Helper to create nghttp2_nv from strings
-nghttp2_nv MakeNv(const std::string& name, const std::string& value,
-                  uint8_t flags = NGHTTP2_NV_FLAG_NONE) {
+// Static pseudo-header names (must outlive nghttp2_nv usage)
+constexpr const char kMethod[] = ":method";
+constexpr const char kAuthority[] = ":authority";
+constexpr const char kScheme[] = ":scheme";
+constexpr const char kPath[] = ":path";
+
+// Helper to create nghttp2_nv from strings that must remain valid
+nghttp2_nv MakeNv(const std::string& name, const std::string& value) {
   nghttp2_nv nv;
   nv.name = reinterpret_cast<uint8_t*>(const_cast<char*>(name.data()));
   nv.namelen = name.size();
   nv.value = reinterpret_cast<uint8_t*>(const_cast<char*>(value.data()));
   nv.valuelen = value.size();
-  nv.flags = flags;
+  nv.flags = NGHTTP2_NV_FLAG_NONE;
+  return nv;
+}
+
+// Helper for static name with string value (name is static storage)
+nghttp2_nv MakeNvStatic(const char* name, size_t namelen,
+                        const std::string& value) {
+  nghttp2_nv nv;
+  nv.name = reinterpret_cast<uint8_t*>(const_cast<char*>(name));
+  nv.namelen = namelen;
+  nv.value = reinterpret_cast<uint8_t*>(const_cast<char*>(value.data()));
+  nv.valuelen = value.size();
+  nv.flags = NGHTTP2_NV_FLAG_NO_COPY_NAME;
   return nv;
 }
 
@@ -243,15 +260,16 @@ int H2Session::HandleFrameRecv(const nghttp2_frame* frame) {
   switch (frame->hd.type) {
     case NGHTTP2_HEADERS:
       if (frame->hd.flags & NGHTTP2_FLAG_END_HEADERS) {
-        // Headers complete, deliver to stream
+        // Headers complete, build and deliver to stream
         int32_t stream_id = frame->hd.stream_id;
-        auto pending_it = pending_headers_.find(stream_id);
-        if (pending_it != pending_headers_.end()) {
+        auto pending_it = pending_builders_.find(stream_id);
+        if (pending_it != pending_builders_.end()) {
           auto stream = GetStream(stream_id);
           if (stream != nullptr) {
-            stream->OnHeadersReceived(pending_it->second);
+            PackedHeaders headers = pending_it->second.Build();
+            stream->OnHeadersReceived(std::move(headers));
           }
-          pending_headers_.erase(pending_it);
+          pending_builders_.erase(pending_it);
         }
       }
       break;
@@ -296,17 +314,17 @@ int H2Session::HandleHeader(const nghttp2_frame* frame, const uint8_t* name,
   }
 
   int32_t stream_id = frame->hd.stream_id;
-  std::string header_name(reinterpret_cast<const char*>(name), namelen);
-  std::string header_value(reinterpret_cast<const char*>(value), valuelen);
+  std::string_view header_name(reinterpret_cast<const char*>(name), namelen);
+  std::string_view header_value(reinterpret_cast<const char*>(value), valuelen);
 
-  auto& headers = pending_headers_[stream_id];
+  auto& builder = pending_builders_[stream_id];
 
   // Handle pseudo-headers
   if (header_name == ":status") {
-    headers.status = header_value;
+    builder.SetStatus(header_value);
   } else if (header_name[0] != ':') {
     // Regular header
-    headers.Add(header_name, header_value);
+    builder.Add(header_name, header_value);
   }
 
   return 0;
@@ -317,8 +335,8 @@ int H2Session::HandleBeginHeaders(const nghttp2_frame* frame) {
     return 0;
   }
 
-  // Initialize pending headers for this stream
-  pending_headers_[frame->hd.stream_id] = H2Headers{};
+  // Initialize builder for this stream
+  pending_builders_[frame->hd.stream_id] = PackedHeadersBuilder{};
   return 0;
 }
 
@@ -371,30 +389,31 @@ std::vector<nghttp2_nv> H2Session::BuildHeaderNvArray(const H2Headers& headers) 
 
   // Chrome's pseudo-header order: :method, :authority, :scheme, :path (MASP)
   // This is critical for HTTP/2 fingerprinting!
+  // Use MakeNvStatic for pseudo-headers to avoid dangling pointer from temporaries
 
   switch (profile_.pseudo_header_order) {
     case ChromeH2Profile::PseudoHeaderOrder::kMASP:
       // Chrome: method, authority, scheme, path
-      nva.push_back(MakeNv(":method", headers.method));
-      nva.push_back(MakeNv(":authority", headers.authority));
-      nva.push_back(MakeNv(":scheme", headers.scheme));
-      nva.push_back(MakeNv(":path", headers.path));
+      nva.push_back(MakeNvStatic(kMethod, sizeof(kMethod) - 1, headers.method));
+      nva.push_back(MakeNvStatic(kAuthority, sizeof(kAuthority) - 1, headers.authority));
+      nva.push_back(MakeNvStatic(kScheme, sizeof(kScheme) - 1, headers.scheme));
+      nva.push_back(MakeNvStatic(kPath, sizeof(kPath) - 1, headers.path));
       break;
 
     case ChromeH2Profile::PseudoHeaderOrder::kMPAS:
       // Firefox: method, path, authority, scheme
-      nva.push_back(MakeNv(":method", headers.method));
-      nva.push_back(MakeNv(":path", headers.path));
-      nva.push_back(MakeNv(":authority", headers.authority));
-      nva.push_back(MakeNv(":scheme", headers.scheme));
+      nva.push_back(MakeNvStatic(kMethod, sizeof(kMethod) - 1, headers.method));
+      nva.push_back(MakeNvStatic(kPath, sizeof(kPath) - 1, headers.path));
+      nva.push_back(MakeNvStatic(kAuthority, sizeof(kAuthority) - 1, headers.authority));
+      nva.push_back(MakeNvStatic(kScheme, sizeof(kScheme) - 1, headers.scheme));
       break;
 
     case ChromeH2Profile::PseudoHeaderOrder::kMSPA:
       // Safari: method, scheme, path, authority
-      nva.push_back(MakeNv(":method", headers.method));
-      nva.push_back(MakeNv(":scheme", headers.scheme));
-      nva.push_back(MakeNv(":path", headers.path));
-      nva.push_back(MakeNv(":authority", headers.authority));
+      nva.push_back(MakeNvStatic(kMethod, sizeof(kMethod) - 1, headers.method));
+      nva.push_back(MakeNvStatic(kScheme, sizeof(kScheme) - 1, headers.scheme));
+      nva.push_back(MakeNvStatic(kPath, sizeof(kPath) - 1, headers.path));
+      nva.push_back(MakeNvStatic(kAuthority, sizeof(kAuthority) - 1, headers.authority));
       break;
   }
 

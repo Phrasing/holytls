@@ -30,7 +30,7 @@ enum class ConnectionState {
 // Response data
 struct Response {
   int status_code = 0;
-  http2::H2Headers headers;
+  http2::PackedHeaders headers;
   std::vector<uint8_t> body;
 
   std::string body_string() const {

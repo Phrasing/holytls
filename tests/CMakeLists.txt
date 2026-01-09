@@ -26,7 +26,14 @@ add_executable(test_arena
 target_include_directories(test_arena PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(test_arena PRIVATE chad-tls)
 
+add_executable(test_packed_headers
+  unit/test_packed_headers.cc
+)
+target_include_directories(test_packed_headers PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(test_packed_headers PRIVATE chad-tls)
+
 # Register tests
 add_test(NAME reactor COMMAND test_reactor)
 add_test(NAME buffer_pool COMMAND test_buffer_pool)
 add_test(NAME arena COMMAND test_arena)
+add_test(NAME packed_headers COMMAND test_packed_headers)

@@ -15,6 +15,7 @@
 #include "core/io_buffer.h"
 #include "http2/chrome_h2_profile.h"
 #include "http2/h2_stream.h"
+#include "http2/packed_headers.h"
 
 namespace chad {
 namespace http2 {
@@ -145,8 +146,8 @@ class H2Session {
   // Active streams
   std::unordered_map<int32_t, std::unique_ptr<H2Stream>> streams_;
 
-  // Pending stream headers (for streams where headers are being received)
-  std::unordered_map<int32_t, H2Headers> pending_headers_;
+  // Pending header builders (for streams where headers are being received)
+  std::unordered_map<int32_t, PackedHeadersBuilder> pending_builders_;
 
   // Output buffer (data to send)
   core::IoBuffer send_buffer_;
