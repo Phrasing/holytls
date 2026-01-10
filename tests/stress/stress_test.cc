@@ -30,6 +30,7 @@ struct StressConfig {
   size_t warmup_sec = 5;
   size_t num_threads = 0;  // 0 = auto-detect
   bool single_threaded = false;  // Run like Node.js (single event loop)
+  bool insecure = false;  // Skip TLS certificate verification
   bool verbose = false;
 };
 
@@ -145,6 +146,7 @@ void PrintUsage(const char* prog) {
                "  --warmup N         Warmup period in seconds (default: 5)\n"
                "  --threads N        Number of worker threads, 0=auto (default: 0)\n"
                "  --single-threaded  Run with single reactor thread (like Node.js)\n"
+               "  --insecure         Skip TLS certificate verification (for self-signed certs)\n"
                "  --verbose          Print verbose output\n"
                "  --help             Show this help\n"
                "\n"
@@ -174,6 +176,8 @@ bool ParseArgs(int argc, char* argv[], StressConfig* config) {
       config->num_threads = std::stoul(argv[++i]);
     } else if (std::strcmp(argv[i], "--single-threaded") == 0) {
       config->single_threaded = true;
+    } else if (std::strcmp(argv[i], "--insecure") == 0) {
+      config->insecure = true;
     } else if (std::strcmp(argv[i], "--verbose") == 0) {
       config->verbose = true;
     } else {
@@ -333,12 +337,18 @@ class StressTest {
     std::printf("Target RPS:  %s\n",
                 config_.target_rps == 0 ? "unlimited"
                                         : std::to_string(config_.target_rps).c_str());
+    if (config_.insecure) {
+      std::printf("TLS Verify:  DISABLED (insecure mode)\n");
+    }
     std::printf("\n");
 
     // Configure client
     auto client_config = chad::ClientConfig::ChromeLatest();
     client_config.pool.max_connections_per_host = config_.num_connections;
     client_config.pool.max_total_connections = config_.num_connections;
+    if (config_.insecure) {
+      client_config.tls.verify_certificates = false;
+    }
     if (config_.single_threaded) {
       client_config.threads.num_workers = 1;
     } else if (config_.num_threads > 0) {
