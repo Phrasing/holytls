@@ -1,0 +1,7 @@
+# Mark cmake files as CMake (not counted as language)
+*.cmake linguist-language=CMake
+CMakeLists.txt linguist-language=CMake
+
+# Vendor/generated files
+*.cmake linguist-vendored
+CMakeLists.txt linguist-vendored
