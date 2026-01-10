@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <new>
 #include <type_traits>
 #include <vector>
@@ -40,7 +41,9 @@ class SlabAllocator {
   SlabAllocator& operator=(SlabAllocator&&) = delete;
 
   // Allocate raw memory for one object (does not construct)
+  // Thread-safe: protected by mutex
   T* Allocate() {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (free_list_.empty()) {
       AllocateSlab();
     }
@@ -52,10 +55,12 @@ class SlabAllocator {
   }
 
   // Deallocate memory (does not destruct)
+  // Thread-safe: protected by mutex
   void Deallocate(T* ptr) {
     if (ptr == nullptr) {
       return;
     }
+    std::lock_guard<std::mutex> lock(mutex_);
     free_list_.push_back(ptr);
     --allocated_count_;
   }
@@ -99,6 +104,7 @@ class SlabAllocator {
     slabs_.push_back(std::move(slab));
   }
 
+  mutable std::mutex mutex_;
   std::vector<std::unique_ptr<SlabArray>> slabs_;
   std::vector<T*> free_list_;
   size_t allocated_count_ = 0;
