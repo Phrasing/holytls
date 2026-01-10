@@ -51,3 +51,6 @@ add_test(NAME arena COMMAND test_arena)
 add_test(NAME packed_headers COMMAND test_packed_headers)
 add_test(NAME chrome_header_builder COMMAND test_chrome_header_builder)
 add_test(NAME top_websites COMMAND test_top_websites)
+
+# Stress tests (not part of regular test suite)
+add_subdirectory(stress)

@@ -4,8 +4,11 @@
 #include "chad/client.h"
 
 #include <atomic>
+#include <chrono>
 #include <deque>
+#include <memory>
 #include <mutex>
+#include <thread>
 #include <unordered_map>
 
 #include "chad/config.h"
@@ -218,12 +221,9 @@ class HttpClient::Impl {
     running_.store(true, std::memory_order_release);
     reactor_manager_.Start();
 
-    // Block on the main reactor
-    auto* ctx = reactor_manager_.GetReactor(0);
-    if (ctx && ctx->reactor) {
-      while (running_.load(std::memory_order_acquire)) {
-        ctx->reactor->RunOnce();
-      }
+    // Background threads handle the reactors; main thread just waits
+    while (running_.load(std::memory_order_acquire)) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
 
@@ -231,11 +231,8 @@ class HttpClient::Impl {
     if (!reactor_manager_.IsRunning()) {
       reactor_manager_.Start();
     }
-
-    auto* ctx = reactor_manager_.GetReactor(0);
-    if (ctx && ctx->reactor) {
-      ctx->reactor->RunOnce();
-    }
+    // Background threads handle the work; just yield to let them run
+    std::this_thread::sleep_for(std::chrono::microseconds(100));
   }
 
   void Stop() {
@@ -276,9 +273,10 @@ class HttpClient::Impl {
   void ProcessRequest(core::ReactorContext* ctx, Request request,
                       util::ParsedUrl parsed, ResponseCallback callback,
                       ProgressCallback /*progress*/) {
-    // Resolve DNS
+    // Copy host before moving parsed into lambda (avoids reference invalidation)
+    std::string host = parsed.host;
     ctx->dns_resolver->ResolveAsync(
-        parsed.host,
+        host,
         [this, ctx, request = std::move(request), parsed = std::move(parsed),
          callback = std::move(callback)](
             const std::vector<util::ResolvedAddress>& addresses,
@@ -359,11 +357,14 @@ class HttpClient::Impl {
       headers.emplace_back(h.name, h.value);
     }
 
+    // Share callback between success and error handlers to avoid double-move
+    auto shared_cb = std::make_shared<ResponseCallback>(std::move(callback));
+
     pooled->connection->SendRequest(
         std::string(MethodToString(request.method())),
         parsed.PathWithQuery(),
         headers,
-        [this, ctx, pooled, callback = std::move(callback)](
+        [this, ctx, pooled, shared_cb](
             const core::Response& core_resp) mutable {
           // Convert headers
           Headers resp_headers;
@@ -383,19 +384,19 @@ class HttpClient::Impl {
 
           requests_completed_.fetch_add(1, std::memory_order_relaxed);
 
-          if (callback) {
-            callback(std::move(response), Error{});
+          if (*shared_cb) {
+            (*shared_cb)(std::move(response), Error{});
           }
         },
-        [this, ctx, pooled, callback = std::move(callback)](
+        [this, ctx, pooled, shared_cb](
             const std::string& error) mutable {
           // Mark connection as failed
           ctx->connection_pool->RemoveConnection(pooled);
 
           requests_failed_.fetch_add(1, std::memory_order_relaxed);
 
-          if (callback) {
-            callback(Response{}, Error::Connection(error));
+          if (*shared_cb) {
+            (*shared_cb)(Response{}, Error::Connection(error));
           }
         });
   }

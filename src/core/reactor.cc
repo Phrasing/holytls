@@ -200,7 +200,10 @@ void Reactor::Stop() {
 }
 
 void Reactor::Post(std::function<void()> callback) {
-  posted_callbacks_.push_back(std::move(callback));
+  {
+    std::lock_guard<std::mutex> lock(posted_mutex_);
+    posted_callbacks_.push_back(std::move(callback));
+  }
   has_posted_.store(true, std::memory_order_release);
   // Wake up the loop to process the callback
   uv_async_send(&async_);
@@ -216,10 +219,13 @@ void Reactor::ProcessPostedCallbacks() {
     return;
   }
 
-  // Swap to process callbacks without holding any locks
-  pending_callbacks_.swap(posted_callbacks_);
-  posted_callbacks_.clear();
-  has_posted_.store(false, std::memory_order_release);
+  // Swap under lock, then process without holding lock
+  {
+    std::lock_guard<std::mutex> lock(posted_mutex_);
+    pending_callbacks_.swap(posted_callbacks_);
+    posted_callbacks_.clear();
+    has_posted_.store(false, std::memory_order_release);
+  }
 
   for (auto& callback : pending_callbacks_) {
     callback();

@@ -217,8 +217,8 @@ void DnsResolver::ResolveAsync(const std::string& hostname,
                            nullptr, &hints);
 
   if (ret < 0) {
-    // Failed to start async request
-    callback({}, uv_strerror(ret));
+    // Failed to start async request - callback was already moved to dns_req
+    dns_req->callback({}, uv_strerror(ret));
     delete dns_req;
   }
 }

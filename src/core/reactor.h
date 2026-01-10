@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 #include "base/types.h"
@@ -156,6 +157,7 @@ class Reactor {
   FdTable<PollData, kMaxFds> fd_table_;
 
   // Posted callbacks (thread-safe addition, processed on event loop thread)
+  std::mutex posted_mutex_;
   std::vector<std::function<void()>> posted_callbacks_;
   std::vector<std::function<void()>> pending_callbacks_;
   std::atomic<bool> has_posted_{false};
