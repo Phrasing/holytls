@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Debian 13.2 or similar Linux
+- Linux with cmake, ninja, and OpenSSL dev libraries
 - h2o 2.3.0+ (built from source for best performance)
 
 ## Installation
