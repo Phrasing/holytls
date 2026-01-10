@@ -230,9 +230,11 @@ class HttpClient::Impl {
   void RunOnce() {
     if (!reactor_manager_.IsRunning()) {
       reactor_manager_.Start();
+      // Give background threads time to start
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-    // Background threads handle the work; just yield to let them run
-    std::this_thread::sleep_for(std::chrono::microseconds(100));
+    // Background threads handle the work; yield to let them run
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 
   void Stop() {

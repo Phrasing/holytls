@@ -50,7 +50,6 @@ struct StressMetrics {
   std::atomic<uint64_t> requests_completed{0};
   std::atomic<uint64_t> requests_failed{0};
   std::atomic<uint64_t> bytes_received{0};
-  std::atomic<uint64_t> connections_active{0};
 
   // Latency histogram (lock-free buckets)
   std::atomic<uint64_t> latency_buckets[kNumLatencyBuckets]{};
@@ -192,7 +191,8 @@ void PrintLiveStats(size_t elapsed_sec, const StressMetrics& metrics,
                     uint64_t rps) {
   uint64_t completed = metrics.requests_completed.load(std::memory_order_relaxed);
   uint64_t failed = metrics.requests_failed.load(std::memory_order_relaxed);
-  uint64_t active = metrics.connections_active.load(std::memory_order_relaxed);
+  uint64_t sent = metrics.requests_sent.load(std::memory_order_relaxed);
+  uint64_t in_flight = (sent > completed + failed) ? (sent - completed - failed) : 0;
 
   // Calculate P99 from histogram
   uint64_t total = 0;
@@ -214,10 +214,10 @@ void PrintLiveStats(size_t elapsed_sec, const StressMetrics& metrics,
     }
   }
 
-  std::printf("[T+%3zus] RPS: %7" PRIu64 " | Active: %5" PRIu64
+  std::printf("[T+%3zus] RPS: %7" PRIu64 " | InFlight: %5" PRIu64
               " | Complete: %8" PRIu64 " | Failed: %5" PRIu64
               " | P99: %s\n",
-              elapsed_sec, rps, active, completed, failed, p99_label);
+              elapsed_sec, rps, in_flight, completed, failed, p99_label);
   std::fflush(stdout);
 }
 
@@ -359,11 +359,14 @@ class StressTest {
       client_->RunOnce();
     }
 
-    std::printf("[Warmup] Complete. Active connections: %" PRIu64 "\n",
-                metrics_.connections_active.load());
+    uint64_t warmup_sent = metrics_.requests_sent.load();
+    uint64_t warmup_done = metrics_.requests_completed.load() + metrics_.requests_failed.load();
+    std::printf("[Warmup] Complete. In-flight requests: %" PRIu64 "\n",
+                warmup_sent > warmup_done ? warmup_sent - warmup_done : 0);
     std::printf("\n");
 
     // Reset metrics for actual test
+    metrics_.requests_sent.store(0);
     metrics_.requests_completed.store(0);
     metrics_.requests_failed.store(0);
     metrics_.bytes_received.store(0);
@@ -389,11 +392,15 @@ class StressTest {
       client_->RunOnce();
 
       // Send more requests to maintain concurrency
-      // With HTTP/2 multiplexing, we can have many in-flight requests
-      size_t in_flight = metrics_.requests_sent.load() -
-                         metrics_.requests_completed.load() -
-                         metrics_.requests_failed.load();
-      while (in_flight < config_.num_connections * 10) {
+      // Target: num_connections in-flight requests (HTTP/2 multiplexes on fewer TCP connections)
+      uint64_t sent = metrics_.requests_sent.load(std::memory_order_relaxed);
+      uint64_t completed = metrics_.requests_completed.load(std::memory_order_relaxed);
+      uint64_t failed = metrics_.requests_failed.load(std::memory_order_relaxed);
+      size_t in_flight = (sent > completed + failed) ? (sent - completed - failed) : 0;
+
+      // Only send new requests if below target and not too many failures
+      size_t target_in_flight = config_.num_connections;
+      while (in_flight < target_in_flight) {
         SendRequest();
         ++in_flight;
 
@@ -450,13 +457,10 @@ class StressTest {
     req.SetMethod(chad::Method::kGet).SetUrl(config_.url);
 
     metrics_.requests_sent.fetch_add(1, std::memory_order_relaxed);
-    metrics_.connections_active.fetch_add(1, std::memory_order_relaxed);
 
     client_->SendAsync(
         std::move(req),
         [this, start_time](chad::Response response, chad::Error error) {
-          metrics_.connections_active.fetch_sub(1, std::memory_order_relaxed);
-
           auto end_time = std::chrono::steady_clock::now();
           uint64_t latency_us =
               std::chrono::duration_cast<std::chrono::microseconds>(end_time -
@@ -470,17 +474,17 @@ class StressTest {
             if (!warmup_phase_) {
               metrics_.RecordLatency(latency_us);
             }
+            // Send another request to maintain concurrency (only on success)
+            if (running_) {
+              SendRequest();
+            }
           } else {
             metrics_.requests_failed.fetch_add(1, std::memory_order_relaxed);
             if (config_.verbose) {
               std::fprintf(stderr, "Request failed: %s\n",
                            error.message().c_str());
             }
-          }
-
-          // Send another request to maintain concurrency (if still running)
-          if (running_) {
-            SendRequest();
+            // Don't send new request on failure - let main loop handle pacing
           }
         });
   }
