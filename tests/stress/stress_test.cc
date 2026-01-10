@@ -358,6 +358,8 @@ class StressTest {
     auto warmup_end = warmup_start + std::chrono::seconds(config_.warmup_sec);
     while (std::chrono::steady_clock::now() < warmup_end) {
       client_->RunOnce();
+      // Yield CPU during warmup - IO bound, no need to spin
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     uint64_t warmup_sent = metrics_.requests_sent.load();
@@ -401,21 +403,26 @@ class StressTest {
 
       // Only send new requests if below target and not too many failures
       size_t target_in_flight = config_.num_connections;
-      while (in_flight < target_in_flight) {
-        SendRequest();
-        ++in_flight;
+      if (in_flight < target_in_flight) {
+        while (in_flight < target_in_flight) {
+          SendRequest();
+          ++in_flight;
 
-        // Rate limiting if configured
-        if (config_.target_rps > 0) {
-          auto now = std::chrono::steady_clock::now();
-          auto test_elapsed =
-              std::chrono::duration<double>(now - test_start).count();
-          uint64_t expected_sent =
-              static_cast<uint64_t>(test_elapsed * config_.target_rps);
-          if (metrics_.requests_sent.load() >= expected_sent) {
-            break;
+          // Rate limiting if configured
+          if (config_.target_rps > 0) {
+            auto now = std::chrono::steady_clock::now();
+            auto test_elapsed =
+                std::chrono::duration<double>(now - test_start).count();
+            uint64_t expected_sent =
+                static_cast<uint64_t>(test_elapsed * config_.target_rps);
+            if (metrics_.requests_sent.load() >= expected_sent) {
+              break;
+            }
           }
         }
+      } else {
+        // At target concurrency - yield CPU instead of spinning
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
 
       // Live reporting every second
@@ -442,6 +449,8 @@ class StressTest {
         std::chrono::steady_clock::now() + std::chrono::milliseconds(500);
     while (std::chrono::steady_clock::now() < drain_end) {
       client_->RunOnce();
+      // Yield CPU during drain
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     PrintFinalReport(config_, metrics_, test_duration);
