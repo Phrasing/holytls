@@ -80,9 +80,7 @@ ReactorManager::ReactorManager(const ReactorManagerConfig& config)
   }
 }
 
-ReactorManager::~ReactorManager() {
-  Stop();
-}
+ReactorManager::~ReactorManager() { Stop(); }
 
 void ReactorManager::Initialize(tls::TlsContextFactory* tls_factory,
                                 const pool::ConnectionPoolConfig& pool_config) {
@@ -95,8 +93,8 @@ void ReactorManager::Initialize(tls::TlsContextFactory* tls_factory,
 
   // Create per-reactor connection pools and DNS resolvers
   for (auto& ctx : contexts_) {
-    ctx->dns_resolver = std::make_unique<util::DnsResolver>(
-        ctx->reactor->loop());
+    ctx->dns_resolver =
+        std::make_unique<util::DnsResolver>(ctx->reactor->loop());
 
     ctx->connection_pool = std::make_unique<pool::ConnectionPool>(
         pool_config_, ctx->reactor.get(), tls_factory_);
@@ -119,9 +117,8 @@ void ReactorManager::Start() {
   // Start reactor threads
   for (auto& ctx : contexts_) {
     ctx->running.store(true, std::memory_order_release);
-    ctx->thread = std::make_unique<std::thread>([this, raw_ctx = ctx.get()]() {
-      RunReactor(raw_ctx);
-    });
+    ctx->thread = std::make_unique<std::thread>(
+        [this, raw_ctx = ctx.get()]() { RunReactor(raw_ctx); });
   }
 }
 
@@ -163,12 +160,13 @@ ReactorContext* ReactorManager::GetReactor(size_t index) {
 }
 
 ReactorContext* ReactorManager::GetNextReactor() {
-  size_t index = next_reactor_.fetch_add(1, std::memory_order_relaxed) %
-                 contexts_.size();
+  size_t index =
+      next_reactor_.fetch_add(1, std::memory_order_relaxed) % contexts_.size();
   return contexts_[index].get();
 }
 
-void ReactorManager::Post(size_t reactor_index, std::function<void()> callback) {
+void ReactorManager::Post(size_t reactor_index,
+                          std::function<void()> callback) {
   if (reactor_index >= contexts_.size()) {
     return;
   }

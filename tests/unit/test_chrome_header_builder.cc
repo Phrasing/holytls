@@ -43,12 +43,12 @@ void TestBasicHeaderOrder() {
 
   ChromeHeaderBuilder builder(profile, sec_ch_ua);
   builder.SetMethod("GET")
-         .SetAuthority("example.com")
-         .SetPath("/")
-         .SetRequestType(RequestType::kNavigation)
-         .SetFetchMetadata(FetchSite::kNone, FetchMode::kNavigate,
-                           FetchDest::kDocument)
-         .SetUserActivated(true);
+      .SetAuthority("example.com")
+      .SetPath("/")
+      .SetRequestType(RequestType::kNavigation)
+      .SetFetchMetadata(FetchSite::kNone, FetchMode::kNavigate,
+                        FetchDest::kDocument)
+      .SetUserActivated(true);
 
   auto headers = builder.Build();
 
@@ -81,11 +81,11 @@ void TestHighEntropyHeaderPlacement() {
 
   ChromeHeaderBuilder builder(profile, sec_ch_ua);
   builder.SetMethod("GET")
-         .SetAuthority("example.com")
-         .SetPath("/")
-         .SetRequestType(RequestType::kNavigation)
-         .SetFetchMetadata(FetchSite::kNone, FetchMode::kNavigate,
-                           FetchDest::kDocument);
+      .SetAuthority("example.com")
+      .SetPath("/")
+      .SetRequestType(RequestType::kNavigation)
+      .SetFetchMetadata(FetchSite::kNone, FetchMode::kNavigate,
+                        FetchDest::kDocument);
 
   // Simulate warm connection with Accept-CH response
   AcceptChHints hints;
@@ -98,7 +98,8 @@ void TestHighEntropyHeaderPlacement() {
 
   // Find positions of key headers
   int platform_pos = FindHeaderPosition(headers, "sec-ch-ua-platform");
-  int full_version_pos = FindHeaderPosition(headers, "sec-ch-ua-full-version-list");
+  int full_version_pos =
+      FindHeaderPosition(headers, "sec-ch-ua-full-version-list");
   int arch_pos = FindHeaderPosition(headers, "sec-ch-ua-arch");
   int bitness_pos = FindHeaderPosition(headers, "sec-ch-ua-bitness");
   int upgrade_pos = FindHeaderPosition(headers, "upgrade-insecure-requests");
@@ -141,11 +142,11 @@ void TestHighEntropyWithoutNavigation() {
 
   ChromeHeaderBuilder builder(profile, sec_ch_ua);
   builder.SetMethod("GET")
-         .SetAuthority("api.example.com")
-         .SetPath("/data")
-         .SetRequestType(RequestType::kXhr)  // XHR, not navigation
-         .SetFetchMetadata(FetchSite::kSameOrigin, FetchMode::kCors,
-                           FetchDest::kEmpty);
+      .SetAuthority("api.example.com")
+      .SetPath("/data")
+      .SetRequestType(RequestType::kXhr)  // XHR, not navigation
+      .SetFetchMetadata(FetchSite::kSameOrigin, FetchMode::kCors,
+                        FetchDest::kEmpty);
 
   AcceptChHints hints;
   hints.full_version_list = true;
@@ -159,7 +160,8 @@ void TestHighEntropyWithoutNavigation() {
 
   // But high-entropy should still be placed correctly
   int platform_pos = FindHeaderPosition(headers, "sec-ch-ua-platform");
-  int full_version_pos = FindHeaderPosition(headers, "sec-ch-ua-full-version-list");
+  int full_version_pos =
+      FindHeaderPosition(headers, "sec-ch-ua-full-version-list");
   int user_agent_pos = FindHeaderPosition(headers, "user-agent");
 
   assert(platform_pos >= 0);
@@ -180,11 +182,11 @@ void TestNoHighEntropyHeaders() {
 
   ChromeHeaderBuilder builder(profile, sec_ch_ua);
   builder.SetMethod("GET")
-         .SetAuthority("example.com")
-         .SetPath("/")
-         .SetRequestType(RequestType::kNavigation)
-         .SetFetchMetadata(FetchSite::kNone, FetchMode::kNavigate,
-                           FetchDest::kDocument);
+      .SetAuthority("example.com")
+      .SetPath("/")
+      .SetRequestType(RequestType::kNavigation)
+      .SetFetchMetadata(FetchSite::kNone, FetchMode::kNavigate,
+                        FetchDest::kDocument);
 
   // No AddHighEntropyHeaders call
 
@@ -217,13 +219,13 @@ void TestCustomHeadersAtEnd() {
 
   ChromeHeaderBuilder builder(profile, sec_ch_ua);
   builder.SetMethod("GET")
-         .SetAuthority("example.com")
-         .SetPath("/")
-         .SetRequestType(RequestType::kNavigation)
-         .SetFetchMetadata(FetchSite::kNone, FetchMode::kNavigate,
-                           FetchDest::kDocument)
-         .AddCustomHeader("x-custom-header", "custom-value")
-         .AddCustomHeader("authorization", "Bearer token123");
+      .SetAuthority("example.com")
+      .SetPath("/")
+      .SetRequestType(RequestType::kNavigation)
+      .SetFetchMetadata(FetchSite::kNone, FetchMode::kNavigate,
+                        FetchDest::kDocument)
+      .AddCustomHeader("x-custom-header", "custom-value")
+      .AddCustomHeader("authorization", "Bearer token123");
 
   AcceptChHints hints;
   hints.full_version_list = true;
@@ -263,8 +265,8 @@ void TestParseAcceptCh() {
   assert(hints2.model == false);
 
   // Test with whitespace
-  AcceptChHints hints3 = ParseAcceptCh(
-      "  Sec-CH-UA-Model  ,  Sec-CH-UA-WoW64  ");
+  AcceptChHints hints3 =
+      ParseAcceptCh("  Sec-CH-UA-Model  ,  Sec-CH-UA-WoW64  ");
   assert(hints3.model == true);
   assert(hints3.wow64 == true);
   assert(hints3.full_version_list == false);
@@ -289,11 +291,11 @@ void TestAllHighEntropyHeaders() {
 
   ChromeHeaderBuilder builder(profile, sec_ch_ua);
   builder.SetMethod("GET")
-         .SetAuthority("example.com")
-         .SetPath("/")
-         .SetRequestType(RequestType::kNavigation)
-         .SetFetchMetadata(FetchSite::kNone, FetchMode::kNavigate,
-                           FetchDest::kDocument);
+      .SetAuthority("example.com")
+      .SetPath("/")
+      .SetRequestType(RequestType::kNavigation)
+      .SetFetchMetadata(FetchSite::kNone, FetchMode::kNavigate,
+                        FetchDest::kDocument);
 
   // Enable all high-entropy headers
   AcceptChHints hints;
@@ -319,7 +321,8 @@ void TestAllHighEntropyHeaders() {
   int platform_pos = FindHeaderPosition(headers, "sec-ch-ua-platform");
   int upgrade_pos = FindHeaderPosition(headers, "upgrade-insecure-requests");
 
-  int full_version_pos = FindHeaderPosition(headers, "sec-ch-ua-full-version-list");
+  int full_version_pos =
+      FindHeaderPosition(headers, "sec-ch-ua-full-version-list");
   int form_factors_pos = FindHeaderPosition(headers, "sec-ch-ua-form-factors");
 
   assert(full_version_pos > platform_pos);

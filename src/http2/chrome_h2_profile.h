@@ -15,12 +15,13 @@ namespace http2 {
 // These values are sent in the initial SETTINGS frame and are
 // a key part of HTTP/2 fingerprinting.
 struct ChromeH2Settings {
-  uint32_t header_table_size = 65536;       // SETTINGS_HEADER_TABLE_SIZE
-  uint32_t enable_push = 0;                 // SETTINGS_ENABLE_PUSH (Chrome disables)
-  uint32_t max_concurrent_streams = 1000;   // SETTINGS_MAX_CONCURRENT_STREAMS
-  uint32_t initial_window_size = 6291456;   // SETTINGS_INITIAL_WINDOW_SIZE (6MB)
-  uint32_t max_frame_size = 16384;          // SETTINGS_MAX_FRAME_SIZE
-  uint32_t max_header_list_size = 262144;   // SETTINGS_MAX_HEADER_LIST_SIZE (256KB)
+  uint32_t header_table_size = 65536;  // SETTINGS_HEADER_TABLE_SIZE
+  uint32_t enable_push = 0;            // SETTINGS_ENABLE_PUSH (Chrome disables)
+  uint32_t max_concurrent_streams = 1000;  // SETTINGS_MAX_CONCURRENT_STREAMS
+  uint32_t initial_window_size = 6291456;  // SETTINGS_INITIAL_WINDOW_SIZE (6MB)
+  uint32_t max_frame_size = 16384;         // SETTINGS_MAX_FRAME_SIZE
+  uint32_t max_header_list_size =
+      262144;  // SETTINGS_MAX_HEADER_LIST_SIZE (256KB)
 
   // Flags for which settings to send (Chrome 143+ doesn't send all)
   bool send_max_concurrent_streams = true;
@@ -69,13 +70,14 @@ inline constexpr ChromeH2Settings kChrome120H2Settings = {
     .send_max_frame_size = true,
 };
 
-// Chrome 143+ SETTINGS (sends only 4 settings, omits MAX_CONCURRENT_STREAMS and MAX_FRAME_SIZE)
+// Chrome 143+ SETTINGS (sends only 4 settings, omits MAX_CONCURRENT_STREAMS and
+// MAX_FRAME_SIZE)
 inline constexpr ChromeH2Settings kChrome143H2Settings = {
     .header_table_size = 65536,
     .enable_push = 0,
     .max_concurrent_streams = 1000,  // Not sent, but kept for internal use
     .initial_window_size = 6291456,
-    .max_frame_size = 16384,         // Not sent, but kept for internal use
+    .max_frame_size = 16384,  // Not sent, but kept for internal use
     .max_header_list_size = 262144,
     .send_max_concurrent_streams = false,
     .send_max_frame_size = false,

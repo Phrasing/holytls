@@ -120,13 +120,9 @@ struct RingBuf {
     return rb;
   }
 
-  size_t Size() const {
-    return write_pos - read_pos;
-  }
+  size_t Size() const { return write_pos - read_pos; }
 
-  size_t Space() const {
-    return cap - Size();
-  }
+  size_t Space() const { return cap - Size(); }
 
   bool Empty() const { return read_pos == write_pos; }
   bool Full() const { return Size() == cap; }
@@ -150,14 +146,10 @@ struct RingBuf {
   }
 
   // Consume bytes after reading
-  void Consume(size_t n) {
-    read_pos += n;
-  }
+  void Consume(size_t n) { read_pos += n; }
 
   // Commit bytes after writing
-  void Commit(size_t n) {
-    write_pos += n;
-  }
+  void Commit(size_t n) { write_pos += n; }
 
   // Write data to ring buffer
   size_t Write(const uint8_t* src, size_t n) {

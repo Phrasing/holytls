@@ -76,9 +76,7 @@ H2Stream::H2Stream(int32_t stream_id, H2StreamCallbacks callbacks)
 
 H2Stream::~H2Stream() = default;
 
-int H2Stream::status_code() const {
-  return response_headers_.status_code();
-}
+int H2Stream::status_code() const { return response_headers_.status_code(); }
 
 void H2Stream::OnHeadersReceived(PackedHeaders&& headers) {
   response_headers_ = std::move(headers);

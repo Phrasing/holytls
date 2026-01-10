@@ -29,7 +29,8 @@ nghttp2_nv MakeNv(const std::string& name, const std::string& value) {
 }
 
 // Helper for static name with string value (name is static storage)
-// Name uses NO_COPY since it's static, value is copied since it may be temporary.
+// Name uses NO_COPY since it's static, value is copied since it may be
+// temporary.
 nghttp2_nv MakeNvStatic(const char* name, size_t namelen,
                         const std::string& value) {
   nghttp2_nv nv;
@@ -112,8 +113,8 @@ int32_t H2Session::SubmitRequest(const H2Headers& headers,
   }
 
   // Submit request
-  int32_t stream_id = nghttp2_submit_request(session_.get(), nullptr, nva.data(),
-                                             nva.size(), data_prd, nullptr);
+  int32_t stream_id = nghttp2_submit_request(
+      session_.get(), nullptr, nva.data(), nva.size(), data_prd, nullptr);
 
   if (stream_id < 0) {
     SetError(std::string("Failed to submit request: ") +
@@ -174,9 +175,7 @@ std::pair<const uint8_t*, size_t> H2Session::GetPendingData() {
   return {ptr, available};
 }
 
-void H2Session::DataSent(size_t len) {
-  send_buffer_.Skip(len);
-}
+void H2Session::DataSent(size_t len) { send_buffer_.Skip(len); }
 
 bool H2Session::WantsWrite() const {
   if (!session_ || fatal_error_) {
@@ -346,7 +345,8 @@ void H2Session::SendChromeSettings() {
   const auto& s = profile_.settings;
 
   // Build SETTINGS entries matching Chrome's order
-  // Chrome 143+ sends only 4 settings (omits MAX_CONCURRENT_STREAMS and MAX_FRAME_SIZE)
+  // Chrome 143+ sends only 4 settings (omits MAX_CONCURRENT_STREAMS and
+  // MAX_FRAME_SIZE)
   std::vector<nghttp2_settings_entry> iv;
 
   iv.push_back({NGHTTP2_SETTINGS_HEADER_TABLE_SIZE, s.header_table_size});
@@ -368,8 +368,7 @@ void H2Session::SendChromeSettings() {
   int rv = nghttp2_submit_settings(session_.get(), NGHTTP2_FLAG_NONE, iv.data(),
                                    iv.size());
   if (rv != 0) {
-    SetError(std::string("Failed to submit SETTINGS: ") +
-             nghttp2_strerror(rv));
+    SetError(std::string("Failed to submit SETTINGS: ") + nghttp2_strerror(rv));
   }
 }
 
@@ -385,19 +384,22 @@ void H2Session::SendChromeWindowUpdate() {
   }
 }
 
-std::vector<nghttp2_nv> H2Session::BuildHeaderNvArray(const H2Headers& headers) {
+std::vector<nghttp2_nv> H2Session::BuildHeaderNvArray(
+    const H2Headers& headers) {
   std::vector<nghttp2_nv> nva;
   nva.reserve(headers.headers.size() + 4);
 
   // Chrome's pseudo-header order: :method, :authority, :scheme, :path (MASP)
   // This is critical for HTTP/2 fingerprinting!
-  // Use MakeNvStatic for pseudo-headers to avoid dangling pointer from temporaries
+  // Use MakeNvStatic for pseudo-headers to avoid dangling pointer from
+  // temporaries
 
   switch (profile_.pseudo_header_order) {
     case ChromeH2Profile::PseudoHeaderOrder::kMASP:
       // Chrome: method, authority, scheme, path
       nva.push_back(MakeNvStatic(kMethod, sizeof(kMethod) - 1, headers.method));
-      nva.push_back(MakeNvStatic(kAuthority, sizeof(kAuthority) - 1, headers.authority));
+      nva.push_back(
+          MakeNvStatic(kAuthority, sizeof(kAuthority) - 1, headers.authority));
       nva.push_back(MakeNvStatic(kScheme, sizeof(kScheme) - 1, headers.scheme));
       nva.push_back(MakeNvStatic(kPath, sizeof(kPath) - 1, headers.path));
       break;
@@ -406,7 +408,8 @@ std::vector<nghttp2_nv> H2Session::BuildHeaderNvArray(const H2Headers& headers) 
       // Firefox: method, path, authority, scheme
       nva.push_back(MakeNvStatic(kMethod, sizeof(kMethod) - 1, headers.method));
       nva.push_back(MakeNvStatic(kPath, sizeof(kPath) - 1, headers.path));
-      nva.push_back(MakeNvStatic(kAuthority, sizeof(kAuthority) - 1, headers.authority));
+      nva.push_back(
+          MakeNvStatic(kAuthority, sizeof(kAuthority) - 1, headers.authority));
       nva.push_back(MakeNvStatic(kScheme, sizeof(kScheme) - 1, headers.scheme));
       break;
 
@@ -415,7 +418,8 @@ std::vector<nghttp2_nv> H2Session::BuildHeaderNvArray(const H2Headers& headers) 
       nva.push_back(MakeNvStatic(kMethod, sizeof(kMethod) - 1, headers.method));
       nva.push_back(MakeNvStatic(kScheme, sizeof(kScheme) - 1, headers.scheme));
       nva.push_back(MakeNvStatic(kPath, sizeof(kPath) - 1, headers.path));
-      nva.push_back(MakeNvStatic(kAuthority, sizeof(kAuthority) - 1, headers.authority));
+      nva.push_back(
+          MakeNvStatic(kAuthority, sizeof(kAuthority) - 1, headers.authority));
       break;
   }
 

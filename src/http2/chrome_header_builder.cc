@@ -83,7 +83,8 @@ ChromeHeaderBuilder::ChromeHeaderBuilder(const ChromeHeaderProfile& profile,
 
   // Client hints (always sent)
   values_[kSecChUa] = sec_ch_ua_.Get();
-  values_[kSecChUaMobile] = std::string(SecChUaGenerator::GetMobile(profile_.sec_ch_ua_mobile));
+  values_[kSecChUaMobile] =
+      std::string(SecChUaGenerator::GetMobile(profile_.sec_ch_ua_mobile));
   values_[kSecChUaPlatform] = profile_.sec_ch_ua_platform;
 
   // Standard headers
@@ -98,7 +99,8 @@ ChromeHeaderBuilder& ChromeHeaderBuilder::SetMethod(std::string_view method) {
   return *this;
 }
 
-ChromeHeaderBuilder& ChromeHeaderBuilder::SetAuthority(std::string_view authority) {
+ChromeHeaderBuilder& ChromeHeaderBuilder::SetAuthority(
+    std::string_view authority) {
   values_[kAuthority] = std::string(authority);
   return *this;
 }
@@ -128,8 +130,9 @@ ChromeHeaderBuilder& ChromeHeaderBuilder::SetRequestType(RequestType type) {
   return *this;
 }
 
-ChromeHeaderBuilder& ChromeHeaderBuilder::SetFetchMetadata(
-    FetchSite site, FetchMode mode, FetchDest dest) {
+ChromeHeaderBuilder& ChromeHeaderBuilder::SetFetchMetadata(FetchSite site,
+                                                           FetchMode mode,
+                                                           FetchDest dest) {
   values_[kSecFetchSite] = std::string(FetchSiteToString(site));
   values_[kSecFetchMode] = std::string(FetchModeToString(mode));
   values_[kSecFetchDest] = std::string(FetchDestToString(dest));
@@ -137,7 +140,8 @@ ChromeHeaderBuilder& ChromeHeaderBuilder::SetFetchMetadata(
 }
 
 ChromeHeaderBuilder& ChromeHeaderBuilder::SetUserActivated(bool activated) {
-  include_sec_fetch_user_ = activated && (request_type_ == RequestType::kNavigation);
+  include_sec_fetch_user_ =
+      activated && (request_type_ == RequestType::kNavigation);
   if (include_sec_fetch_user_) {
     values_[kSecFetchUser] = "?1";
   }
@@ -193,7 +197,8 @@ ChromeHeaderBuilder& ChromeHeaderBuilder::SetAccept(std::string_view accept) {
   return *this;
 }
 
-ChromeHeaderBuilder& ChromeHeaderBuilder::SetAcceptLanguage(std::string_view lang) {
+ChromeHeaderBuilder& ChromeHeaderBuilder::SetAcceptLanguage(
+    std::string_view lang) {
   values_[kAcceptLanguage] = std::string(lang);
   return *this;
 }
@@ -205,7 +210,7 @@ ChromeHeaderBuilder& ChromeHeaderBuilder::AddCustomHeader(
 }
 
 nghttp2_nv ChromeHeaderBuilder::MakeNv(const char* name, size_t name_len,
-                                        const std::string& value) {
+                                       const std::string& value) {
   nghttp2_nv nv;
   nv.name = reinterpret_cast<uint8_t*>(const_cast<char*>(name));
   nv.namelen = name_len;
@@ -252,10 +257,8 @@ std::vector<nghttp2_nv> ChromeHeaderBuilder::Build() {
 
   // Helper to add header by index
   auto add_header = [&](HeaderIndex idx) {
-    nva.push_back(MakeNv(
-        kHeaderNames[idx],
-        std::strlen(kHeaderNames[idx]),
-        values_[idx]));
+    nva.push_back(MakeNv(kHeaderNames[idx], std::strlen(kHeaderNames[idx]),
+                         values_[idx]));
   };
 
   // Pseudo-headers (indices 0-3) - MUST be first, in this exact order

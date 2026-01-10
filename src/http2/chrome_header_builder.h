@@ -46,7 +46,8 @@ AcceptChHints ParseAcceptCh(std::string_view accept_ch);
 //          .SetAuthority("example.com")
 //          .SetPath("/api/data")
 //          .SetRequestType(RequestType::kNavigation)
-//          .SetFetchMetadata(FetchSite::kNone, FetchMode::kNavigate, FetchDest::kDocument);
+//          .SetFetchMetadata(FetchSite::kNone, FetchMode::kNavigate,
+//          FetchDest::kDocument);
 //   auto nva = builder.Build();
 //
 class ChromeHeaderBuilder {
@@ -63,7 +64,8 @@ class ChromeHeaderBuilder {
 
   // Set request context
   ChromeHeaderBuilder& SetRequestType(RequestType type);
-  ChromeHeaderBuilder& SetFetchMetadata(FetchSite site, FetchMode mode, FetchDest dest);
+  ChromeHeaderBuilder& SetFetchMetadata(FetchSite site, FetchMode mode,
+                                        FetchDest dest);
   ChromeHeaderBuilder& SetUserActivated(bool activated);
 
   // Add high-entropy headers (from Accept-CH response)
@@ -75,7 +77,8 @@ class ChromeHeaderBuilder {
   ChromeHeaderBuilder& SetAcceptLanguage(std::string_view lang);
 
   // Add custom header at the end (after standard Chrome headers)
-  ChromeHeaderBuilder& AddCustomHeader(std::string_view name, std::string_view value);
+  ChromeHeaderBuilder& AddCustomHeader(std::string_view name,
+                                       std::string_view value);
 
   // Build final nghttp2_nv array
   // IMPORTANT: Returned vector must outlive the nghttp2 call!

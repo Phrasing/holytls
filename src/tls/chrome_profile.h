@@ -37,10 +37,10 @@ struct ChromeTlsProfile {
   std::vector<std::string> alpn_protocols;
 
   // Feature flags
-  bool grease_enabled = true;          // RFC 8701 GREASE
-  bool permute_extensions = true;      // Chrome 110+ randomizes extension order
-  bool compress_certificates = true;   // Certificate compression (Brotli)
-  bool encrypted_client_hello = false; // ECH (Chrome 119+, experimental)
+  bool grease_enabled = true;         // RFC 8701 GREASE
+  bool permute_extensions = true;     // Chrome 110+ randomizes extension order
+  bool compress_certificates = true;  // Certificate compression (Brotli)
+  bool encrypted_client_hello = false;  // ECH (Chrome 119+, experimental)
 
   // Record size limit (RFC 8449)
   uint16_t record_size_limit = 16385;

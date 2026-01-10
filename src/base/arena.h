@@ -14,11 +14,11 @@
 
 // Branch prediction hints - MSVC doesn't have __builtin_expect
 #ifdef _MSC_VER
-  #define CHAD_LIKELY(x) (x)
-  #define CHAD_UNLIKELY(x) (x)
+#define CHAD_LIKELY(x) (x)
+#define CHAD_UNLIKELY(x) (x)
 #else
-  #define CHAD_LIKELY(x) __builtin_expect(!!(x), 1)
-  #define CHAD_UNLIKELY(x) __builtin_expect(!!(x), 0)
+#define CHAD_LIKELY(x) __builtin_expect(!!(x), 1)
+#define CHAD_UNLIKELY(x) __builtin_expect(!!(x), 0)
 #endif
 
 namespace chad {
@@ -172,13 +172,9 @@ struct Temp {
   size_t pos;
 };
 
-inline Temp TempBegin(Arena* arena) {
-  return Temp{arena, ArenaPos(arena)};
-}
+inline Temp TempBegin(Arena* arena) { return Temp{arena, ArenaPos(arena)}; }
 
-inline void TempEnd(Temp temp) {
-  ArenaPopTo(temp.arena, temp.pos);
-}
+inline void TempEnd(Temp temp) { ArenaPopTo(temp.arena, temp.pos); }
 
 // RAII wrapper for temp scopes
 struct TempScope {

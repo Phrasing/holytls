@@ -15,7 +15,7 @@
 #include <vector>
 
 #ifdef _MSC_VER
-  #include <intrin.h>
+#include <intrin.h>
 #endif
 
 namespace chad {
@@ -39,13 +39,9 @@ inline void DoNotOptimize(T&& value) {
 
 // Memory barrier to prevent reordering
 #ifdef _MSC_VER
-inline void ClobberMemory() {
-  _ReadWriteBarrier();
-}
+inline void ClobberMemory() { _ReadWriteBarrier(); }
 #else
-inline void ClobberMemory() {
-  asm volatile("" : : : "memory");
-}
+inline void ClobberMemory() { asm volatile("" : : : "memory"); }
 #endif
 
 // High-resolution timer
@@ -76,9 +72,9 @@ struct Result {
   double ops_per_sec;
 
   void Print() const {
-    printf("%-40s %12llu iters %12.2f ns/op %12.2f M ops/sec\n",
-           name.c_str(), static_cast<unsigned long long>(iterations),
-           ns_per_op, ops_per_sec / 1e6);
+    printf("%-40s %12llu iters %12.2f ns/op %12.2f M ops/sec\n", name.c_str(),
+           static_cast<unsigned long long>(iterations), ns_per_op,
+           ops_per_sec / 1e6);
     fflush(stdout);
   }
 };
@@ -134,8 +130,8 @@ Result AutoBenchmark(const char* name, Func&& func) {
 
   // Scale to ~1 second
   double target_ns = 1e9;
-  uint64_t target_iters = static_cast<uint64_t>(
-      static_cast<double>(iters) * target_ns / elapsed);
+  uint64_t target_iters =
+      static_cast<uint64_t>(static_cast<double>(iters) * target_ns / elapsed);
   if (target_iters < 1) target_iters = 1;
 
   // Run actual benchmark
@@ -165,8 +161,10 @@ class Suite {
 
   void Run() {
     printf("\n=== Benchmark Results ===\n\n");
-    printf("%-40s %12s %12s %12s\n", "Benchmark", "Iterations", "ns/op", "M ops/sec");
-    printf("%-40s %12s %12s %12s\n", "---------", "----------", "-----", "---------");
+    printf("%-40s %12s %12s %12s\n", "Benchmark", "Iterations", "ns/op",
+           "M ops/sec");
+    printf("%-40s %12s %12s %12s\n", "---------", "----------", "-----",
+           "---------");
 
     for (const auto& bench : benchmarks_) {
       auto result = AutoBenchmark(bench.name.c_str(), bench.func);
@@ -197,8 +195,8 @@ struct MemStats {
   size_t peak_bytes;
 
   void Print() const {
-    printf("Memory: %zu allocs, %zu deallocs, %zu KB peak\n",
-           allocations, deallocations, peak_bytes / 1024);
+    printf("Memory: %zu allocs, %zu deallocs, %zu KB peak\n", allocations,
+           deallocations, peak_bytes / 1024);
   }
 };
 

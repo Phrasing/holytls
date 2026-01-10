@@ -57,9 +57,7 @@ ClientConfig ClientConfig::Chrome143() {
   return config;
 }
 
-ClientConfig ClientConfig::ChromeLatest() {
-  return Chrome143();
-}
+ClientConfig ClientConfig::ChromeLatest() { return Chrome143(); }
 
 // Method to string conversion
 std::string_view MethodToString(Method method) {
@@ -169,15 +167,14 @@ class HttpClient::Impl {
     pool_config.connect_timeout_ms =
         static_cast<uint64_t>(config.pool.connect_timeout.count());
     pool_config.enable_multiplexing = config.pool.enable_multiplexing;
-    pool_config.max_streams_per_connection = config.pool.max_streams_per_connection;
+    pool_config.max_streams_per_connection =
+        config.pool.max_streams_per_connection;
 
     // Initialize reactor manager
     reactor_manager_.Initialize(&tls_factory_, pool_config);
   }
 
-  ~Impl() {
-    Stop();
-  }
+  ~Impl() { Stop(); }
 
   void SendAsync(Request request, ResponseCallback callback,
                  ProgressCallback progress = nullptr) {
@@ -208,13 +205,13 @@ class HttpClient::Impl {
     }
 
     // Post request processing to the reactor thread
-    reactor_manager_.Post(ctx->index, [this, ctx, request = std::move(request),
-                                       parsed = std::move(parsed),
-                                       callback = std::move(callback),
-                                       progress = std::move(progress)]() mutable {
-      ProcessRequest(ctx, std::move(request), std::move(parsed),
-                     std::move(callback), std::move(progress));
-    });
+    reactor_manager_.Post(
+        ctx->index, [this, ctx, request = std::move(request),
+                     parsed = std::move(parsed), callback = std::move(callback),
+                     progress = std::move(progress)]() mutable {
+          ProcessRequest(ctx, std::move(request), std::move(parsed),
+                         std::move(callback), std::move(progress));
+        });
   }
 
   void Run() {
@@ -242,30 +239,28 @@ class HttpClient::Impl {
     reactor_manager_.Stop();
   }
 
-  bool IsRunning() const {
-    return running_.load(std::memory_order_acquire);
-  }
+  bool IsRunning() const { return running_.load(std::memory_order_acquire); }
 
   ClientStats GetStats() const {
     ClientStats stats;
     stats.total_connections = reactor_manager_.TotalConnections();
     stats.active_connections = reactor_manager_.TotalConnections();
     stats.requests_sent = requests_sent_.load(std::memory_order_relaxed);
-    stats.requests_completed = requests_completed_.load(std::memory_order_relaxed);
+    stats.requests_completed =
+        requests_completed_.load(std::memory_order_relaxed);
     stats.requests_failed = requests_failed_.load(std::memory_order_relaxed);
     return stats;
   }
 
-  ChromeVersion GetChromeVersion() const {
-    return config_.tls.chrome_version;
-  }
+  ChromeVersion GetChromeVersion() const { return config_.tls.chrome_version; }
 
  private:
   static TlsConfig MakeTlsConfig(const ClientConfig& config) {
     return config.tls;
   }
 
-  static core::ReactorManagerConfig MakeReactorConfig(const ClientConfig& config) {
+  static core::ReactorManagerConfig MakeReactorConfig(
+      const ClientConfig& config) {
     core::ReactorManagerConfig rc;
     rc.num_reactors = config.threads.num_workers;
     rc.pin_to_cores = config.threads.pin_to_cores;
@@ -275,17 +270,19 @@ class HttpClient::Impl {
   void ProcessRequest(core::ReactorContext* ctx, Request request,
                       util::ParsedUrl parsed, ResponseCallback callback,
                       ProgressCallback /*progress*/) {
-    // Copy host before moving parsed into lambda (avoids reference invalidation)
+    // Copy host before moving parsed into lambda (avoids reference
+    // invalidation)
     std::string host = parsed.host;
     ctx->dns_resolver->ResolveAsync(
-        host,
-        [this, ctx, request = std::move(request), parsed = std::move(parsed),
-         callback = std::move(callback)](
-            const std::vector<util::ResolvedAddress>& addresses,
-            const std::string& error) mutable {
+        host, [this, ctx, request = std::move(request),
+               parsed = std::move(parsed), callback = std::move(callback)](
+                  const std::vector<util::ResolvedAddress>& addresses,
+                  const std::string& error) mutable {
           if (!error.empty() || addresses.empty()) {
             if (callback) {
-              callback(Response{}, Error::Dns(error.empty() ? "No addresses found" : error));
+              callback(
+                  Response{},
+                  Error::Dns(error.empty() ? "No addresses found" : error));
             }
             requests_failed_.fetch_add(1, std::memory_order_relaxed);
             return;
@@ -297,10 +294,12 @@ class HttpClient::Impl {
 
           if (!pooled) {
             // Need to create a new connection
-            auto* host_pool = pool->GetOrCreateHostPool(parsed.host, parsed.port);
+            auto* host_pool =
+                pool->GetOrCreateHostPool(parsed.host, parsed.port);
             if (!host_pool) {
               if (callback) {
-                callback(Response{}, Error::Connection("Failed to create host pool"));
+                callback(Response{},
+                         Error::Connection("Failed to create host pool"));
               }
               requests_failed_.fetch_add(1, std::memory_order_relaxed);
               return;
@@ -310,7 +309,8 @@ class HttpClient::Impl {
             const auto& addr = addresses[0];
             if (!host_pool->CreateConnection(addr.ip, addr.is_ipv6)) {
               if (callback) {
-                callback(Response{}, Error::Connection("Failed to create connection"));
+                callback(Response{},
+                         Error::Connection("Failed to create connection"));
               }
               requests_failed_.fetch_add(1, std::memory_order_relaxed);
               return;
@@ -322,7 +322,8 @@ class HttpClient::Impl {
           }
 
           // Send request on existing connection
-          SendOnConnection(ctx, pooled, parsed, std::move(request), std::move(callback));
+          SendOnConnection(ctx, pooled, parsed, std::move(request),
+                           std::move(callback));
         });
   }
 
@@ -336,7 +337,8 @@ class HttpClient::Impl {
       auto* pooled = pool->AcquireConnection(parsed.host, parsed.port);
 
       if (pooled && pooled->connection && pooled->connection->IsConnected()) {
-        SendOnConnection(ctx, pooled, parsed, std::move(request), std::move(callback));
+        SendOnConnection(ctx, pooled, parsed, std::move(request),
+                         std::move(callback));
       } else {
         // Still not ready - retry with a slight delay
         // This is a simplified approach; production would use TimerWheel
@@ -348,7 +350,8 @@ class HttpClient::Impl {
     });
   }
 
-  void SendOnConnection(core::ReactorContext* ctx, pool::PooledConnection* pooled,
+  void SendOnConnection(core::ReactorContext* ctx,
+                        pool::PooledConnection* pooled,
                         const util::ParsedUrl& parsed, Request request,
                         ResponseCallback callback) {
     requests_sent_.fetch_add(1, std::memory_order_relaxed);
@@ -363,18 +366,15 @@ class HttpClient::Impl {
     auto shared_cb = std::make_shared<ResponseCallback>(std::move(callback));
 
     pooled->connection->SendRequest(
-        std::string(MethodToString(request.method())),
-        parsed.PathWithQuery(),
+        std::string(MethodToString(request.method())), parsed.PathWithQuery(),
         headers,
-        [this, ctx, pooled, shared_cb](
-            const core::Response& core_resp) mutable {
+        [this, ctx, pooled,
+         shared_cb](const core::Response& core_resp) mutable {
           // Convert headers
           Headers resp_headers;
           for (size_t i = 0; i < core_resp.headers.size(); ++i) {
-            resp_headers.push_back({
-                std::string(core_resp.headers.name(i)),
-                std::string(core_resp.headers.value(i))
-            });
+            resp_headers.push_back({std::string(core_resp.headers.name(i)),
+                                    std::string(core_resp.headers.value(i))});
           }
 
           // Build response
@@ -390,8 +390,7 @@ class HttpClient::Impl {
             (*shared_cb)(std::move(response), Error{});
           }
         },
-        [this, ctx, pooled, shared_cb](
-            const std::string& error) mutable {
+        [this, ctx, pooled, shared_cb](const std::string& error) mutable {
           // Mark connection as failed
           ctx->connection_pool->RemoveConnection(pooled);
 
@@ -425,28 +424,19 @@ void HttpClient::SendAsync(Request request, ResponseCallback callback) {
 
 void HttpClient::SendAsync(Request request, ResponseCallback callback,
                            ProgressCallback progress) {
-  impl_->SendAsync(std::move(request), std::move(callback), std::move(progress));
+  impl_->SendAsync(std::move(request), std::move(callback),
+                   std::move(progress));
 }
 
-void HttpClient::Run() {
-  impl_->Run();
-}
+void HttpClient::Run() { impl_->Run(); }
 
-void HttpClient::RunOnce() {
-  impl_->RunOnce();
-}
+void HttpClient::RunOnce() { impl_->RunOnce(); }
 
-void HttpClient::Stop() {
-  impl_->Stop();
-}
+void HttpClient::Stop() { impl_->Stop(); }
 
-bool HttpClient::IsRunning() const {
-  return impl_->IsRunning();
-}
+bool HttpClient::IsRunning() const { return impl_->IsRunning(); }
 
-ClientStats HttpClient::GetStats() const {
-  return impl_->GetStats();
-}
+ClientStats HttpClient::GetStats() const { return impl_->GetStats(); }
 
 ChromeVersion HttpClient::GetChromeVersion() const {
   return impl_->GetChromeVersion();

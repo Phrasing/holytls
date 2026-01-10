@@ -42,18 +42,16 @@ chad::ChromeVersion ParseChromeVersion(const std::string& arg) {
 // Test a single fingerprint endpoint
 void TestEndpoint(chad::core::Reactor& reactor,
                   chad::tls::TlsContextFactory& tls_factory,
-                  chad::util::DnsResolver& resolver,
-                  const std::string& host,
-                  const std::string& path,
-                  const std::string& label) {
+                  chad::util::DnsResolver& resolver, const std::string& host,
+                  const std::string& path, const std::string& label) {
   std::unique_ptr<chad::core::Connection> conn;
 
   std::cout << "\n=== Testing " << label << " ===\n";
   std::cout << "Resolving " << host << "...\n";
 
-  resolver.ResolveAsync(host,
-      [&](const std::vector<chad::util::ResolvedAddress>& addresses,
-          const std::string& error) {
+  resolver.ResolveAsync(
+      host, [&](const std::vector<chad::util::ResolvedAddress>& addresses,
+                const std::string& error) {
         if (!error.empty() || addresses.empty()) {
           std::cerr << "DNS resolution failed: " << error << "\n";
           reactor.Stop();
@@ -66,13 +64,12 @@ void TestEndpoint(chad::core::Reactor& reactor,
         }
         std::cout << "\n";
 
-        conn = std::make_unique<chad::core::Connection>(
-            &reactor, &tls_factory, host, 443);
+        conn = std::make_unique<chad::core::Connection>(&reactor, &tls_factory,
+                                                        host, 443);
 
         // Stop reactor when connection becomes idle (request complete)
-        conn->SetIdleCallback([&reactor](chad::core::Connection*) {
-          reactor.Stop();
-        });
+        conn->SetIdleCallback(
+            [&reactor](chad::core::Connection*) { reactor.Stop(); });
 
         std::cout << "Connecting...\n";
         if (!conn->Connect(addresses[0].ip, addresses[0].is_ipv6)) {
@@ -84,12 +81,12 @@ void TestEndpoint(chad::core::Reactor& reactor,
         // Chrome headers are now auto-generated with proper ordering
         // and GREASE sec-ch-ua randomization. Pass empty list for defaults.
         conn->SendRequest(
-            "GET", path,
-            {},  // Chrome headers are auto-generated
+            "GET", path, {},  // Chrome headers are auto-generated
             [&label](const chad::core::Response& response) {
               std::cout << "\n=== " << label << " Response ===\n";
               std::cout << "Status: " << response.status_code << "\n";
-              std::cout << "Body length: " << response.body.size() << " bytes\n\n";
+              std::cout << "Body length: " << response.body.size()
+                        << " bytes\n\n";
               std::cout << "=== " << label << " Fingerprint Data ===\n";
               std::cout << response.body_string() << "\n";
             },
@@ -135,24 +132,25 @@ int main(int argc, char* argv[]) {
   tls_config.chrome_version = version;
   tls_config.verify_certificates = true;
   chad::tls::TlsContextFactory tls_factory(tls_config);
-  std::cout << "\nTLS context created for Chrome " << static_cast<int>(version) << "\n";
+  std::cout << "\nTLS context created for Chrome " << static_cast<int>(version)
+            << "\n";
 
   // Create DNS resolver
   chad::util::DnsResolver resolver(reactor.loop());
 
   // Test peet.ws
-  TestEndpoint(reactor, tls_factory, resolver,
-               "tls.peet.ws", "/api/all", "Peet.ws");
+  TestEndpoint(reactor, tls_factory, resolver, "tls.peet.ws", "/api/all",
+               "Peet.ws");
 
   // Test browserleaks
-  TestEndpoint(reactor, tls_factory, resolver,
-               "tls.browserleaks.com", "/tls?minify=1", "BrowserLeaks");
+  TestEndpoint(reactor, tls_factory, resolver, "tls.browserleaks.com",
+               "/tls?minify=1", "BrowserLeaks");
 
   // Test session resumption by making a second request to the same host
   std::cout << "\n=== Testing Session Resumption ===\n";
   std::cout << "Making second request to tls.peet.ws...\n";
-  TestEndpoint(reactor, tls_factory, resolver,
-               "tls.peet.ws", "/api/all", "Peet.ws (Resumption)");
+  TestEndpoint(reactor, tls_factory, resolver, "tls.peet.ws", "/api/all",
+               "Peet.ws (Resumption)");
 
   // Print DNS cache stats
   std::cout << "\n=== DNS Cache Stats ===\n";

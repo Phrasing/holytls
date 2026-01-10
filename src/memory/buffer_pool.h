@@ -15,9 +15,10 @@ namespace chad {
 namespace memory {
 
 // Buffer size classes optimized for network I/O
-inline constexpr size_t kSmallBufferSize = 4096;     // 4KB - headers, small responses
-inline constexpr size_t kMediumBufferSize = 16384;   // 16KB - TLS records
-inline constexpr size_t kLargeBufferSize = 65536;    // 64KB - large responses
+inline constexpr size_t kSmallBufferSize =
+    4096;  // 4KB - headers, small responses
+inline constexpr size_t kMediumBufferSize = 16384;  // 16KB - TLS records
+inline constexpr size_t kLargeBufferSize = 65536;   // 64KB - large responses
 
 // Forward declaration
 class BufferPool;
@@ -39,9 +40,9 @@ class BufferPool {
  public:
   // Configuration for pool sizes
   struct Config {
-    size_t small_count = 256;   // Number of small buffers
-    size_t medium_count = 64;   // Number of medium buffers
-    size_t large_count = 16;    // Number of large buffers
+    size_t small_count = 256;  // Number of small buffers
+    size_t medium_count = 64;  // Number of medium buffers
+    size_t large_count = 16;   // Number of large buffers
   };
 
   BufferPool();

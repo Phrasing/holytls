@@ -10,8 +10,7 @@ namespace chad {
 namespace util {
 
 std::string ParsedUrl::Authority() const {
-  if ((scheme == "https" && port == 443) ||
-      (scheme == "http" && port == 80)) {
+  if ((scheme == "https" && port == 443) || (scheme == "http" && port == 80)) {
     return host;
   }
   return host + ":" + std::to_string(port);

@@ -19,84 +19,85 @@
 #include <string>
 
 #ifdef _WIN32
-  // These MUST be defined before including any Windows headers
-  // They are also set via target_compile_definitions in CMakeLists.txt
-  // but we define them here as a fallback for any edge cases
-  #ifndef WIN32_LEAN_AND_MEAN
-    #define WIN32_LEAN_AND_MEAN
-  #endif
-  #ifndef NOMINMAX
-    #define NOMINMAX
-  #endif
-  #ifndef NOGDI
-    #define NOGDI
-  #endif
+// These MUST be defined before including any Windows headers
+// They are also set via target_compile_definitions in CMakeLists.txt
+// but we define them here as a fallback for any edge cases
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef NOGDI
+#define NOGDI
+#endif
 
-  // Must include winsock2.h BEFORE windows.h
-  #include <winsock2.h>
-  #include <ws2tcpip.h>
-  #include <windows.h>
+// Must include winsock2.h BEFORE windows.h
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <windows.h>
 
-  // Windows doesn't define ssize_t
-  #include <BaseTsd.h>
-  using ssize_t = SSIZE_T;
+// Windows doesn't define ssize_t
+#include <BaseTsd.h>
+using ssize_t = SSIZE_T;
 
-  // CRITICAL: Undefine ALL conflicting Windows macros AFTER all Windows headers
-  // These macros from wincrypt.h conflict with BoringSSL types
-  #ifdef X509_NAME
-    #undef X509_NAME
-  #endif
-  #ifdef X509_EXTENSIONS
-    #undef X509_EXTENSIONS
-  #endif
-  #ifdef X509_CERT_PAIR
-    #undef X509_CERT_PAIR
-  #endif
-  #ifdef PKCS7_SIGNER_INFO
-    #undef PKCS7_SIGNER_INFO
-  #endif
-  #ifdef OCSP_REQUEST
-    #undef OCSP_REQUEST
-  #endif
-  #ifdef OCSP_RESPONSE
-    #undef OCSP_RESPONSE
-  #endif
+// CRITICAL: Undefine ALL conflicting Windows macros AFTER all Windows headers
+// These macros from wincrypt.h conflict with BoringSSL types
+#ifdef X509_NAME
+#undef X509_NAME
+#endif
+#ifdef X509_EXTENSIONS
+#undef X509_EXTENSIONS
+#endif
+#ifdef X509_CERT_PAIR
+#undef X509_CERT_PAIR
+#endif
+#ifdef PKCS7_SIGNER_INFO
+#undef PKCS7_SIGNER_INFO
+#endif
+#ifdef OCSP_REQUEST
+#undef OCSP_REQUEST
+#endif
+#ifdef OCSP_RESPONSE
+#undef OCSP_RESPONSE
+#endif
 
-  // Undefine min/max macros that conflict with std::min/std::max
-  #ifdef min
-    #undef min
-  #endif
-  #ifdef max
-    #undef max
-  #endif
+// Undefine min/max macros that conflict with std::min/std::max
+#ifdef min
+#undef min
+#endif
+#ifdef max
+#undef max
+#endif
 
-  // Error code macros
-  #define CHAD_SOCKET_ERROR_CODE WSAGetLastError()
-  #define CHAD_WOULD_BLOCK_ERROR WSAEWOULDBLOCK
-  #define CHAD_IN_PROGRESS_ERROR WSAEWOULDBLOCK
-  #define CHAD_INTERRUPTED_ERROR WSAEINTR
+// Error code macros
+#define CHAD_SOCKET_ERROR_CODE WSAGetLastError()
+#define CHAD_WOULD_BLOCK_ERROR WSAEWOULDBLOCK
+#define CHAD_IN_PROGRESS_ERROR WSAEWOULDBLOCK
+#define CHAD_INTERRUPTED_ERROR WSAEINTR
 
 #else  // Unix/Linux/macOS
-  #include <arpa/inet.h>
-  #include <errno.h>
-  #include <fcntl.h>
-  #include <netinet/in.h>
-  #include <netinet/tcp.h>
-  #include <sys/socket.h>
-  #include <unistd.h>
+#include <arpa/inet.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
-  // Error code macros
-  #define CHAD_SOCKET_ERROR_CODE errno
-  #define CHAD_WOULD_BLOCK_ERROR EWOULDBLOCK
-  #define CHAD_IN_PROGRESS_ERROR EINPROGRESS
-  #define CHAD_INTERRUPTED_ERROR EINTR
+// Error code macros
+#define CHAD_SOCKET_ERROR_CODE errno
+#define CHAD_WOULD_BLOCK_ERROR EWOULDBLOCK
+#define CHAD_IN_PROGRESS_ERROR EINPROGRESS
+#define CHAD_INTERRUPTED_ERROR EINTR
 
 #endif
 
 namespace chad {
 namespace util {
 
-// Socket type abstraction - in namespace so it can be referenced as util::socket_t
+// Socket type abstraction - in namespace so it can be referenced as
+// util::socket_t
 #ifdef _WIN32
 using socket_t = SOCKET;
 constexpr socket_t kInvalidSocket = INVALID_SOCKET;

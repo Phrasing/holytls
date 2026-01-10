@@ -9,8 +9,7 @@ namespace chad {
 namespace pool {
 
 HostPool::HostPool(const std::string& host, uint16_t port,
-                   const HostPoolConfig& config,
-                   core::Reactor* reactor,
+                   const HostPoolConfig& config, core::Reactor* reactor,
                    tls::TlsContextFactory* tls_factory)
     : host_(host),
       port_(port),
@@ -79,8 +78,8 @@ bool HostPool::CreateConnection(const std::string& resolved_ip, bool ipv6) {
   }
 
   // Create the connection
-  auto connection = std::make_unique<core::Connection>(
-      reactor_, tls_factory_, host_, port_);
+  auto connection =
+      std::make_unique<core::Connection>(reactor_, tls_factory_, host_, port_);
 
   // Create pooled connection wrapper
   auto pooled = std::make_unique<PooledConnection>();
@@ -92,11 +91,10 @@ bool HostPool::CreateConnection(const std::string& resolved_ip, bool ipv6) {
 
   // Set up idle callback to track when streams complete
   PooledConnection* raw_ptr = pooled.get();
-  pooled->connection->SetIdleCallback(
-      [this, raw_ptr](core::Connection*) {
-        // Connection is now idle - update last used time
-        raw_ptr->last_used_ms = reactor_->now_ms();
-      });
+  pooled->connection->SetIdleCallback([this, raw_ptr](core::Connection*) {
+    // Connection is now idle - update last used time
+    raw_ptr->last_used_ms = reactor_->now_ms();
+  });
 
   // Start the connection
   if (!pooled->connection->Connect(resolved_ip, ipv6)) {
@@ -195,8 +193,8 @@ PooledConnection* HostPool::FindConnectionWithCapacity() {
 PooledConnection* HostPool::FindIdleConnection() {
   // Find a fully idle connection (for reuse after becoming idle)
   for (auto& pc : connections_) {
-    if (pc && pc->connection && pc->connection->IsConnected() &&
-        pc->IsIdle() && !pc->marked_for_removal) {
+    if (pc && pc->connection && pc->connection->IsConnected() && pc->IsIdle() &&
+        !pc->marked_for_removal) {
       return pc.get();
     }
   }

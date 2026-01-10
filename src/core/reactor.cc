@@ -51,7 +51,8 @@ Reactor::~Reactor() {
     PollData* poll_data = fd_table_.Get(static_cast<int>(fd));
     if (poll_data) {
       uv_poll_stop(&poll_data->handle);
-      uv_close(reinterpret_cast<uv_handle_t*>(&poll_data->handle), OnCloseCallback);
+      uv_close(reinterpret_cast<uv_handle_t*>(&poll_data->handle),
+               OnCloseCallback);
     }
   }
   fd_table_.Clear();
@@ -63,7 +64,8 @@ Reactor::~Reactor() {
   // Close the async handle
   uv_close(reinterpret_cast<uv_handle_t*>(&async_), nullptr);
 
-  // Run the loop one more time to process close callbacks (including PollData deallocation)
+  // Run the loop one more time to process close callbacks (including PollData
+  // deallocation)
   uv_run(loop_, UV_RUN_DEFAULT);
 
   // Close and free the loop
@@ -154,9 +156,7 @@ bool Reactor::Remove(EventHandler* handler) {
   return true;
 }
 
-bool Reactor::Contains(int fd) const {
-  return fd_table_.Contains(fd);
-}
+bool Reactor::Contains(int fd) const { return fd_table_.Contains(fd); }
 
 void Reactor::Run() {
   running_.store(true, std::memory_order_release);
@@ -180,7 +180,8 @@ void Reactor::RunFor(int timeout_ms) {
   running_.store(true, std::memory_order_release);
 
   // Start a one-shot timer
-  uv_timer_start(&run_timer_, OnTimerCallback, static_cast<uint64_t>(timeout_ms), 0);
+  uv_timer_start(&run_timer_, OnTimerCallback,
+                 static_cast<uint64_t>(timeout_ms), 0);
 
   while (running_.load(std::memory_order_acquire)) {
     UpdateTime();
@@ -278,7 +279,8 @@ void Reactor::OnAsyncCallback(uv_async_t* handle) {
 }
 
 void Reactor::OnCloseCallback(uv_handle_t* handle) {
-  // Deallocate PollData after uv_close completes (must be deferred, not immediate)
+  // Deallocate PollData after uv_close completes (must be deferred, not
+  // immediate)
   auto* poll_data = static_cast<PollData*>(handle->data);
   if (poll_data) {
     g_poll_data_allocator.Deallocate(poll_data);

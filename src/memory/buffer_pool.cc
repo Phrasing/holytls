@@ -151,18 +151,15 @@ BufferPool::Stats BufferPool::GetStats() const {
   Stats stats;
 
   {
-    std::lock_guard<std::mutex> lock(
-        const_cast<std::mutex&>(small_.mutex));
+    std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(small_.mutex));
     stats.small_available = small_.free_list.size();
   }
   {
-    std::lock_guard<std::mutex> lock(
-        const_cast<std::mutex&>(medium_.mutex));
+    std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(medium_.mutex));
     stats.medium_available = medium_.free_list.size();
   }
   {
-    std::lock_guard<std::mutex> lock(
-        const_cast<std::mutex&>(large_.mutex));
+    std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(large_.mutex));
     stats.large_available = large_.free_list.size();
   }
 

@@ -24,14 +24,15 @@ namespace {
 // Configuration from command line
 struct StressConfig {
   std::string url;
-  std::vector<std::string> urls;  // Multiple URLs for multi-reactor distribution
+  std::vector<std::string>
+      urls;  // Multiple URLs for multi-reactor distribution
   size_t num_connections = 1000;
   size_t target_rps = 0;  // 0 = unlimited
   size_t duration_sec = 60;
   size_t warmup_sec = 5;
-  size_t num_threads = 0;  // 0 = auto-detect
+  size_t num_threads = 0;        // 0 = auto-detect
   bool single_threaded = false;  // Run like Node.js (single event loop)
-  bool insecure = false;  // Skip TLS certificate verification
+  bool insecure = false;         // Skip TLS certificate verification
   bool verbose = false;
 };
 
@@ -39,12 +40,12 @@ struct StressConfig {
 // <1ms, <5ms, <10ms, <50ms, <100ms, <500ms, >=500ms
 constexpr size_t kNumLatencyBuckets = 7;
 constexpr uint64_t kLatencyBucketLimits[kNumLatencyBuckets] = {
-    1000,    // <1ms
-    5000,    // <5ms
-    10000,   // <10ms
-    50000,   // <50ms
-    100000,  // <100ms
-    500000,  // <500ms
+    1000,       // <1ms
+    5000,       // <5ms
+    10000,      // <10ms
+    50000,      // <50ms
+    100000,     // <100ms
+    500000,     // <500ms
     UINT64_MAX  // >=500ms
 };
 
@@ -136,26 +137,32 @@ ParsedUrl ParseUrl(const std::string& url) {
 }
 
 void PrintUsage(const char* prog) {
-  std::fprintf(stderr,
-               "Usage: %s [options]\n"
-               "\n"
-               "Options:\n"
-               "  --url URL          Target URL (required unless --urls is used)\n"
-               "  --urls URL1,URL2   Comma-separated URLs for multi-reactor distribution\n"
-               "  --connections N    Number of concurrent connections (default: 1000)\n"
-               "  --rps N            Target requests per second, 0=unlimited (default: 0)\n"
-               "  --duration N       Test duration in seconds (default: 60)\n"
-               "  --warmup N         Warmup period in seconds (default: 5)\n"
-               "  --threads N        Number of worker threads, 0=auto (default: 0)\n"
-               "  --single-threaded  Run with single reactor thread (like Node.js)\n"
-               "  --insecure         Skip TLS certificate verification (for self-signed certs)\n"
-               "  --verbose          Print verbose output\n"
-               "  --help             Show this help\n"
-               "\n"
-               "Examples:\n"
-               "  %s --url https://httpbin.org/get --connections 100 --duration 30\n"
-               "  %s --urls https://localhost:8443/test.json,https://localhost:8444/test.json --insecure\n",
-               prog, prog, prog);
+  std::fprintf(
+      stderr,
+      "Usage: %s [options]\n"
+      "\n"
+      "Options:\n"
+      "  --url URL          Target URL (required unless --urls is used)\n"
+      "  --urls URL1,URL2   Comma-separated URLs for multi-reactor "
+      "distribution\n"
+      "  --connections N    Number of concurrent connections (default: 1000)\n"
+      "  --rps N            Target requests per second, 0=unlimited (default: "
+      "0)\n"
+      "  --duration N       Test duration in seconds (default: 60)\n"
+      "  --warmup N         Warmup period in seconds (default: 5)\n"
+      "  --threads N        Number of worker threads, 0=auto (default: 0)\n"
+      "  --single-threaded  Run with single reactor thread (like Node.js)\n"
+      "  --insecure         Skip TLS certificate verification (for self-signed "
+      "certs)\n"
+      "  --verbose          Print verbose output\n"
+      "  --help             Show this help\n"
+      "\n"
+      "Examples:\n"
+      "  %s --url https://httpbin.org/get --connections 100 --duration 30\n"
+      "  %s --urls "
+      "https://localhost:8443/test.json,https://localhost:8444/test.json "
+      "--insecure\n",
+      prog, prog, prog);
 }
 
 // Parse comma-separated URLs
@@ -229,10 +236,12 @@ bool ParseArgs(int argc, char* argv[], StressConfig* config) {
 
 void PrintLiveStats(size_t elapsed_sec, const StressMetrics& metrics,
                     uint64_t rps) {
-  uint64_t completed = metrics.requests_completed.load(std::memory_order_relaxed);
+  uint64_t completed =
+      metrics.requests_completed.load(std::memory_order_relaxed);
   uint64_t failed = metrics.requests_failed.load(std::memory_order_relaxed);
   uint64_t sent = metrics.requests_sent.load(std::memory_order_relaxed);
-  uint64_t in_flight = (sent > completed + failed) ? (sent - completed - failed) : 0;
+  uint64_t in_flight =
+      (sent > completed + failed) ? (sent - completed - failed) : 0;
 
   // Calculate P99 from histogram
   uint64_t total = 0;
@@ -247,7 +256,7 @@ void PrintLiveStats(size_t elapsed_sec, const StressMetrics& metrics,
   for (size_t i = 0; i < kNumLatencyBuckets; ++i) {
     cumulative += metrics.latency_buckets[i].load(std::memory_order_relaxed);
     if (cumulative >= p99_target) {
-      static const char* labels[] = {"<1ms", "<5ms", "<10ms", "<50ms",
+      static const char* labels[] = {"<1ms",   "<5ms",   "<10ms", "<50ms",
                                      "<100ms", "<500ms", ">500ms"};
       p99_label = labels[i];
       break;
@@ -255,8 +264,7 @@ void PrintLiveStats(size_t elapsed_sec, const StressMetrics& metrics,
   }
 
   std::printf("[T+%3zus] RPS: %7" PRIu64 " | InFlight: %5" PRIu64
-              " | Complete: %8" PRIu64 " | Failed: %5" PRIu64
-              " | P99: %s\n",
+              " | Complete: %8" PRIu64 " | Failed: %5" PRIu64 " | P99: %s\n",
               elapsed_sec, rps, in_flight, completed, failed, p99_label);
   std::fflush(stdout);
 }
@@ -272,16 +280,14 @@ double CalculatePercentile(std::vector<uint64_t>& samples, double percentile) {
 
 void PrintFinalReport(const StressConfig& config, const StressMetrics& metrics,
                       std::chrono::steady_clock::duration test_duration) {
-  double duration_sec =
-      std::chrono::duration<double>(test_duration).count();
+  double duration_sec = std::chrono::duration<double>(test_duration).count();
 
   uint64_t completed = metrics.requests_completed.load();
   uint64_t failed = metrics.requests_failed.load();
   uint64_t bytes = metrics.bytes_received.load();
 
-  double success_rate = completed > 0
-                            ? (100.0 * completed / (completed + failed))
-                            : 0.0;
+  double success_rate =
+      completed > 0 ? (100.0 * completed / (completed + failed)) : 0.0;
   double avg_rps = completed / duration_sec;
 
   // Get peak RPS
@@ -331,17 +337,15 @@ void PrintFinalReport(const StressConfig& config, const StressMetrics& metrics,
 
   // Print histogram
   std::printf("Latency Distribution:\n");
-  static const char* labels[] = {"  <1ms  ", "  <5ms  ", "  <10ms ",
-                                 "  <50ms ", "  <100ms", "  <500ms", "  >=500ms"};
+  static const char* labels[] = {"  <1ms  ", "  <5ms  ", "  <10ms ", "  <50ms ",
+                                 "  <100ms", "  <500ms", "  >=500ms"};
   uint64_t histogram_total = 0;
   for (size_t i = 0; i < kNumLatencyBuckets; ++i) {
     histogram_total += metrics.latency_buckets[i].load();
   }
   for (size_t i = 0; i < kNumLatencyBuckets; ++i) {
     uint64_t count = metrics.latency_buckets[i].load();
-    double pct = histogram_total > 0
-                     ? (100.0 * count / histogram_total)
-                     : 0.0;
+    double pct = histogram_total > 0 ? (100.0 * count / histogram_total) : 0.0;
     int bar_len = static_cast<int>(pct / 2);  // 50 chars = 100%
     std::printf("  %s: %8" PRIu64 " (%5.1f%%) ", labels[i], count, pct);
     for (int j = 0; j < bar_len; ++j) std::printf("#");
@@ -358,7 +362,8 @@ class StressTest {
     if (config_.urls.size() == 1) {
       std::printf("URL:         %s\n", config_.urls[0].c_str());
     } else {
-      std::printf("URLs:        %zu targets (multi-reactor mode)\n", config_.urls.size());
+      std::printf("URLs:        %zu targets (multi-reactor mode)\n",
+                  config_.urls.size());
       for (size_t i = 0; i < config_.urls.size(); ++i) {
         std::printf("  [%zu] %s\n", i, config_.urls[i].c_str());
       }
@@ -367,8 +372,9 @@ class StressTest {
     std::printf("Duration:    %zus (+ %zus warmup)\n", config_.duration_sec,
                 config_.warmup_sec);
     std::printf("Target RPS:  %s\n",
-                config_.target_rps == 0 ? "unlimited"
-                                        : std::to_string(config_.target_rps).c_str());
+                config_.target_rps == 0
+                    ? "unlimited"
+                    : std::to_string(config_.target_rps).c_str());
     if (config_.insecure) {
       std::printf("TLS Verify:  DISABLED (insecure mode)\n");
     }
@@ -391,8 +397,9 @@ class StressTest {
     client_ = std::make_unique<chad::HttpClient>(client_config);
 
     // Warmup phase
-    std::printf("[Warmup] Establishing connections and warming up for %zus...\n",
-                config_.warmup_sec);
+    std::printf(
+        "[Warmup] Establishing connections and warming up for %zus...\n",
+        config_.warmup_sec);
 
     warmup_phase_ = true;
     auto warmup_start = std::chrono::steady_clock::now();
@@ -411,7 +418,8 @@ class StressTest {
     }
 
     uint64_t warmup_sent = metrics_.requests_sent.load();
-    uint64_t warmup_done = metrics_.requests_completed.load() + metrics_.requests_failed.load();
+    uint64_t warmup_done =
+        metrics_.requests_completed.load() + metrics_.requests_failed.load();
     std::printf("[Warmup] Complete. In-flight requests: %" PRIu64 "\n",
                 warmup_sent > warmup_done ? warmup_sent - warmup_done : 0);
     std::printf("\n");
@@ -443,11 +451,15 @@ class StressTest {
       client_->RunOnce();
 
       // Send more requests to maintain concurrency
-      // Target: num_connections in-flight requests (HTTP/2 multiplexes on fewer TCP connections)
+      // Target: num_connections in-flight requests (HTTP/2 multiplexes on fewer
+      // TCP connections)
       uint64_t sent = metrics_.requests_sent.load(std::memory_order_relaxed);
-      uint64_t completed = metrics_.requests_completed.load(std::memory_order_relaxed);
-      uint64_t failed = metrics_.requests_failed.load(std::memory_order_relaxed);
-      size_t in_flight = (sent > completed + failed) ? (sent - completed - failed) : 0;
+      uint64_t completed =
+          metrics_.requests_completed.load(std::memory_order_relaxed);
+      uint64_t failed =
+          metrics_.requests_failed.load(std::memory_order_relaxed);
+      size_t in_flight =
+          (sent > completed + failed) ? (sent - completed - failed) : 0;
 
       // Only send new requests if below target and not too many failures
       size_t target_in_flight = config_.num_connections;
@@ -511,7 +523,8 @@ class StressTest {
     auto start_time = std::chrono::steady_clock::now();
 
     // Round-robin across URLs for multi-reactor distribution
-    size_t url_idx = url_index_.fetch_add(1, std::memory_order_relaxed) % config_.urls.size();
+    size_t url_idx = url_index_.fetch_add(1, std::memory_order_relaxed) %
+                     config_.urls.size();
     const std::string& url = config_.urls[url_idx];
 
     chad::Request req;
@@ -519,35 +532,34 @@ class StressTest {
 
     metrics_.requests_sent.fetch_add(1, std::memory_order_relaxed);
 
-    client_->SendAsync(
-        std::move(req),
-        [this, start_time](chad::Response response, chad::Error error) {
-          auto end_time = std::chrono::steady_clock::now();
-          uint64_t latency_us =
-              std::chrono::duration_cast<std::chrono::microseconds>(end_time -
-                                                                    start_time)
-                  .count();
+    client_->SendAsync(std::move(req), [this, start_time](
+                                           chad::Response response,
+                                           chad::Error error) {
+      auto end_time = std::chrono::steady_clock::now();
+      uint64_t latency_us =
+          std::chrono::duration_cast<std::chrono::microseconds>(end_time -
+                                                                start_time)
+              .count();
 
-          if (!error) {
-            metrics_.requests_completed.fetch_add(1, std::memory_order_relaxed);
-            metrics_.bytes_received.fetch_add(response.body().size(),
-                                              std::memory_order_relaxed);
-            if (!warmup_phase_) {
-              metrics_.RecordLatency(latency_us);
-            }
-            // Send another request to maintain concurrency (only on success)
-            if (running_) {
-              SendRequest();
-            }
-          } else {
-            metrics_.requests_failed.fetch_add(1, std::memory_order_relaxed);
-            if (config_.verbose) {
-              std::fprintf(stderr, "Request failed: %s\n",
-                           error.message().c_str());
-            }
-            // Don't send new request on failure - let main loop handle pacing
-          }
-        });
+      if (!error) {
+        metrics_.requests_completed.fetch_add(1, std::memory_order_relaxed);
+        metrics_.bytes_received.fetch_add(response.body().size(),
+                                          std::memory_order_relaxed);
+        if (!warmup_phase_) {
+          metrics_.RecordLatency(latency_us);
+        }
+        // Send another request to maintain concurrency (only on success)
+        if (running_) {
+          SendRequest();
+        }
+      } else {
+        metrics_.requests_failed.fetch_add(1, std::memory_order_relaxed);
+        if (config_.verbose) {
+          std::fprintf(stderr, "Request failed: %s\n", error.message().c_str());
+        }
+        // Don't send new request on failure - let main loop handle pacing
+      }
+    });
   }
 
   StressConfig config_;

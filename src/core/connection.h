@@ -23,12 +23,12 @@ namespace core {
 
 // Connection state machine
 enum class ConnectionState {
-  kConnecting,     // TCP connect in progress
-  kTlsHandshake,   // TLS handshake in progress
-  kConnected,      // Ready for HTTP/2 requests
-  kClosing,        // Shutdown in progress
-  kClosed,         // Connection closed
-  kError,          // Error occurred
+  kConnecting,    // TCP connect in progress
+  kTlsHandshake,  // TLS handshake in progress
+  kConnected,     // Ready for HTTP/2 requests
+  kClosing,       // Shutdown in progress
+  kClosed,        // Connection closed
+  kError,         // Error occurred
 };
 
 // Response data
@@ -76,21 +76,26 @@ class Connection : public EventHandler {
   bool Connect(const std::string& ip, bool ipv6 = false);
 
   // Send a GET request
-  void SendRequest(const std::string& method, const std::string& path,
-                   const std::vector<std::pair<std::string, std::string>>& headers,
-                   ResponseCallback on_response, ErrorCallback on_error = nullptr);
+  void SendRequest(
+      const std::string& method, const std::string& path,
+      const std::vector<std::pair<std::string, std::string>>& headers,
+      ResponseCallback on_response, ErrorCallback on_error = nullptr);
 
   // Close the connection
   void Close();
 
   // Set callback for when connection becomes idle (no active requests)
-  void SetIdleCallback(IdleCallback callback) { idle_callback_ = std::move(callback); }
+  void SetIdleCallback(IdleCallback callback) {
+    idle_callback_ = std::move(callback);
+  }
 
   // State accessors
   ConnectionState state() const { return state_; }
   bool IsConnected() const { return state_ == ConnectionState::kConnected; }
   bool IsClosed() const { return state_ == ConnectionState::kClosed; }
-  bool IsIdle() const { return active_requests_.empty() && pending_requests_.empty(); }
+  bool IsIdle() const {
+    return active_requests_.empty() && pending_requests_.empty();
+  }
 
   // Stream capacity (for HTTP/2 multiplexing)
   size_t ActiveStreamCount() const { return active_requests_.size(); }

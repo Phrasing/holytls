@@ -17,23 +17,23 @@
 
 // Platform-specific iovec definition
 #ifdef _WIN32
-  namespace chad {
-  namespace core {
-  // Windows uses WSABUF for scatter-gather I/O
-  // Note: We define our own iovec_t for portability instead of using WSABUF
-  struct iovec_t {
-    void* iov_base;
-    size_t iov_len;
-  };
-  }  // namespace core
-  }  // namespace chad
+namespace chad {
+namespace core {
+// Windows uses WSABUF for scatter-gather I/O
+// Note: We define our own iovec_t for portability instead of using WSABUF
+struct iovec_t {
+  void* iov_base;
+  size_t iov_len;
+};
+}  // namespace core
+}  // namespace chad
 #else
-  #include <sys/uio.h>
-  namespace chad {
-  namespace core {
-  using iovec_t = struct iovec;
-  }  // namespace core
-  }  // namespace chad
+#include <sys/uio.h>
+namespace chad {
+namespace core {
+using iovec_t = struct iovec;
+}  // namespace core
+}  // namespace chad
 #endif
 
 namespace chad {

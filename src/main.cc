@@ -28,8 +28,8 @@ void PrintChromeProfile(chad::ChromeVersion version) {
 
   std::cout << "TLS Configuration:\n";
   std::cout << "  User-Agent: " << tls_profile.user_agent << "\n";
-  std::cout << "  GREASE enabled: " << (tls_profile.grease_enabled ? "yes" : "no")
-            << "\n";
+  std::cout << "  GREASE enabled: "
+            << (tls_profile.grease_enabled ? "yes" : "no") << "\n";
   std::cout << "  Extension permutation: "
             << (tls_profile.permute_extensions ? "yes" : "no") << "\n";
   std::cout << "  Record size limit: " << tls_profile.record_size_limit << "\n";
@@ -44,8 +44,8 @@ void PrintChromeProfile(chad::ChromeVersion version) {
               << std::dec << "\n";
   }
   if (tls_profile.cipher_suites.size() > 5) {
-    std::cout << "    ... and "
-              << (tls_profile.cipher_suites.size() - 5) << " more\n";
+    std::cout << "    ... and " << (tls_profile.cipher_suites.size() - 5)
+              << " more\n";
   }
 
   std::cout << "\n  Supported groups:\n";
@@ -85,9 +85,10 @@ void PrintChromeProfile(chad::ChromeVersion version) {
             << "\n";
   std::cout << "  MAX_HEADER_LIST_SIZE: "
             << h2_profile.settings.max_header_list_size << "\n";
-  std::cout << "  Connection WINDOW_UPDATE: " << h2_profile.connection_window_update
-            << "\n";
-  std::cout << "  Pseudo-header order: :method :authority :scheme :path (MASP)\n";
+  std::cout << "  Connection WINDOW_UPDATE: "
+            << h2_profile.connection_window_update << "\n";
+  std::cout
+      << "  Pseudo-header order: :method :authority :scheme :path (MASP)\n";
 }
 
 void DemoReactor() {
@@ -144,7 +145,8 @@ int main(int argc, char* argv[]) {
   std::cout << "\n=== Build Complete ===\n";
   std::cout << "The library is ready for use. Key features:\n";
   std::cout << "  - TLS fingerprint impersonation (JA3/JA4)\n";
-  std::cout << "  - HTTP/2 fingerprint impersonation (SETTINGS, header order)\n";
+  std::cout
+      << "  - HTTP/2 fingerprint impersonation (SETTINGS, header order)\n";
   std::cout << "  - High-performance epoll reactor\n";
   std::cout << "  - Connection pooling with HTTP/2 multiplexing\n";
   std::cout << "  - Zero-copy I/O buffers\n";

@@ -75,8 +75,8 @@ struct PoolConfig {
   size_t max_total_connections = 256;
 
   // Timeouts
-  std::chrono::milliseconds idle_timeout{300000};     // 5 minutes
-  std::chrono::milliseconds connect_timeout{30000};   // 30 seconds
+  std::chrono::milliseconds idle_timeout{300000};    // 5 minutes
+  std::chrono::milliseconds connect_timeout{30000};  // 30 seconds
 
   // HTTP/2 multiplexing
   bool enable_multiplexing = true;

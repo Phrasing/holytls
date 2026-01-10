@@ -47,15 +47,14 @@ struct SessionEntry {
   // Check if session has expired based on lifetime hint
   bool IsExpired() const {
     auto now = std::chrono::steady_clock::now();
-    auto age = std::chrono::duration_cast<std::chrono::seconds>(
-        now - receipt_time).count();
+    auto age =
+        std::chrono::duration_cast<std::chrono::seconds>(now - receipt_time)
+            .count();
     return age >= static_cast<int64_t>(lifetime_hint_seconds);
   }
 
   // Check if this session supports 0-RTT early data
-  bool SupportsEarlyData() const {
-    return max_early_data_size > 0;
-  }
+  bool SupportsEarlyData() const { return max_early_data_size > 0; }
 };
 
 // Thread-safe TLS session cache with LRU eviction.

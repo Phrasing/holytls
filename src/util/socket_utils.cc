@@ -19,13 +19,13 @@ socket_t CreateTcpSocket(bool ipv6) {
     return kInvalidSocket;
   }
 #else
-  // Unix: try SOCK_NONBLOCK and SOCK_CLOEXEC flags if available
-  #if defined(SOCK_NONBLOCK) && defined(SOCK_CLOEXEC)
-    sock = socket(domain, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
-    if (sock >= 0) {
-      return sock;  // Already configured
-    }
-  #endif
+// Unix: try SOCK_NONBLOCK and SOCK_CLOEXEC flags if available
+#if defined(SOCK_NONBLOCK) && defined(SOCK_CLOEXEC)
+  sock = socket(domain, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+  if (sock >= 0) {
+    return sock;  // Already configured
+  }
+#endif
   // Fallback: create socket then set options
   sock = socket(domain, SOCK_STREAM, 0);
   if (sock < 0) {
@@ -34,7 +34,8 @@ socket_t CreateTcpSocket(bool ipv6) {
 #endif
 
   // Set non-blocking mode (required for async connect)
-  // Note: libuv's uv_poll_init_socket() also sets FIONBIO, but we set it explicitly
+  // Note: libuv's uv_poll_init_socket() also sets FIONBIO, but we set it
+  // explicitly
   if (!SetNonBlocking(sock)) {
     CloseSocket(sock);
     return kInvalidSocket;
@@ -70,7 +71,8 @@ void ConfigureSocket(socket_t sock) {
              reinterpret_cast<const char*>(&bufsize), sizeof(bufsize));
 }
 
-int ConnectNonBlocking(socket_t sock, const std::string& ip, uint16_t port, bool ipv6) {
+int ConnectNonBlocking(socket_t sock, const std::string& ip, uint16_t port,
+                       bool ipv6) {
   int ret;
 
   if (ipv6) {
@@ -81,7 +83,8 @@ int ConnectNonBlocking(socket_t sock, const std::string& ip, uint16_t port, bool
     if (inet_pton(AF_INET6, ip.c_str(), &addr.sin6_addr) != 1) {
       return -1;
     }
-    ret = connect(sock, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr));
+    ret =
+        connect(sock, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr));
   } else {
     struct sockaddr_in addr;
     std::memset(&addr, 0, sizeof(addr));
@@ -90,7 +93,8 @@ int ConnectNonBlocking(socket_t sock, const std::string& ip, uint16_t port, bool
     if (inet_pton(AF_INET, ip.c_str(), &addr.sin_addr) != 1) {
       return -1;
     }
-    ret = connect(sock, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr));
+    ret =
+        connect(sock, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr));
   }
 
   if (ret == 0) {
@@ -108,8 +112,8 @@ int ConnectNonBlocking(socket_t sock, const std::string& ip, uint16_t port, bool
 bool IsConnected(socket_t sock) {
   int error = 0;
   socklen_t len = sizeof(error);
-  if (getsockopt(sock, SOL_SOCKET, SO_ERROR,
-                 reinterpret_cast<char*>(&error), &len) < 0) {
+  if (getsockopt(sock, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&error),
+                 &len) < 0) {
     return false;
   }
   if (error != 0) {

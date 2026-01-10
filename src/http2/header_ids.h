@@ -11,56 +11,57 @@ namespace chad {
 namespace http2 {
 
 // Common HTTP header names interned as enum for zero-allocation lookup.
-// Values 0-254 are known headers, 255 (kCustom) indicates name stored in buffer.
+// Values 0-254 are known headers, 255 (kCustom) indicates name stored in
+// buffer.
 enum class HeaderId : uint8_t {
   // General headers
-  kCacheControl = 0,      // cache-control
-  kConnection,            // connection
-  kDate,                  // date
-  kKeepAlive,             // keep-alive
-  kVia,                   // via
-  kWarning,               // warning
+  kCacheControl = 0,  // cache-control
+  kConnection,        // connection
+  kDate,              // date
+  kKeepAlive,         // keep-alive
+  kVia,               // via
+  kWarning,           // warning
 
   // Request headers
-  kAccept,                // accept
-  kAcceptCharset,         // accept-charset
-  kAcceptEncoding,        // accept-encoding
-  kAcceptLanguage,        // accept-language
-  kAuthorization,         // authorization
-  kCookie,                // cookie
-  kHost,                  // host
-  kIfMatch,               // if-match
-  kIfModifiedSince,       // if-modified-since
-  kIfNoneMatch,           // if-none-match
-  kIfRange,               // if-range
-  kIfUnmodifiedSince,     // if-unmodified-since
-  kOrigin,                // origin
-  kRange,                 // range
-  kReferer,               // referer
-  kUserAgent,             // user-agent
+  kAccept,             // accept
+  kAcceptCharset,      // accept-charset
+  kAcceptEncoding,     // accept-encoding
+  kAcceptLanguage,     // accept-language
+  kAuthorization,      // authorization
+  kCookie,             // cookie
+  kHost,               // host
+  kIfMatch,            // if-match
+  kIfModifiedSince,    // if-modified-since
+  kIfNoneMatch,        // if-none-match
+  kIfRange,            // if-range
+  kIfUnmodifiedSince,  // if-unmodified-since
+  kOrigin,             // origin
+  kRange,              // range
+  kReferer,            // referer
+  kUserAgent,          // user-agent
 
   // Response headers
-  kAcceptRanges,          // accept-ranges
-  kAge,                   // age
-  kEtag,                  // etag
-  kExpires,               // expires
-  kLastModified,          // last-modified
-  kLocation,              // location
-  kRetryAfter,            // retry-after
-  kServer,                // server
-  kSetCookie,             // set-cookie
-  kVary,                  // vary
-  kWwwAuthenticate,       // www-authenticate
+  kAcceptRanges,     // accept-ranges
+  kAge,              // age
+  kEtag,             // etag
+  kExpires,          // expires
+  kLastModified,     // last-modified
+  kLocation,         // location
+  kRetryAfter,       // retry-after
+  kServer,           // server
+  kSetCookie,        // set-cookie
+  kVary,             // vary
+  kWwwAuthenticate,  // www-authenticate
 
   // Entity headers
-  kAllow,                 // allow
-  kContentDisposition,    // content-disposition
-  kContentEncoding,       // content-encoding
-  kContentLanguage,       // content-language
-  kContentLength,         // content-length
-  kContentLocation,       // content-location
-  kContentRange,          // content-range
-  kContentType,           // content-type
+  kAllow,               // allow
+  kContentDisposition,  // content-disposition
+  kContentEncoding,     // content-encoding
+  kContentLanguage,     // content-language
+  kContentLength,       // content-length
+  kContentLocation,     // content-location
+  kContentRange,        // content-range
+  kContentType,         // content-type
 
   // CORS headers
   kAccessControlAllowCredentials,  // access-control-allow-credentials
@@ -80,11 +81,11 @@ enum class HeaderId : uint8_t {
   kContentSecurityPolicy,    // content-security-policy
 
   // Other common headers
-  kTransferEncoding,         // transfer-encoding
-  kUpgrade,                  // upgrade
-  kAltSvc,                   // alt-svc
-  kLink,                     // link
-  kPragma,                   // pragma
+  kTransferEncoding,  // transfer-encoding
+  kUpgrade,           // upgrade
+  kAltSvc,            // alt-svc
+  kLink,              // link
+  kPragma,            // pragma
 
   // Total count of known headers
   kKnownCount,

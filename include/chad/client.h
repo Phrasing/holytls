@@ -112,7 +112,8 @@ using ProgressCallback = std::function<void(size_t downloaded, size_t total)>;
 // Main HTTP client
 class HttpClient {
  public:
-  explicit HttpClient(const ClientConfig& config = ClientConfig::ChromeLatest());
+  explicit HttpClient(
+      const ClientConfig& config = ClientConfig::ChromeLatest());
   ~HttpClient();
 
   // Non-copyable, non-movable
@@ -129,9 +130,9 @@ class HttpClient {
                  ProgressCallback progress);
 
   // Event loop control
-  void Run();       // Run until Stop() is called
-  void RunOnce();   // Process pending events once
-  void Stop();      // Signal event loop to stop
+  void Run();      // Run until Stop() is called
+  void RunOnce();  // Process pending events once
+  void Stop();     // Signal event loop to stop
 
   // Check if event loop is running
   bool IsRunning() const;

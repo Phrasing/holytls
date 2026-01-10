@@ -140,7 +140,8 @@ size_t IoBuffer::ReadToString(std::string* dest, size_t max_len) {
   size_t to_read = std::min(max_len, size_);
   size_t original_size = dest->size();
   dest->resize(original_size + to_read);
-  return Read(reinterpret_cast<uint8_t*>(dest->data() + original_size), to_read);
+  return Read(reinterpret_cast<uint8_t*>(dest->data() + original_size),
+              to_read);
 }
 
 const uint8_t* IoBuffer::Peek(size_t* available) const {

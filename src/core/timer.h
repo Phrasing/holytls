@@ -86,9 +86,7 @@ class TimerGuard {
   TimerGuard() : wheel_(nullptr), id_(0) {}
   TimerGuard(TimerWheel* wheel, TimerId id) : wheel_(wheel), id_(id) {}
 
-  ~TimerGuard() {
-    Cancel();
-  }
+  ~TimerGuard() { Cancel(); }
 
   // Move-only
   TimerGuard(TimerGuard&& other) noexcept

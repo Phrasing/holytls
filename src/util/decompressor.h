@@ -37,11 +37,8 @@ inline constexpr size_t kMaxDecompressedSize = 100 * 1024 * 1024;
 // Returns true on success, false on error
 // On success, output contains decompressed data
 // On identity/unknown encoding, copies input to output unchanged
-bool Decompress(ContentEncoding encoding,
-                const uint8_t* data,
-                size_t len,
-                std::vector<uint8_t>& output,
-                std::string* error_msg = nullptr);
+bool Decompress(ContentEncoding encoding, const uint8_t* data, size_t len,
+                std::vector<uint8_t>& output, std::string* error_msg = nullptr);
 
 // Convenience overload for vector input
 inline bool Decompress(ContentEncoding encoding,

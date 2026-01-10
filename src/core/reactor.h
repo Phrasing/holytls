@@ -77,9 +77,9 @@ class EventHandler {
 
 // Reactor configuration
 struct ReactorConfig {
-  int max_events = 1024;          // Hint for max concurrent handlers
-  int epoll_timeout_ms = 100;     // Timer resolution (for compatibility)
-  bool use_edge_trigger = true;   // Ignored in libuv (uses level-triggered)
+  int max_events = 1024;         // Hint for max concurrent handlers
+  int epoll_timeout_ms = 100;    // Timer resolution (for compatibility)
+  bool use_edge_trigger = true;  // Ignored in libuv (uses level-triggered)
 };
 
 // Internal poll handle data
@@ -115,8 +115,8 @@ class Reactor {
   bool Contains(int fd) const;
 
   // Run the event loop
-  void Run();          // Run forever until Stop()
-  void RunOnce();      // Process events once and return
+  void Run();                   // Run forever until Stop()
+  void RunOnce();               // Process events once and return
   void RunFor(int timeout_ms);  // Run for specified duration
 
   // Stop the event loop
@@ -147,8 +147,8 @@ class Reactor {
   static void OnCloseCallback(uv_handle_t* handle);
 
   uv_loop_t* loop_;
-  uv_async_t async_;           // For cross-thread wakeup
-  uv_timer_t run_timer_;       // For RunFor()
+  uv_async_t async_;      // For cross-thread wakeup
+  uv_timer_t run_timer_;  // For RunFor()
   ReactorConfig config_;
   std::atomic<bool> running_{false};
   uint64_t now_ms_ = 0;

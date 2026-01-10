@@ -34,7 +34,8 @@ void LoadWindowsRootCerts(SSL_CTX* ctx) {
   X509_STORE* store = SSL_CTX_get_cert_store(ctx);
   PCCERT_CONTEXT pContext = nullptr;
 
-  while ((pContext = CertEnumCertificatesInStore(hStore, pContext)) != nullptr) {
+  while ((pContext = CertEnumCertificatesInStore(hStore, pContext)) !=
+         nullptr) {
     const unsigned char* cert_data = pContext->pbCertEncoded;
     X509* x509 = d2i_X509(nullptr, &cert_data,
                           static_cast<long>(pContext->cbCertEncoded));
@@ -89,8 +90,8 @@ int NewSessionCallback(SSL* ssl, SSL_SESSION* session) {
   }
 
   // Get port from SSL ex_data
-  auto port = static_cast<uint16_t>(reinterpret_cast<uintptr_t>(
-      SSL_get_ex_data(ssl, GetPortIndex())));
+  auto port = static_cast<uint16_t>(
+      reinterpret_cast<uintptr_t>(SSL_get_ex_data(ssl, GetPortIndex())));
 
   cache->Store(hostname, port, session);
 
@@ -190,11 +191,12 @@ void TlsContextFactory::ConfigureExtensions() {
     SSL_CTX_set_permute_extensions(ctx_.get(), 1);
   }
 
-  // Set signature algorithms from Chrome profile (8 algorithms, no rsa_pkcs1_sha1)
+  // Set signature algorithms from Chrome profile (8 algorithms, no
+  // rsa_pkcs1_sha1)
   if (!profile_.signature_algorithms.empty()) {
-    SSL_CTX_set_verify_algorithm_prefs(
-        ctx_.get(), profile_.signature_algorithms.data(),
-        profile_.signature_algorithms.size());
+    SSL_CTX_set_verify_algorithm_prefs(ctx_.get(),
+                                       profile_.signature_algorithms.data(),
+                                       profile_.signature_algorithms.size());
   }
 
   // Enable OCSP stapling request (Chrome sends this)
@@ -206,7 +208,8 @@ void TlsContextFactory::ConfigureExtensions() {
   // Enable certificate compression (Chrome uses Brotli)
   // Algorithm ID 2 = Brotli per RFC 8879
   // Client only needs decompression callback; compression is nullptr
-  SSL_CTX_add_cert_compression_alg(ctx_.get(), 2, nullptr, BrotliDecompressCert);
+  SSL_CTX_add_cert_compression_alg(ctx_.get(), 2, nullptr,
+                                   BrotliDecompressCert);
 }
 
 void TlsContextFactory::ConfigureAlpn() {
@@ -228,12 +231,12 @@ void TlsContextFactory::ConfigureSessionCache() {
 
   // Chrome-style: external cache only, no internal BoringSSL storage
   // This matches Chrome's SSLClientSocketImpl behavior
-  SSL_CTX_set_session_cache_mode(ctx_.get(),
-      SSL_SESS_CACHE_CLIENT | SSL_SESS_CACHE_NO_INTERNAL_STORE);
+  SSL_CTX_set_session_cache_mode(
+      ctx_.get(), SSL_SESS_CACHE_CLIENT | SSL_SESS_CACHE_NO_INTERNAL_STORE);
 
   // Create external session cache
-  session_cache_ = std::make_unique<TlsSessionCache>(
-      ctx_.get(), config_.session_cache_size);
+  session_cache_ =
+      std::make_unique<TlsSessionCache>(ctx_.get(), config_.session_cache_size);
 
   // Store cache pointer in SSL_CTX for new_session_cb access
   SSL_CTX_set_ex_data(ctx_.get(), GetSessionCacheIndex(), session_cache_.get());
@@ -254,9 +257,8 @@ void TlsContextFactory::ConfigureCertificateVerification() {
 
     // Load CA certificates
     if (!config_.ca_bundle_path.empty()) {
-      if (SSL_CTX_load_verify_locations(ctx_.get(),
-                                        config_.ca_bundle_path.c_str(),
-                                        nullptr) != 1) {
+      if (SSL_CTX_load_verify_locations(
+              ctx_.get(), config_.ca_bundle_path.c_str(), nullptr) != 1) {
         throw std::runtime_error("Failed to load CA certificates from: " +
                                  config_.ca_bundle_path);
       }

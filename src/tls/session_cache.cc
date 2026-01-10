@@ -18,16 +18,15 @@ int g_port_index = -1;
 
 int GetSessionCacheIndex() {
   if (g_session_cache_index < 0) {
-    g_session_cache_index = SSL_CTX_get_ex_new_index(
-        0, nullptr, nullptr, nullptr, nullptr);
+    g_session_cache_index =
+        SSL_CTX_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
   }
   return g_session_cache_index;
 }
 
 int GetPortIndex() {
   if (g_port_index < 0) {
-    g_port_index = SSL_get_ex_new_index(
-        0, nullptr, nullptr, nullptr, nullptr);
+    g_port_index = SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
   }
   return g_port_index;
 }
@@ -79,7 +78,8 @@ void TlsSessionCache::Store(const std::string& host, uint16_t port,
   entry->receipt_time = std::chrono::steady_clock::now();
   entry->lifetime_hint_seconds = SSL_SESSION_get_timeout(session);
   // BoringSSL uses SSL_SESSION_early_data_capable instead of get_max_early_data
-  entry->max_early_data_size = SSL_SESSION_early_data_capable(session) ? 16384 : 0;
+  entry->max_early_data_size =
+      SSL_SESSION_early_data_capable(session) ? 16384 : 0;
   entry->cache_key = key;
 
   OPENSSL_free(data);
@@ -113,9 +113,7 @@ SSL_SESSION* TlsSessionCache::Lookup(const std::string& host, uint16_t port) {
 
   // Deserialize session
   SSL_SESSION* session = SSL_SESSION_from_bytes(
-      entry->session_data.data(),
-      entry->session_data.size(),
-      ctx_);
+      entry->session_data.data(), entry->session_data.size(), ctx_);
 
   if (!session) {
     // Corrupted entry, remove it

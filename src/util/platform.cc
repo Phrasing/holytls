@@ -6,7 +6,7 @@
 #include <cstring>
 
 #ifdef _WIN32
-  #include <atomic>
+#include <atomic>
 #endif
 
 namespace chad {
@@ -42,18 +42,18 @@ void CleanupNetworking() {
 
 std::string GetSocketErrorString(int error_code) {
   char* msg = nullptr;
-  FormatMessageA(
-      FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
-          FORMAT_MESSAGE_IGNORE_INSERTS,
-      nullptr, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-      reinterpret_cast<LPSTR>(&msg), 0, nullptr);
+  FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+                     FORMAT_MESSAGE_IGNORE_INSERTS,
+                 nullptr, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                 reinterpret_cast<LPSTR>(&msg), 0, nullptr);
 
   std::string result;
   if (msg) {
     result = msg;
     LocalFree(msg);
     // Remove trailing newline
-    while (!result.empty() && (result.back() == '\n' || result.back() == '\r')) {
+    while (!result.empty() &&
+           (result.back() == '\n' || result.back() == '\r')) {
       result.pop_back();
     }
   } else {
@@ -98,9 +98,7 @@ std::string GetSocketErrorString(int error_code) {
   return std::strerror(error_code);
 }
 
-std::string GetLastSocketErrorString() {
-  return std::strerror(errno);
-}
+std::string GetLastSocketErrorString() { return std::strerror(errno); }
 
 bool SetNonBlocking(socket_t sock) {
   int flags = fcntl(sock, F_GETFL, 0);

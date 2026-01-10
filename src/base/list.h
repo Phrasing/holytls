@@ -32,9 +32,7 @@ inline void DLLInit(DLLList* list) {
 }
 
 // Check if list is empty
-inline bool DLLIsEmpty(const DLLList* list) {
-  return list->first == nullptr;
-}
+inline bool DLLIsEmpty(const DLLList* list) { return list->first == nullptr; }
 
 // Push node to back of list
 inline void DLLPushBack(DLLList* list, DLLNode* node) {
@@ -143,9 +141,7 @@ inline void SLLInit(SLLList* list) {
 }
 
 // Check if list is empty
-inline bool SLLIsEmpty(const SLLList* list) {
-  return list->first == nullptr;
-}
+inline bool SLLIsEmpty(const SLLList* list) { return list->first == nullptr; }
 
 // Push to back (queue push)
 inline void SLLPushBack(SLLList* list, SLLNode* node) {
@@ -191,12 +187,14 @@ inline SLLNode* SLLPopFront(SLLList* list) {
 
 // Prefetch hint for better cache performance
 #ifdef _MSC_VER
-  #include <xmmintrin.h>
-  #define Prefetch(ptr) _mm_prefetch(reinterpret_cast<const char*>(ptr), _MM_HINT_T0)
-  #define PrefetchWrite(ptr) _mm_prefetch(reinterpret_cast<const char*>(ptr), _MM_HINT_T0)
+#include <xmmintrin.h>
+#define Prefetch(ptr) \
+  _mm_prefetch(reinterpret_cast<const char*>(ptr), _MM_HINT_T0)
+#define PrefetchWrite(ptr) \
+  _mm_prefetch(reinterpret_cast<const char*>(ptr), _MM_HINT_T0)
 #else
-  #define Prefetch(ptr) __builtin_prefetch(ptr, 0, 3)
-  #define PrefetchWrite(ptr) __builtin_prefetch(ptr, 1, 3)
+#define Prefetch(ptr) __builtin_prefetch(ptr, 0, 3)
+#define PrefetchWrite(ptr) __builtin_prefetch(ptr, 1, 3)
 #endif
 
 // Iteration macros (outside namespace for proper type resolution)
@@ -204,23 +202,23 @@ inline SLLNode* SLLPopFront(SLLList* list) {
   for (chad::DLLNode* node = (list)->first; node != nullptr; node = node->next)
 
 // Iteration with prefetch (better cache performance for large lists)
-#define DLLForEachPrefetch(list, node) \
-  for (chad::DLLNode* node = (list)->first; \
-       node != nullptr; \
+#define DLLForEachPrefetch(list, node)                       \
+  for (chad::DLLNode* node = (list)->first; node != nullptr; \
        (node->next ? Prefetch(node->next->next) : (void)0), node = node->next)
 
 #define SLLForEach(list, node) \
   for (chad::SLLNode* node = (list)->first; node != nullptr; node = node->next)
 
-#define SLLForEachPrefetch(list, node) \
-  for (chad::SLLNode* node = (list)->first; \
-       node != nullptr; \
+#define SLLForEachPrefetch(list, node)                       \
+  for (chad::SLLNode* node = (list)->first; node != nullptr; \
        (node->next ? Prefetch(node->next->next) : (void)0), node = node->next)
 
 // Type-safe iteration (requires node member name)
-#define DLLForEachType(list, type, member, var) \
-  for (type* var = (list)->first ? ContainerOf((list)->first, type, member) : nullptr; \
-       var != nullptr; \
-       var = var->member.next ? ContainerOf(var->member.next, type, member) : nullptr)
+#define DLLForEachType(list, type, member, var)                             \
+  for (type* var = (list)->first ? ContainerOf((list)->first, type, member) \
+                                 : nullptr;                                 \
+       var != nullptr;                                                      \
+       var = var->member.next ? ContainerOf(var->member.next, type, member) \
+                              : nullptr)
 
 #endif  // CHAD_BASE_LIST_H_

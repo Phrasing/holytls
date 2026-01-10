@@ -34,22 +34,22 @@ using SslPtr = std::unique_ptr<SSL, SslDeleter>;
 
 // TLS connection state machine
 enum class TlsState {
-  kInit,         // Not started
-  kConnecting,   // TCP connect in progress
-  kHandshaking,  // TLS handshake in progress
-  kConnected,    // Handshake complete, ready for data
-  kShuttingDown, // TLS shutdown in progress
-  kClosed,       // Connection closed
-  kError,        // Error occurred
+  kInit,          // Not started
+  kConnecting,    // TCP connect in progress
+  kHandshaking,   // TLS handshake in progress
+  kConnected,     // Handshake complete, ready for data
+  kShuttingDown,  // TLS shutdown in progress
+  kClosed,        // Connection closed
+  kError,         // Error occurred
 };
 
 // Result of TLS I/O operations
 enum class TlsResult {
-  kOk,        // Operation completed successfully
-  kWantRead,  // Need to wait for socket readable
-  kWantWrite, // Need to wait for socket writable
-  kEof,       // Connection closed cleanly
-  kError,     // Error occurred
+  kOk,         // Operation completed successfully
+  kWantRead,   // Need to wait for socket readable
+  kWantWrite,  // Need to wait for socket writable
+  kEof,        // Connection closed cleanly
+  kError,      // Error occurred
 };
 
 // Per-connection TLS wrapper with non-blocking I/O support.

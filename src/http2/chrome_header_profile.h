@@ -15,10 +15,10 @@ namespace http2 {
 
 // Request type affects which headers are sent and their order
 enum class RequestType {
-  kNavigation,  // Document navigation (user-initiated)
-  kSubresource, // Script, CSS, image, etc.
-  kXhr,         // XMLHttpRequest / fetch()
-  kWebSocket,   // WebSocket upgrade
+  kNavigation,   // Document navigation (user-initiated)
+  kSubresource,  // Script, CSS, image, etc.
+  kXhr,          // XMLHttpRequest / fetch()
+  kWebSocket,    // WebSocket upgrade
 };
 
 // Sec-Fetch-Site values
@@ -40,18 +40,18 @@ enum class FetchMode {
 
 // Sec-Fetch-Dest values
 enum class FetchDest {
-  kDocument,    // Main document
-  kEmbed,       // <embed>
-  kFont,        // Font
-  kImage,       // Image
-  kManifest,    // Web manifest
-  kMedia,       // Audio/video
-  kObject,      // <object>
-  kScript,      // Script
-  kStyle,       // Stylesheet
-  kWorker,      // Web worker
-  kXslt,        // XSLT
-  kEmpty,       // fetch(), XHR
+  kDocument,  // Main document
+  kEmbed,     // <embed>
+  kFont,      // Font
+  kImage,     // Image
+  kManifest,  // Web manifest
+  kMedia,     // Audio/video
+  kObject,    // <object>
+  kScript,    // Script
+  kStyle,     // Stylesheet
+  kWorker,    // Web worker
+  kXslt,      // XSLT
+  kEmpty,     // fetch(), XHR
 };
 
 // Chrome header profile - defines default headers and their order
@@ -100,13 +100,9 @@ struct HeaderEntry {
 // Build ordered header list for a request
 // Headers are returned in Chrome's exact wire order
 std::vector<HeaderEntry> BuildChromeHeaders(
-    const ChromeHeaderProfile& profile,
-    RequestType request_type,
-    FetchSite fetch_site,
-    FetchMode fetch_mode,
-    FetchDest fetch_dest,
-    bool user_activated,
-    const std::vector<HeaderEntry>& custom_headers = {});
+    const ChromeHeaderProfile& profile, RequestType request_type,
+    FetchSite fetch_site, FetchMode fetch_mode, FetchDest fetch_dest,
+    bool user_activated, const std::vector<HeaderEntry>& custom_headers = {});
 
 // Chrome 143 HTTP/2 Connection Preface Constants
 // These values define the exact SETTINGS and WINDOW_UPDATE frames Chrome sends.

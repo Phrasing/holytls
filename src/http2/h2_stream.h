@@ -55,7 +55,8 @@ struct H2Headers {
 // Callbacks for stream events
 struct H2StreamCallbacks {
   // Called when response headers are complete
-  std::function<void(int32_t stream_id, const PackedHeaders& headers)> on_headers;
+  std::function<void(int32_t stream_id, const PackedHeaders& headers)>
+      on_headers;
 
   // Called when response data chunk received
   std::function<void(int32_t stream_id, const uint8_t* data, size_t len)>

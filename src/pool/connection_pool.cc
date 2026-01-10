@@ -71,9 +71,7 @@ size_t ConnectionPool::TotalConnections() const {
   return total;
 }
 
-size_t ConnectionPool::TotalHosts() const {
-  return host_pools_.size();
-}
+size_t ConnectionPool::TotalHosts() const { return host_pools_.size(); }
 
 HostPool* ConnectionPool::GetOrCreateHostPool(const std::string& host,
                                               uint16_t port) {
@@ -91,8 +89,8 @@ HostPool* ConnectionPool::GetOrCreateHostPool(const std::string& host,
   host_config.idle_timeout_ms = config_.idle_timeout_ms;
   host_config.connect_timeout_ms = config_.connect_timeout_ms;
 
-  auto pool = std::make_unique<HostPool>(
-      host, port, host_config, reactor_, tls_factory_);
+  auto pool = std::make_unique<HostPool>(host, port, host_config, reactor_,
+                                         tls_factory_);
 
   HostPool* raw_ptr = pool.get();
   host_pools_[key] = std::move(pool);
@@ -100,7 +98,8 @@ HostPool* ConnectionPool::GetOrCreateHostPool(const std::string& host,
   return raw_ptr;
 }
 
-std::string ConnectionPool::MakeHostKey(const std::string& host, uint16_t port) {
+std::string ConnectionPool::MakeHostKey(const std::string& host,
+                                        uint16_t port) {
   return host + ":" + std::to_string(port);
 }
 

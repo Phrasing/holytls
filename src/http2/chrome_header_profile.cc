@@ -195,13 +195,9 @@ std::string_view FetchDestToString(FetchDest dest) {
 }
 
 std::vector<HeaderEntry> BuildChromeHeaders(
-    const ChromeHeaderProfile& profile,
-    RequestType request_type,
-    FetchSite fetch_site,
-    FetchMode fetch_mode,
-    FetchDest fetch_dest,
-    bool user_activated,
-    const std::vector<HeaderEntry>& custom_headers) {
+    const ChromeHeaderProfile& profile, RequestType request_type,
+    FetchSite fetch_site, FetchMode fetch_mode, FetchDest fetch_dest,
+    bool user_activated, const std::vector<HeaderEntry>& custom_headers) {
   std::vector<HeaderEntry> headers;
   headers.reserve(16);
 
@@ -230,8 +226,9 @@ std::vector<HeaderEntry> BuildChromeHeaders(
   headers.push_back({"sec-ch-ua", sec_ch_ua});
 
   // 2. sec-ch-ua-mobile
-  headers.push_back({"sec-ch-ua-mobile",
-                     std::string(SecChUaGenerator::GetMobile(profile.sec_ch_ua_mobile))});
+  headers.push_back(
+      {"sec-ch-ua-mobile",
+       std::string(SecChUaGenerator::GetMobile(profile.sec_ch_ua_mobile))});
 
   // 3. sec-ch-ua-platform
   headers.push_back({"sec-ch-ua-platform", profile.sec_ch_ua_platform});
@@ -252,10 +249,12 @@ std::vector<HeaderEntry> BuildChromeHeaders(
   }
 
   // 7. sec-fetch-site
-  headers.push_back({"sec-fetch-site", std::string(FetchSiteToString(fetch_site))});
+  headers.push_back(
+      {"sec-fetch-site", std::string(FetchSiteToString(fetch_site))});
 
   // 8. sec-fetch-mode
-  headers.push_back({"sec-fetch-mode", std::string(FetchModeToString(fetch_mode))});
+  headers.push_back(
+      {"sec-fetch-mode", std::string(FetchModeToString(fetch_mode))});
 
   // 9. sec-fetch-user (only for navigation with user activation)
   if (request_type == RequestType::kNavigation && user_activated) {
@@ -263,7 +262,8 @@ std::vector<HeaderEntry> BuildChromeHeaders(
   }
 
   // 10. sec-fetch-dest
-  headers.push_back({"sec-fetch-dest", std::string(FetchDestToString(fetch_dest))});
+  headers.push_back(
+      {"sec-fetch-dest", std::string(FetchDestToString(fetch_dest))});
 
   // 11. accept-encoding
   headers.push_back({"accept-encoding", profile.accept_encoding});

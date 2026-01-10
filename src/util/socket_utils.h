@@ -21,7 +21,8 @@ void ConfigureSocket(socket_t sock);
 
 // Start non-blocking connect to the given IP and port
 // Returns 0 if connect completed immediately, -1 on error, 1 if in progress
-int ConnectNonBlocking(socket_t sock, const std::string& ip, uint16_t port, bool ipv6);
+int ConnectNonBlocking(socket_t sock, const std::string& ip, uint16_t port,
+                       bool ipv6);
 
 // Check if a non-blocking connect has completed
 // Call after socket becomes writable

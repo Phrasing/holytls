@@ -99,8 +99,8 @@ class PackedHeaders {
   // Buffer layout: [PackedEntry entries...][string data...]
   std::unique_ptr<uint8_t[]> buffer_;
   uint16_t count_ = 0;
-  uint16_t entry_bytes_ = 0;    // Size of entry array portion
-  uint16_t string_bytes_ = 0;   // Size of string data portion
+  uint16_t entry_bytes_ = 0;   // Size of entry array portion
+  uint16_t string_bytes_ = 0;  // Size of string data portion
 
   // HTTP/2 status code
   int status_code_ = 0;

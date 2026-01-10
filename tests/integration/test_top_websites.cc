@@ -34,23 +34,19 @@ struct TestResult {
   bool passed = false;
 };
 
-bool IsSuccessStatus(int status) {
-  return status >= 200 && status < 400;
-}
+bool IsSuccessStatus(int status) { return status >= 200 && status < 400; }
 
 // Make a single request and return the status code
 int MakeRequest(chad::core::Reactor& reactor,
                 chad::tls::TlsContextFactory& tls_factory,
-                chad::util::DnsResolver& resolver,
-                const std::string& host,
-                std::string& error,
-                bool verbose = false) {
+                chad::util::DnsResolver& resolver, const std::string& host,
+                std::string& error, bool verbose = false) {
   int status = 0;
   std::unique_ptr<chad::core::Connection> conn;
 
-  resolver.ResolveAsync(host,
-      [&](const std::vector<chad::util::ResolvedAddress>& addresses,
-          const std::string& dns_error) {
+  resolver.ResolveAsync(
+      host, [&](const std::vector<chad::util::ResolvedAddress>& addresses,
+                const std::string& dns_error) {
         if (!dns_error.empty() || addresses.empty()) {
           error = "DNS failed: " + dns_error;
           reactor.Stop();
@@ -58,11 +54,12 @@ int MakeRequest(chad::core::Reactor& reactor,
         }
 
         if (verbose) {
-          std::cout << "[DEBUG] Resolved " << host << " to " << addresses[0].ip << "\n";
+          std::cout << "[DEBUG] Resolved " << host << " to " << addresses[0].ip
+                    << "\n";
         }
 
-        conn = std::make_unique<chad::core::Connection>(
-            &reactor, &tls_factory, host, 443);
+        conn = std::make_unique<chad::core::Connection>(&reactor, &tls_factory,
+                                                        host, 443);
 
         if (!conn->Connect(addresses[0].ip, addresses[0].is_ipv6)) {
           error = "Connect failed";
@@ -74,18 +71,21 @@ int MakeRequest(chad::core::Reactor& reactor,
           std::cout << "[DEBUG] Connected to " << host << "\n";
         }
 
-        conn->SendRequest("GET", "/", {},
+        conn->SendRequest(
+            "GET", "/", {},
             [&status, verbose, &host](const chad::core::Response& response) {
               status = response.status_code;
               if (verbose) {
-                std::cout << "[DEBUG] Got response from " << host
-                          << ": " << status << " (" << response.body.size() << " bytes)\n";
+                std::cout << "[DEBUG] Got response from " << host << ": "
+                          << status << " (" << response.body.size()
+                          << " bytes)\n";
               }
             },
             [&error, &reactor, verbose, &host](const std::string& err) {
               error = err;
               if (verbose) {
-                std::cout << "[DEBUG] Error from " << host << ": " << err << "\n";
+                std::cout << "[DEBUG] Error from " << host << ": " << err
+                          << "\n";
               }
               reactor.Stop();
             });
@@ -98,14 +98,13 @@ int MakeRequest(chad::core::Reactor& reactor,
 // Test a single website with two requests (for session resumption)
 void TestWebsite(chad::core::Reactor& reactor,
                  chad::tls::TlsContextFactory& tls_factory,
-                 chad::util::DnsResolver& resolver,
-                 const std::string& host,
-                 TestResult& result,
-                 bool verbose = false) {
+                 chad::util::DnsResolver& resolver, const std::string& host,
+                 TestResult& result, bool verbose = false) {
   std::cout << "Testing " << host << "... " << std::flush;
 
   // First request - full handshake
-  result.first_status = MakeRequest(reactor, tls_factory, resolver, host, result.error, verbose);
+  result.first_status =
+      MakeRequest(reactor, tls_factory, resolver, host, result.error, verbose);
 
   if (!result.error.empty()) {
     std::cout << "FAIL (1st: " << result.error << ")\n";
@@ -114,7 +113,8 @@ void TestWebsite(chad::core::Reactor& reactor,
 
   // Second request - should use session resumption
   std::string error2;
-  result.second_status = MakeRequest(reactor, tls_factory, resolver, host, error2, verbose);
+  result.second_status =
+      MakeRequest(reactor, tls_factory, resolver, host, error2, verbose);
 
   if (!error2.empty()) {
     result.error = "2nd: " + error2;
@@ -124,8 +124,8 @@ void TestWebsite(chad::core::Reactor& reactor,
                   IsSuccessStatus(result.second_status);
 
   if (result.passed) {
-    std::cout << "OK [" << result.first_status << " -> "
-              << result.second_status << "]\n";
+    std::cout << "OK [" << result.first_status << " -> " << result.second_status
+              << "]\n";
   } else if (!result.error.empty()) {
     std::cout << "FAIL (" << result.error << ")\n";
   } else {
@@ -148,18 +148,11 @@ int main(int argc, char* argv[]) {
 
   // Top 10 US websites by traffic
   // Using www. prefix for sites that commonly redirect there
-  std::vector<std::string> websites = {
-    "www.google.com",
-    "www.youtube.com",
-    "www.facebook.com",
-    "www.amazon.com",
-    "www.wikipedia.org",
-    "x.com",
-    "www.instagram.com",
-    "www.reddit.com",
-    "www.linkedin.com",
-    "www.netflix.com"
-  };
+  std::vector<std::string> websites = {"www.google.com",    "www.youtube.com",
+                                       "www.facebook.com",  "www.amazon.com",
+                                       "www.wikipedia.org", "x.com",
+                                       "www.instagram.com", "www.reddit.com",
+                                       "www.linkedin.com",  "www.netflix.com"};
 
   // Setup
   chad::core::Reactor reactor;
@@ -174,7 +167,8 @@ int main(int argc, char* argv[]) {
 
   for (size_t i = 0; i < websites.size(); ++i) {
     results[i].host = websites[i];
-    TestWebsite(reactor, tls_factory, resolver, websites[i], results[i], verbose);
+    TestWebsite(reactor, tls_factory, resolver, websites[i], results[i],
+                verbose);
   }
 
   // Print summary

@@ -13,7 +13,8 @@ namespace {
 // Chrome's GREASE characters for brand name substitution.
 // These are the "messy" chars that break naive parsers.
 // From Chromium's user_agent_utils.cc
-constexpr std::array<char, 7> kGreaseChars = {'(', ')', ':', ';', '=', '?', '_'};
+constexpr std::array<char, 7> kGreaseChars = {'(', ')', ':', ';',
+                                              '=', '?', '_'};
 
 // Chrome 143 primarily uses version "24" for GREASE, with "99" as alternate
 constexpr int kPrimaryGreaseVersion = 24;

@@ -34,8 +34,7 @@ struct ConnectionPoolConfig {
 // For multi-reactor, use one ConnectionPool per reactor.
 class ConnectionPool {
  public:
-  ConnectionPool(const ConnectionPoolConfig& config,
-                 core::Reactor* reactor,
+  ConnectionPool(const ConnectionPoolConfig& config, core::Reactor* reactor,
                  tls::TlsContextFactory* tls_factory);
   ~ConnectionPool();
 

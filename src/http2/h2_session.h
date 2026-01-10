@@ -119,7 +119,8 @@ class H2Session {
                               size_t valuelen, uint8_t flags, void* user_data);
 
   static int OnBeginHeadersCallback(nghttp2_session* session,
-                                    const nghttp2_frame* frame, void* user_data);
+                                    const nghttp2_frame* frame,
+                                    void* user_data);
 
   // Instance methods called from static callbacks
   ssize_t HandleSend(const uint8_t* data, size_t length);

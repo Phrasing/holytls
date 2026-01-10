@@ -46,9 +46,7 @@ struct PooledConnection {
   }
 
   // Check if connection is idle (no active streams)
-  bool IsIdle() const {
-    return active_stream_count == 0;
-  }
+  bool IsIdle() const { return active_stream_count == 0; }
 };
 
 // Callback for when a pooled connection needs to be created
@@ -58,7 +56,7 @@ using ConnectionFactory = std::function<std::unique_ptr<core::Connection>(
 
 // Per-host connection pool configuration
 struct HostPoolConfig {
-  size_t max_connections = 6;           // Max connections to this host
+  size_t max_connections = 6;  // Max connections to this host
   size_t max_streams_per_connection = 100;
   uint64_t idle_timeout_ms = 300000;    // 5 minutes
   uint64_t connect_timeout_ms = 30000;  // 30 seconds
@@ -69,10 +67,8 @@ struct HostPoolConfig {
 // NOT thread-safe - designed for single-reactor use.
 class HostPool {
  public:
-  HostPool(const std::string& host, uint16_t port,
-           const HostPoolConfig& config,
-           core::Reactor* reactor,
-           tls::TlsContextFactory* tls_factory);
+  HostPool(const std::string& host, uint16_t port, const HostPoolConfig& config,
+           core::Reactor* reactor, tls::TlsContextFactory* tls_factory);
   ~HostPool();
 
   // Non-copyable, non-movable

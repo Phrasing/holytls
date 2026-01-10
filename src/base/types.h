@@ -1,7 +1,8 @@
 // Copyright 2024 Chad-TLS Authors
 // SPDX-License-Identifier: MIT
 
-// Core type definitions and fixed-size containers for zero-allocation hot paths.
+// Core type definitions and fixed-size containers for zero-allocation hot
+// paths.
 
 #ifndef CHAD_BASE_TYPES_H_
 #define CHAD_BASE_TYPES_H_
