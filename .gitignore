@@ -19,3 +19,6 @@ cmake-build-*/
 .DS_Store
 Thumbs.db
 build-asan/
+
+# Visual Studio
+.vs/
