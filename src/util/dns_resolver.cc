@@ -63,10 +63,9 @@ std::vector<ResolvedAddress> DnsResolver::ParseAddrinfo(struct addrinfo* res) {
 
 // Cache lookup - returns cached entry if valid and not expired
 DnsCacheEntry* DnsResolver::FindCached(const std::string& hostname,
-                                        uint64_t now_ms) {
+                                       uint64_t now_ms) {
   for (auto& entry : cache_) {
-    if (entry.valid &&
-        entry.expires_at_ms > now_ms &&
+    if (entry.valid && entry.expires_at_ms > now_ms &&
         std::strcmp(entry.hostname, hostname.c_str()) == 0) {
       return &entry;
     }
@@ -88,7 +87,8 @@ DnsCacheEntry* DnsResolver::FindSlotForInsert(uint64_t now_ms) {
 
     if (entry.expires_at_ms <= now_ms) {
       // Expired entry - prefer these
-      if (!oldest_expired || entry.expires_at_ms < oldest_expired->expires_at_ms) {
+      if (!oldest_expired ||
+          entry.expires_at_ms < oldest_expired->expires_at_ms) {
         oldest_expired = &entry;
       }
     } else {
@@ -106,8 +106,8 @@ DnsCacheEntry* DnsResolver::FindSlotForInsert(uint64_t now_ms) {
 
 // Store resolution result in cache
 void DnsResolver::StoreInCache(const std::string& hostname,
-                                const std::vector<ResolvedAddress>& addrs,
-                                uint64_t now_ms) {
+                               const std::vector<ResolvedAddress>& addrs,
+                               uint64_t now_ms) {
   DnsCacheEntry* slot = FindSlotForInsert(now_ms);
   if (!slot) {
     return;  // Shouldn't happen with fixed-size cache
@@ -118,8 +118,8 @@ void DnsResolver::StoreInCache(const std::string& hostname,
   slot->hostname[sizeof(slot->hostname) - 1] = '\0';
 
   // Copy addresses (up to max)
-  slot->address_count = static_cast<uint8_t>(
-      std::min(addrs.size(), kMaxAddressesPerEntry));
+  slot->address_count =
+      static_cast<uint8_t>(std::min(addrs.size(), kMaxAddressesPerEntry));
   for (size_t i = 0; i < slot->address_count; ++i) {
     slot->addresses[i] = addrs[i];
   }
@@ -138,7 +138,9 @@ void DnsResolver::ClearCache() {
 
 std::vector<ResolvedAddress> DnsResolver::Resolve(const std::string& hostname,
                                                   std::string* error) {
-  // Blocking resolve bypasses cache (used for simple cases)
+  // WARNING: This is a BLOCKING call that uses synchronous getaddrinfo().
+  // Do NOT call from reactor/event loop threads - it can block for 1-5 seconds.
+  // Use ResolveAsync() instead for non-blocking DNS resolution.
   struct addrinfo hints;
   std::memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;      // IPv4 or IPv6
@@ -211,8 +213,8 @@ void DnsResolver::ResolveAsync(const std::string& hostname,
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_ADDRCONFIG;
 
-  int ret = uv_getaddrinfo(loop_, &dns_req->req, OnResolved,
-                           hostname.c_str(), nullptr, &hints);
+  int ret = uv_getaddrinfo(loop_, &dns_req->req, OnResolved, hostname.c_str(),
+                           nullptr, &hints);
 
   if (ret < 0) {
     // Failed to start async request

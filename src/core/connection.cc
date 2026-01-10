@@ -8,7 +8,9 @@
 #include "http2/chrome_h2_profile.h"
 #include "http2/chrome_header_profile.h"
 #include "http2/header_ids.h"
+#include "util/async_decompressor.h"
 #include "util/decompressor.h"
+
 #include "util/platform.h"
 #include "util/socket_utils.h"
 
@@ -24,9 +26,7 @@ Connection::Connection(Reactor* reactor, tls::TlsContextFactory* tls_factory,
       port_(port),
       options_(options) {}
 
-Connection::~Connection() {
-  Close();
-}
+Connection::~Connection() { Close(); }
 
 bool Connection::Connect(const std::string& ip, bool ipv6) {
   // Create socket
@@ -50,7 +50,8 @@ bool Connection::Connect(const std::string& ip, bool ipv6) {
   state_ = ConnectionState::kConnecting;
 
   // Register with reactor - watch for writable to know when connect completes
-  // On Windows, AFD_POLL may need both read+write to properly detect connect completion
+  // On Windows, AFD_POLL may need both read+write to properly detect connect
+  // completion
 #ifdef _WIN32
   if (!reactor_->Add(this, EventType::kReadWrite)) {
 #else
@@ -71,9 +72,10 @@ bool Connection::Connect(const std::string& ip, bool ipv6) {
   return true;
 }
 
-void Connection::SendRequest(const std::string& method, const std::string& path,
-                             const std::vector<std::pair<std::string, std::string>>& headers,
-                             ResponseCallback on_response, ErrorCallback on_error) {
+void Connection::SendRequest(
+    const std::string& method, const std::string& path,
+    const std::vector<std::pair<std::string, std::string>>& headers,
+    ResponseCallback on_response, ErrorCallback on_error) {
   if (state_ == ConnectionState::kConnected && h2_) {
     // Connection ready, submit request immediately
     http2::H2Headers h2_headers;
@@ -101,8 +103,8 @@ void Connection::SendRequest(const std::string& method, const std::string& path,
 
     // Build ordered Chrome headers with GREASE sec-ch-ua
     auto chrome_headers = http2::BuildChromeHeaders(
-        header_profile, request_type, fetch_site, fetch_mode,
-        fetch_dest, user_activated, custom_headers);
+        header_profile, request_type, fetch_site, fetch_mode, fetch_dest,
+        user_activated, custom_headers);
 
     // Add all headers in Chrome's exact order
     for (const auto& header : chrome_headers) {
@@ -112,15 +114,17 @@ void Connection::SendRequest(const std::string& method, const std::string& path,
     http2::H2StreamCallbacks stream_callbacks;
     int32_t stream_id = -1;
 
-    stream_callbacks.on_headers = [this](int32_t sid, const http2::PackedHeaders& resp_headers) {
-      auto it = active_requests_.find(sid);
-      if (it != active_requests_.end()) {
-        it->second.headers = resp_headers;
-        it->second.status_code = resp_headers.status_code();
-      }
-    };
+    stream_callbacks.on_headers =
+        [this](int32_t sid, const http2::PackedHeaders& resp_headers) {
+          auto it = active_requests_.find(sid);
+          if (it != active_requests_.end()) {
+            it->second.headers = resp_headers;
+            it->second.status_code = resp_headers.status_code();
+          }
+        };
 
-    stream_callbacks.on_data = [this](int32_t sid, const uint8_t* data, size_t len) {
+    stream_callbacks.on_data = [this](int32_t sid, const uint8_t* data,
+                                      size_t len) {
       auto it = active_requests_.find(sid);
       if (it != active_requests_.end()) {
         // O(1) amortized append instead of O(n) vector insert
@@ -144,19 +148,49 @@ void Connection::SendRequest(const std::string& method, const std::string& path,
             it->second.body_buffer.Read(response.body.data(), body_size);
           }
 
-          // Decompress response body if enabled and Content-Encoding header is present
+          // Decompress response body if enabled and Content-Encoding header is
+          // present
           if (options_.auto_decompress) {
-            auto encoding_str = response.headers.Get(http2::HeaderId::kContentEncoding);
+            auto encoding_str =
+                response.headers.Get(http2::HeaderId::kContentEncoding);
             auto encoding = util::ParseContentEncoding(encoding_str);
 
             if (encoding != util::ContentEncoding::kIdentity &&
                 encoding != util::ContentEncoding::kUnknown &&
                 !response.body.empty()) {
-              std::vector<uint8_t> decompressed;
-              if (util::Decompress(encoding, response.body, decompressed)) {
-                response.body = std::move(decompressed);
-              }
-              // On decompression error, keep original compressed body
+              // Capture callback and response for async completion
+              auto response_cb = std::move(it->second.on_response);
+              auto resp = std::move(response);
+
+              // Erase request before async work to avoid iterator invalidation
+              active_requests_.erase(it);
+
+              // Check idle state now (before async work)
+              bool should_notify_idle =
+                  active_requests_.empty() && pending_requests_.empty();
+              auto idle_cb = idle_callback_;
+              Connection* self = this;
+
+              // Queue async decompression - runs on thread pool
+              // Extract body before creating lambda to avoid move-order issues
+              auto compressed_body = std::move(resp.body);
+              util::DecompressAsync(
+                  reactor_->loop(), encoding, std::move(compressed_body),
+                  [response_cb = std::move(response_cb), resp = std::move(resp),
+                   should_notify_idle, idle_cb,
+                   self](std::vector<uint8_t> result_body, bool /* success */,
+                         const std::string& /* error */) mutable {
+                    // On success: result_body is decompressed data
+                    // On failure: result_body is original compressed data
+                    resp.body = std::move(result_body);
+                    response_cb(resp);
+
+                    // Notify idle after response delivered
+                    if (should_notify_idle && idle_cb) {
+                      idle_cb(self);
+                    }
+                  });
+              return;  // Response delivered async
             }
           }
 
@@ -214,7 +248,8 @@ void Connection::Close() {
 void Connection::OnReadable() {
   switch (state_) {
     case ConnectionState::kConnecting:
-      // On Windows, readable during connect means we should check connection status
+      // On Windows, readable during connect means we should check connection
+      // status
       HandleConnecting();
       break;
     case ConnectionState::kTlsHandshake:
@@ -332,7 +367,8 @@ void Connection::HandleTlsHandshake() {
 
       // Submit pending requests
       for (auto& req : pending_requests_) {
-        SendRequest(req.method, req.path, req.headers, req.on_response, req.on_error);
+        SendRequest(req.method, req.path, req.headers, req.on_response,
+                    req.on_error);
       }
       pending_requests_.clear();
       break;
@@ -359,13 +395,17 @@ void Connection::HandleTlsHandshake() {
 
 void Connection::HandleConnected() {
   // Read decrypted data from TLS
+  // Limit iterations to prevent starving other connections with large responses
+  constexpr int kMaxReadsPerCallback = 4;  // ~64KB max per callback
   uint8_t buf[16384];
   tls::TlsResult result;
+  int reads = 0;
 
-  while (true) {
+  while (reads < kMaxReadsPerCallback) {
     ssize_t n = tls_->ReadRaw(buf, sizeof(buf), &result);
 
     if (n > 0) {
+      ++reads;
       // Feed data to HTTP/2 session
       ssize_t consumed = h2_->Receive(buf, static_cast<size_t>(n));
       if (consumed < 0) {
@@ -379,7 +419,7 @@ void Connection::HandleConnected() {
       // Send any pending data
       FlushSendBuffer();
     } else if (result == tls::TlsResult::kWantRead) {
-      // Need more data
+      // Need more data from socket
       break;
     } else if (result == tls::TlsResult::kEof) {
       // Connection closed
@@ -396,6 +436,8 @@ void Connection::HandleConnected() {
       break;
     }
   }
+  // If we hit the limit, the socket will still be readable and we'll be called
+  // again on the next event loop iteration, allowing other connections to run.
 }
 
 void Connection::FlushSendBuffer() {
@@ -403,7 +445,11 @@ void Connection::FlushSendBuffer() {
     return;
   }
 
-  while (h2_->WantsWrite()) {
+  // Limit write iterations to prevent blocking on large sends
+  constexpr int kMaxWritesPerFlush = 4;
+  int writes = 0;
+
+  while (h2_->WantsWrite() && writes < kMaxWritesPerFlush) {
     auto [data, len] = h2_->GetPendingData();
     if (len == 0) {
       break;
@@ -414,6 +460,7 @@ void Connection::FlushSendBuffer() {
 
     if (written > 0) {
       h2_->DataSent(written);
+      ++writes;
     }
 
     if (result == tls::TlsResult::kWantWrite) {
@@ -423,6 +470,11 @@ void Connection::FlushSendBuffer() {
       SetError("TLS write error");
       break;
     }
+  }
+
+  // If we have more data but hit the limit, ensure we stay armed for write
+  if (h2_->WantsWrite() && writes >= kMaxWritesPerFlush) {
+    reactor_->Modify(this, EventType::kReadWrite);
   }
 }
 

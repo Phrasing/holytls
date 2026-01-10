@@ -6,6 +6,7 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
+#include <algorithm>
 #include <cstring>
 
 #include "tls/session_cache.h"
@@ -130,25 +131,19 @@ TlsResult TlsConnection::Write(const uint8_t* data, size_t len,
 
   *written = 0;
 
-  while (*written < len) {
-    ERR_clear_error();
-    int to_write = static_cast<int>(len - *written);
-    int ret = SSL_write(ssl_.get(), data + *written, to_write);
+  // Single SSL_write per call to avoid blocking event loop with large writes.
+  // Caller should call again if more data needs to be written.
+  ERR_clear_error();
+  int to_write = static_cast<int>(std::min(len, size_t{16384}));  // Cap at 16KB
+  int ret = SSL_write(ssl_.get(), data, to_write);
 
-    if (ret > 0) {
-      *written += static_cast<size_t>(ret);
-      continue;
-    }
-
-    TlsResult result = HandleSslError(ret);
-    if (result == TlsResult::kWantWrite || result == TlsResult::kWantRead) {
-      // Partial write is okay, caller will retry
-      return result;
-    }
-    return result;
+  if (ret > 0) {
+    *written = static_cast<size_t>(ret);
+    // Return kWantWrite if more data remains, letting reactor re-schedule
+    return (*written < len) ? TlsResult::kWantWrite : TlsResult::kOk;
   }
 
-  return TlsResult::kOk;
+  return HandleSslError(ret);
 }
 
 TlsResult TlsConnection::Write(core::IoBuffer* buffer, size_t* written) {
@@ -237,9 +232,7 @@ std::string_view TlsConnection::AlpnProtocol() const {
   return alpn_protocol_;
 }
 
-bool TlsConnection::IsHttp2() const {
-  return AlpnProtocol() == "h2";
-}
+bool TlsConnection::IsHttp2() const { return AlpnProtocol() == "h2"; }
 
 bool TlsConnection::SessionResumed() const {
   if (state_ != TlsState::kConnected) {

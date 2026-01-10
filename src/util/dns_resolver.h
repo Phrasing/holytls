@@ -24,9 +24,8 @@ struct ResolvedAddress {
 };
 
 // DNS resolution result callback
-using DnsCallback =
-    std::function<void(const std::vector<ResolvedAddress>& addresses,
-                       const std::string& error)>;
+using DnsCallback = std::function<void(
+    const std::vector<ResolvedAddress>& addresses, const std::string& error)>;
 
 // Cache configuration
 inline constexpr size_t kMaxCacheEntries = 256;
@@ -54,7 +53,9 @@ class DnsResolver {
   DnsResolver(const DnsResolver&) = delete;
   DnsResolver& operator=(const DnsResolver&) = delete;
 
-  // Blocking resolve (for simple use cases, bypasses cache)
+  // BLOCKING resolve - DO NOT use from reactor/event loop threads!
+  // Can block for 1-5 seconds. Use ResolveAsync() instead.
+  // Only use for initialization or non-reactor thread contexts.
   std::vector<ResolvedAddress> Resolve(const std::string& hostname,
                                        std::string* error);
 
@@ -76,15 +77,15 @@ class DnsResolver {
   void CancelAll();
 
  private:
-  static void OnResolved(uv_getaddrinfo_t* req, int status, struct addrinfo* res);
+  static void OnResolved(uv_getaddrinfo_t* req, int status,
+                         struct addrinfo* res);
   static std::vector<ResolvedAddress> ParseAddrinfo(struct addrinfo* res);
 
   // Cache operations
   DnsCacheEntry* FindCached(const std::string& hostname, uint64_t now_ms);
   DnsCacheEntry* FindSlotForInsert(uint64_t now_ms);
   void StoreInCache(const std::string& hostname,
-                    const std::vector<ResolvedAddress>& addrs,
-                    uint64_t now_ms);
+                    const std::vector<ResolvedAddress>& addrs, uint64_t now_ms);
 
   uv_loop_t* loop_;
 

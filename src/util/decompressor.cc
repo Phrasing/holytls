@@ -18,11 +18,13 @@ namespace {
 // Trim whitespace and convert to lowercase for comparison
 std::string NormalizeEncoding(std::string_view value) {
   // Skip leading whitespace
-  while (!value.empty() && std::isspace(static_cast<unsigned char>(value.front()))) {
+  while (!value.empty() &&
+         std::isspace(static_cast<unsigned char>(value.front()))) {
     value.remove_prefix(1);
   }
   // Skip trailing whitespace
-  while (!value.empty() && std::isspace(static_cast<unsigned char>(value.back()))) {
+  while (!value.empty() &&
+         std::isspace(static_cast<unsigned char>(value.back()))) {
     value.remove_suffix(1);
   }
 
@@ -81,8 +83,7 @@ const char* ContentEncodingToString(ContentEncoding encoding) {
 }
 
 bool DecompressBrotli(const uint8_t* data, size_t len,
-                      std::vector<uint8_t>& output,
-                      std::string* error_msg) {
+                      std::vector<uint8_t>& output, std::string* error_msg) {
   if (len == 0) {
     output.clear();
     return true;
@@ -99,7 +100,8 @@ bool DecompressBrotli(const uint8_t* data, size_t len,
   uint8_t* next_out = output.data();
   size_t total_out = 0;
 
-  BrotliDecoderState* state = BrotliDecoderCreateInstance(nullptr, nullptr, nullptr);
+  BrotliDecoderState* state =
+      BrotliDecoderCreateInstance(nullptr, nullptr, nullptr);
   if (!state) {
     if (error_msg) *error_msg = "Failed to create Brotli decoder";
     return false;
@@ -136,8 +138,7 @@ bool DecompressBrotli(const uint8_t* data, size_t len,
 }
 
 bool DecompressZstd(const uint8_t* data, size_t len,
-                    std::vector<uint8_t>& output,
-                    std::string* error_msg) {
+                    std::vector<uint8_t>& output, std::string* error_msg) {
   if (len == 0) {
     output.clear();
     return true;
@@ -179,8 +180,7 @@ bool DecompressZstd(const uint8_t* data, size_t len,
 }
 
 bool DecompressGzip(const uint8_t* data, size_t len,
-                    std::vector<uint8_t>& output,
-                    std::string* error_msg) {
+                    std::vector<uint8_t>& output, std::string* error_msg) {
   if (len == 0) {
     output.clear();
     return true;
@@ -242,8 +242,7 @@ bool DecompressGzip(const uint8_t* data, size_t len,
 }
 
 bool DecompressDeflate(const uint8_t* data, size_t len,
-                       std::vector<uint8_t>& output,
-                       std::string* error_msg) {
+                       std::vector<uint8_t>& output, std::string* error_msg) {
   if (len == 0) {
     output.clear();
     return true;
@@ -315,17 +314,17 @@ bool DecompressDeflate(const uint8_t* data, size_t len,
   return true;
 }
 
-bool Decompress(ContentEncoding encoding,
-                const uint8_t* data,
-                size_t len,
-                std::vector<uint8_t>& output,
-                std::string* error_msg) {
+bool Decompress(ContentEncoding encoding, const uint8_t* data, size_t len,
+                std::vector<uint8_t>& output, std::string* error_msg) {
+  bool result = false;
   switch (encoding) {
     case ContentEncoding::kBrotli:
-      return DecompressBrotli(data, len, output, error_msg);
+      result = DecompressBrotli(data, len, output, error_msg);
+      break;
 
     case ContentEncoding::kZstd:
-      return DecompressZstd(data, len, output, error_msg);
+      result = DecompressZstd(data, len, output, error_msg);
+      break;
 
     case ContentEncoding::kGzip:
       return DecompressGzip(data, len, output, error_msg);
@@ -339,7 +338,7 @@ bool Decompress(ContentEncoding encoding,
       output.assign(data, data + len);
       return true;
   }
-  // All enum cases handled above; this is unreachable.
+  return result;
 }
 
 }  // namespace util

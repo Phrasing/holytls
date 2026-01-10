@@ -95,6 +95,7 @@ add_library(chad-tls STATIC
   src/util/dns_resolver.cc
   src/util/url_parser.cc
   src/util/decompressor.cc
+  src/util/async_decompressor.cc
   src/util/platform.cc
 )
 
