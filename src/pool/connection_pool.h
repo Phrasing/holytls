@@ -9,6 +9,8 @@
 #include <unordered_map>
 
 #include "chad/config.h"
+#include "core/reactor.h"
+#include "tls/tls_context.h"
 
 namespace chad {
 namespace pool {
@@ -28,10 +30,13 @@ struct ConnectionPoolConfig {
 };
 
 // Global connection pool manager.
-// Thread-safe for acquiring/releasing connections.
+// NOT thread-safe - designed for single-reactor use.
+// For multi-reactor, use one ConnectionPool per reactor.
 class ConnectionPool {
  public:
-  explicit ConnectionPool(const ConnectionPoolConfig& config);
+  ConnectionPool(const ConnectionPoolConfig& config,
+                 core::Reactor* reactor,
+                 tls::TlsContextFactory* tls_factory);
   ~ConnectionPool();
 
   // Non-copyable, non-movable
@@ -59,9 +64,13 @@ class ConnectionPool {
 
  private:
   HostPool* GetOrCreateHostPool(const std::string& host, uint16_t port);
+  static std::string MakeHostKey(const std::string& host, uint16_t port);
 
   ConnectionPoolConfig config_;
+  core::Reactor* reactor_;
+  tls::TlsContextFactory* tls_factory_;
   std::unordered_map<std::string, std::unique_ptr<HostPool>> host_pools_;
+  size_t total_connections_ = 0;
 };
 
 }  // namespace pool
