@@ -33,11 +33,9 @@ openssl req -x509 -newkey rsa:2048 -keyout ~/certs/server.key -out ~/certs/serve
 
 # Create test file
 echo '{"status":"ok"}' > ~/www/test.json
-```
 
-## Configuration (h2o-multi.conf)
-
-```yaml
+# Create config (update paths for your user)
+cat > ~/h2o-multi.conf << 'EOF'
 # h2o multi-port config for stress testing
 num-threads: 32
 http2-idle-timeout: 30
@@ -46,62 +44,66 @@ http2-idle-timeout: 30
 listen:
   port: 8443
   ssl:
-    certificate-file: /home/mark/certs/server.crt
-    key-file: /home/mark/certs/server.key
+    certificate-file: certs/server.crt
+    key-file: certs/server.key
 
 listen:
   port: 8444
   ssl:
-    certificate-file: /home/mark/certs/server.crt
-    key-file: /home/mark/certs/server.key
+    certificate-file: certs/server.crt
+    key-file: certs/server.key
 
 listen:
   port: 8445
   ssl:
-    certificate-file: /home/mark/certs/server.crt
-    key-file: /home/mark/certs/server.key
+    certificate-file: certs/server.crt
+    key-file: certs/server.key
 
 listen:
   port: 8446
   ssl:
-    certificate-file: /home/mark/certs/server.crt
-    key-file: /home/mark/certs/server.key
+    certificate-file: certs/server.crt
+    key-file: certs/server.key
 
 listen:
   port: 8447
   ssl:
-    certificate-file: /home/mark/certs/server.crt
-    key-file: /home/mark/certs/server.key
+    certificate-file: certs/server.crt
+    key-file: certs/server.key
 
 listen:
   port: 8448
   ssl:
-    certificate-file: /home/mark/certs/server.crt
-    key-file: /home/mark/certs/server.key
+    certificate-file: certs/server.crt
+    key-file: certs/server.key
 
 listen:
   port: 8449
   ssl:
-    certificate-file: /home/mark/certs/server.crt
-    key-file: /home/mark/certs/server.key
+    certificate-file: certs/server.crt
+    key-file: certs/server.key
 
 listen:
   port: 8450
   ssl:
-    certificate-file: /home/mark/certs/server.crt
-    key-file: /home/mark/certs/server.key
+    certificate-file: certs/server.crt
+    key-file: certs/server.key
 
 hosts:
   "*":
     paths:
       /:
-        file.dir: /home/mark/www
+        file.dir: www
+EOF
 ```
 
 ## Running
 
+Run from home directory (where certs/ and www/ are located):
+
 ```bash
-h2o -c ~/h2o-multi.conf
+cd ~
+h2o -c h2o-multi.conf
 ```
 
 ## Firewall (GCloud)
