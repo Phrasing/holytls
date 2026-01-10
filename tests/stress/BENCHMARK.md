@@ -3,14 +3,15 @@
 ## Test Configuration
 
 **Client:**
-- Windows Server 2022 (GCloud VM)
+- Windows Server 2025 (GCloud c4d-standard-8)
 - 8 vCPUs, 32GB RAM
 - chad-tls with Chrome TLS fingerprint
 - 16 reactor threads, 6000 connections
 - 8 target URLs for multi-reactor distribution
 
 **Server:**
-- Ubuntu 24.04 (GCloud VM)
+- Debian 13.2 (GCloud c4d-standard-32)
+- 32 vCPUs, 128GB RAM
 - h2o 2.3.0-DEV with 32 worker threads
 - 8 HTTPS ports (8443-8450)
 - Self-signed TLS certificate
