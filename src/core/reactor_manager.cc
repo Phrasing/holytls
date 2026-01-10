@@ -204,10 +204,10 @@ void ReactorManager::RunReactor(ReactorContext* ctx) {
     PinThreadToCore(ctx->index % GetCpuCount());
   }
 
-  // Run the reactor loop
-  while (ctx->running.load(std::memory_order_acquire)) {
-    ctx->reactor->RunOnce();
-  }
+  // Use Run() which properly blocks on UV_RUN_ONCE waiting for IO
+  // This prevents CPU spinning when idle. The reactor's Stop() method
+  // will signal it to exit when ReactorManager::Stop() is called.
+  ctx->reactor->Run();
 }
 
 size_t ReactorManager::GetReactorIndex(const std::string& host,
