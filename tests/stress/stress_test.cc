@@ -24,6 +24,7 @@ namespace {
 // Configuration from command line
 struct StressConfig {
   std::string url;
+  std::vector<std::string> urls;  // Multiple URLs for multi-reactor distribution
   size_t num_connections = 1000;
   size_t target_rps = 0;  // 0 = unlimited
   size_t duration_sec = 60;
@@ -139,7 +140,8 @@ void PrintUsage(const char* prog) {
                "Usage: %s [options]\n"
                "\n"
                "Options:\n"
-               "  --url URL          Target URL (required, must be https://)\n"
+               "  --url URL          Target URL (required unless --urls is used)\n"
+               "  --urls URL1,URL2   Comma-separated URLs for multi-reactor distribution\n"
                "  --connections N    Number of concurrent connections (default: 1000)\n"
                "  --rps N            Target requests per second, 0=unlimited (default: 0)\n"
                "  --duration N       Test duration in seconds (default: 60)\n"
@@ -150,9 +152,23 @@ void PrintUsage(const char* prog) {
                "  --verbose          Print verbose output\n"
                "  --help             Show this help\n"
                "\n"
-               "Example:\n"
-               "  %s --url https://httpbin.org/get --connections 100 --duration 30\n",
-               prog, prog);
+               "Examples:\n"
+               "  %s --url https://httpbin.org/get --connections 100 --duration 30\n"
+               "  %s --urls https://localhost:8443/test.json,https://localhost:8444/test.json --insecure\n",
+               prog, prog, prog);
+}
+
+// Parse comma-separated URLs
+std::vector<std::string> ParseUrls(const std::string& urls_str) {
+  std::vector<std::string> result;
+  size_t start = 0;
+  size_t end;
+  while ((end = urls_str.find(',', start)) != std::string::npos) {
+    result.push_back(urls_str.substr(start, end - start));
+    start = end + 1;
+  }
+  result.push_back(urls_str.substr(start));
+  return result;
 }
 
 bool ParseArgs(int argc, char* argv[], StressConfig* config) {
@@ -164,6 +180,8 @@ bool ParseArgs(int argc, char* argv[], StressConfig* config) {
     }
     if (std::strcmp(argv[i], "--url") == 0 && i + 1 < argc) {
       config->url = argv[++i];
+    } else if (std::strcmp(argv[i], "--urls") == 0 && i + 1 < argc) {
+      config->urls = ParseUrls(argv[++i]);
     } else if (std::strcmp(argv[i], "--connections") == 0 && i + 1 < argc) {
       config->num_connections = std::stoul(argv[++i]);
     } else if (std::strcmp(argv[i], "--rps") == 0 && i + 1 < argc) {
@@ -187,10 +205,23 @@ bool ParseArgs(int argc, char* argv[], StressConfig* config) {
     }
   }
 
-  if (config->url.empty()) {
-    std::fprintf(stderr, "Error: --url is required\n");
+  // If --urls provided, use those; otherwise require --url
+  if (!config->urls.empty()) {
+    // Validate all URLs
+    for (const auto& url : config->urls) {
+      auto parsed = ParseUrl(url);
+      if (!parsed.valid) {
+        std::fprintf(stderr, "Error: Invalid URL: %s\n", url.c_str());
+        return false;
+      }
+    }
+  } else if (config->url.empty()) {
+    std::fprintf(stderr, "Error: --url or --urls is required\n");
     PrintUsage(argv[0]);
     return false;
+  } else {
+    // Single URL mode - put it in urls vector for uniform handling
+    config->urls.push_back(config->url);
   }
 
   return true;
@@ -323,14 +354,15 @@ class StressTest {
   StressTest(const StressConfig& config) : config_(config) {}
 
   int Run() {
-    auto parsed = ParseUrl(config_.url);
-    if (!parsed.valid) {
-      std::fprintf(stderr, "Error: Invalid URL: %s\n", config_.url.c_str());
-      return 1;
-    }
-
     std::printf("=== Chad-TLS Stress Test ===\n");
-    std::printf("URL:         %s\n", config_.url.c_str());
+    if (config_.urls.size() == 1) {
+      std::printf("URL:         %s\n", config_.urls[0].c_str());
+    } else {
+      std::printf("URLs:        %zu targets (multi-reactor mode)\n", config_.urls.size());
+      for (size_t i = 0; i < config_.urls.size(); ++i) {
+        std::printf("  [%zu] %s\n", i, config_.urls[i].c_str());
+      }
+    }
     std::printf("Connections: %zu\n", config_.num_connections);
     std::printf("Duration:    %zus (+ %zus warmup)\n", config_.duration_sec,
                 config_.warmup_sec);
@@ -478,8 +510,12 @@ class StressTest {
   void SendRequest() {
     auto start_time = std::chrono::steady_clock::now();
 
+    // Round-robin across URLs for multi-reactor distribution
+    size_t url_idx = url_index_.fetch_add(1, std::memory_order_relaxed) % config_.urls.size();
+    const std::string& url = config_.urls[url_idx];
+
     chad::Request req;
-    req.SetMethod(chad::Method::kGet).SetUrl(config_.url);
+    req.SetMethod(chad::Method::kGet).SetUrl(url);
 
     metrics_.requests_sent.fetch_add(1, std::memory_order_relaxed);
 
@@ -518,6 +554,7 @@ class StressTest {
   StressMetrics metrics_;
   std::unique_ptr<chad::HttpClient> client_;
   std::atomic<bool> running_{true};
+  std::atomic<size_t> url_index_{0};  // For round-robin across URLs
   bool warmup_phase_ = false;
 };
 
