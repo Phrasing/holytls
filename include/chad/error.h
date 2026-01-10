@@ -85,6 +85,18 @@ class Error {
     return {ErrorCode::kRequestCancelled, "request cancelled"};
   }
 
+  static Error InvalidUrl(std::string_view msg) {
+    return {ErrorCode::kInvalidUrl, std::string(msg)};
+  }
+
+  static Error Internal(std::string_view msg) {
+    return {ErrorCode::kInternalError, std::string(msg)};
+  }
+
+  static Error Connection(std::string_view msg) {
+    return {ErrorCode::kConnectionRefused, std::string(msg)};
+  }
+
   // Check if error occurred
   explicit operator bool() const { return code_ != ErrorCode::kOk; }
   bool ok() const { return code_ == ErrorCode::kOk; }

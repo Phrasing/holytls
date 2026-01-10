@@ -64,6 +64,12 @@ class Response {
  public:
   Response() = default;
 
+  // Internal constructor for building responses
+  Response(int status_code, Headers headers, std::vector<uint8_t> body)
+      : status_code_(status_code),
+        headers_(std::move(headers)),
+        body_(std::move(body)) {}
+
   // Status
   int status_code() const { return status_code_; }
   bool is_success() const { return status_code_ >= 200 && status_code_ < 300; }
@@ -90,7 +96,7 @@ class Response {
   const Timing& timing() const { return timing_; }
 
  private:
-  friend class HttpClientImpl;
+  friend class HttpClient;  // Allow HttpClient::Impl access
   friend class PooledConnection;
 
   int status_code_ = 0;

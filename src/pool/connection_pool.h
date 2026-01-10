@@ -58,12 +58,14 @@ class ConnectionPool {
   // Cleanup idle connections across all hosts
   void CleanupIdle(uint64_t now_ms);
 
+  // Get or create a host pool (for direct connection creation)
+  HostPool* GetOrCreateHostPool(const std::string& host, uint16_t port);
+
   // Statistics
   size_t TotalConnections() const;
   size_t TotalHosts() const;
 
  private:
-  HostPool* GetOrCreateHostPool(const std::string& host, uint16_t port);
   static std::string MakeHostKey(const std::string& host, uint16_t port);
 
   ConnectionPoolConfig config_;

@@ -68,6 +68,7 @@ endif()
 # Main library
 add_library(chad-tls STATIC
   src/core/reactor.cc
+  src/core/reactor_manager.cc
   src/core/timer.cc
   src/core/io_buffer.cc
   src/core/connection.cc
