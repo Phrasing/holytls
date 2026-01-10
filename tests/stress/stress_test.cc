@@ -7,6 +7,7 @@
 #include <chad/client.h>
 #include <chad/config.h>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cinttypes>

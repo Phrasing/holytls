@@ -35,35 +35,11 @@ include(FetchBoringSSL)
 include(FetchNghttp2)
 include(FetchLibuv)
 include(FetchZstd)
+include(FetchBrotli)
+include(FetchZlib)
 
 # Find threading library (cross-platform)
 find_package(Threads REQUIRED)
-
-# Find Brotli for response decompression
-if(WIN32)
-  # On Windows, try find_package (vcpkg) first
-  find_package(unofficial-brotli CONFIG)
-  if(unofficial-brotli_FOUND)
-    set(BROTLI_LIBRARIES unofficial::brotli::brotlidec)
-    set(BROTLI_INCLUDE_DIRS "")  # vcpkg handles includes
-  else()
-    # Fallback: user must provide BROTLI_LIBRARIES and BROTLI_INCLUDE_DIRS
-    message(WARNING "Brotli not found via vcpkg. Install with: vcpkg install brotli")
-  endif()
-
-  # Find zlib on Windows via vcpkg
-  find_package(ZLIB)
-  if(ZLIB_FOUND)
-    set(ZLIB_LIBRARIES ZLIB::ZLIB)
-  else()
-    message(WARNING "zlib not found via vcpkg. Install with: vcpkg install zlib")
-    set(ZLIB_LIBRARIES "")
-  endif()
-else()
-  find_package(PkgConfig REQUIRED)
-  pkg_check_modules(BROTLI REQUIRED libbrotlidec)
-  set(ZLIB_LIBRARIES z)
-endif()
 
 # Main library
 add_library(chad-tls STATIC
@@ -104,7 +80,6 @@ target_include_directories(chad-tls
     ${CMAKE_SOURCE_DIR}/include
   PRIVATE
     ${CMAKE_SOURCE_DIR}/src
-    ${BROTLI_INCLUDE_DIRS}
 )
 
 target_link_libraries(chad-tls
@@ -115,17 +90,16 @@ target_link_libraries(chad-tls
     libuv::libuv
     Threads::Threads
   PRIVATE
-    ${BROTLI_LIBRARIES}
+    brotli::brotlidec
+    brotli::brotlicommon
     zstd::zstd
+    zlib::zlib
 )
 
 # Platform-specific libraries
 if(WIN32)
   target_link_libraries(chad-tls PUBLIC ws2_32 iphlpapi crypt32)
 endif()
-
-# Link zlib (cross-platform)
-target_link_libraries(chad-tls PRIVATE ${ZLIB_LIBRARIES})
 
 # Apply our strict compiler flags only to our code
 target_compile_options(chad-tls PRIVATE ${CHAD_COMMON_FLAGS})
