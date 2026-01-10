@@ -69,6 +69,11 @@ void TestEndpoint(chad::core::Reactor& reactor,
         conn = std::make_unique<chad::core::Connection>(
             &reactor, &tls_factory, host, 443);
 
+        // Stop reactor when connection becomes idle (request complete)
+        conn->SetIdleCallback([&reactor](chad::core::Connection*) {
+          reactor.Stop();
+        });
+
         std::cout << "Connecting...\n";
         if (!conn->Connect(addresses[0].ip, addresses[0].is_ipv6)) {
           std::cerr << "Connection failed\n";

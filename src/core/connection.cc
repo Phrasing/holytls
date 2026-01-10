@@ -115,15 +115,16 @@ void Connection::SendRequest(const std::string& method, const std::string& path,
     stream_callbacks.on_headers = [this](int32_t sid, const http2::PackedHeaders& resp_headers) {
       auto it = active_requests_.find(sid);
       if (it != active_requests_.end()) {
-        it->second.response.headers = resp_headers;
-        it->second.response.status_code = resp_headers.status_code();
+        it->second.headers = resp_headers;
+        it->second.status_code = resp_headers.status_code();
       }
     };
 
     stream_callbacks.on_data = [this](int32_t sid, const uint8_t* data, size_t len) {
       auto it = active_requests_.find(sid);
       if (it != active_requests_.end()) {
-        it->second.response.body.insert(it->second.response.body.end(), data, data + len);
+        // O(1) amortized append instead of O(n) vector insert
+        it->second.body_buffer.Append(data, len);
       }
     };
 
@@ -131,7 +132,17 @@ void Connection::SendRequest(const std::string& method, const std::string& path,
       auto it = active_requests_.find(sid);
       if (it != active_requests_.end()) {
         if (error_code == 0 && it->second.on_response) {
-          auto& response = it->second.response;
+          // Build Response from ActiveRequest
+          Response response;
+          response.status_code = it->second.status_code;
+          response.headers = std::move(it->second.headers);
+
+          // Copy body from IoBuffer to vector (single allocation + copy)
+          size_t body_size = it->second.body_buffer.Size();
+          if (body_size > 0) {
+            response.body.resize(body_size);
+            it->second.body_buffer.Read(response.body.data(), body_size);
+          }
 
           // Decompress response body if enabled and Content-Encoding header is present
           if (options_.auto_decompress) {
@@ -155,9 +166,11 @@ void Connection::SendRequest(const std::string& method, const std::string& path,
         }
         active_requests_.erase(it);
 
-        // If no more active requests, stop the reactor
+        // Notify pool/owner that connection is now idle
         if (active_requests_.empty() && pending_requests_.empty()) {
-          reactor_->Stop();
+          if (idle_callback_) {
+            idle_callback_(this);
+          }
         }
       }
     };

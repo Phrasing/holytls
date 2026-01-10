@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 
+#include "core/io_buffer.h"
 #include "core/reactor.h"
 #include "http2/h2_session.h"
 #include "tls/tls_connection.h"
@@ -41,9 +42,13 @@ struct Response {
   }
 };
 
+// Forward declaration for callback types
+class Connection;
+
 // Callback types
 using ResponseCallback = std::function<void(const Response& response)>;
 using ErrorCallback = std::function<void(const std::string& error)>;
+using IdleCallback = std::function<void(Connection*)>;
 
 // Connection configuration options
 struct ConnectionOptions {
@@ -78,10 +83,17 @@ class Connection : public EventHandler {
   // Close the connection
   void Close();
 
+  // Set callback for when connection becomes idle (no active requests)
+  void SetIdleCallback(IdleCallback callback) { idle_callback_ = std::move(callback); }
+
   // State accessors
   ConnectionState state() const { return state_; }
   bool IsConnected() const { return state_ == ConnectionState::kConnected; }
   bool IsClosed() const { return state_ == ConnectionState::kClosed; }
+  bool IsIdle() const { return active_requests_.empty() && pending_requests_.empty(); }
+
+  // Stream capacity (for HTTP/2 multiplexing)
+  size_t ActiveStreamCount() const { return active_requests_.size(); }
 
   // EventHandler interface
   void OnReadable() override;
@@ -122,7 +134,9 @@ class Connection : public EventHandler {
   struct ActiveRequest {
     ResponseCallback on_response;
     ErrorCallback on_error;
-    Response response;
+    int status_code = 0;
+    http2::PackedHeaders headers;
+    IoBuffer body_buffer;  // O(1) append instead of O(n) vector insert
   };
   std::unordered_map<int32_t, ActiveRequest> active_requests_;
 
@@ -130,6 +144,9 @@ class Connection : public EventHandler {
 
   // Configuration
   ConnectionOptions options_;
+
+  // Idle callback (notifies pool when connection has no active requests)
+  IdleCallback idle_callback_;
 };
 
 }  // namespace core
