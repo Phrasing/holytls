@@ -461,7 +461,6 @@ class StressTest {
  private:
   void SendRequest() {
     auto start_time = std::chrono::steady_clock::now();
-    auto parsed = ParseUrl(config_.url);
 
     chad::Request req;
     req.SetMethod(chad::Method::kGet).SetUrl(config_.url);
