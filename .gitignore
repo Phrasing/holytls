@@ -1,6 +1,7 @@
 # Build directories
 build/
 cmake-build-*/
+compile_commands.json
 
 # IDE
 .idea/
