@@ -115,12 +115,6 @@ if(WIN32)
   )
 endif()
 
-# Main executable
-add_executable(chad src/main.cc)
-target_include_directories(chad PRIVATE ${CMAKE_SOURCE_DIR}/src)
-target_link_libraries(chad PRIVATE chad-tls)
-target_compile_options(chad PRIVATE ${CHAD_COMMON_FLAGS})
-
 # Tests
 if(CHAD_BUILD_TESTS)
   enable_testing()
@@ -149,8 +143,7 @@ target_link_libraries(fingerprint_check PRIVATE chad-tls)
 target_compile_options(fingerprint_check PRIVATE ${CHAD_COMMON_FLAGS})
 
 # Install targets
-install(TARGETS chad-tls chad
-  RUNTIME DESTINATION bin
+install(TARGETS chad-tls
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
 )
