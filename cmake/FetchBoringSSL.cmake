@@ -91,16 +91,21 @@ if(NOT boringssl_POPULATED)
     list(APPEND BORINGSSL_CMAKE_ARGS -A ${CMAKE_GENERATOR_PLATFORM})
   endif()
 
+  message(STATUS "BoringSSL source: ${boringssl_SOURCE_DIR}")
+  message(STATUS "BoringSSL binary: ${boringssl_BINARY_DIR}")
+  message(STATUS "BoringSSL cmake args: ${BORINGSSL_CMAKE_ARGS}")
+
   execute_process(
     COMMAND ${CMAKE_COMMAND}
       ${BORINGSSL_CMAKE_ARGS}
       ${boringssl_SOURCE_DIR}
     WORKING_DIRECTORY ${boringssl_BINARY_DIR}
     RESULT_VARIABLE boringssl_config_result
+    COMMAND_ECHO STDOUT
   )
 
   if(NOT boringssl_config_result EQUAL 0)
-    message(FATAL_ERROR "BoringSSL configuration failed")
+    message(FATAL_ERROR "BoringSSL configuration failed with code ${boringssl_config_result}")
   endif()
 
   message(STATUS "Building BoringSSL...")
@@ -135,17 +140,30 @@ if(NOT boringssl_POPULATED)
     endif()
   else()
     # Single-config generators (Makefiles, Ninja)
+    message(STATUS "Building BoringSSL with Ninja/Make...")
     execute_process(
       COMMAND ${CMAKE_COMMAND} --build . --parallel ${NPROC}
       WORKING_DIRECTORY ${boringssl_BINARY_DIR}
       RESULT_VARIABLE boringssl_build_result
+      COMMAND_ECHO STDOUT
     )
     if(NOT boringssl_build_result EQUAL 0)
-      message(FATAL_ERROR "BoringSSL build failed")
+      message(FATAL_ERROR "BoringSSL build failed with code ${boringssl_build_result}")
     endif()
   endif()
 
   message(STATUS "BoringSSL build complete")
+
+  # Verify libraries exist
+  if(WIN32 AND NOT CMAKE_GENERATOR MATCHES "Visual Studio")
+    if(NOT EXISTS "${boringssl_BINARY_DIR}/ssl/ssl.lib")
+      message(FATAL_ERROR "BoringSSL ssl.lib not found at ${boringssl_BINARY_DIR}/ssl/ssl.lib")
+    endif()
+    if(NOT EXISTS "${boringssl_BINARY_DIR}/crypto/crypto.lib")
+      message(FATAL_ERROR "BoringSSL crypto.lib not found at ${boringssl_BINARY_DIR}/crypto/crypto.lib")
+    endif()
+    message(STATUS "BoringSSL libraries verified")
+  endif()
 endif()
 
 # Create imported targets with proper paths for each configuration
