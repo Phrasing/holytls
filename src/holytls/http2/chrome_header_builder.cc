@@ -205,10 +205,16 @@ ChromeHeaderBuilder& ChromeHeaderBuilder::SetAcceptLanguage(
 ChromeHeaderBuilder& ChromeHeaderBuilder::AddCustomHeader(
     std::string_view name, std::string_view value) {
   // HTTP/2 requires lowercase header names
-  std::string lower_name(name);
-  for (char& c : lower_name) {
-    c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-  }
+  // Branchless ASCII lowercase - avoids std::tolower locale overhead
+  // and enables compiler auto-vectorization (SIMD)
+  std::string lower_name;
+  lower_name.resize_and_overwrite(name.size(), [&](char* buf, size_t n) {
+    for (size_t i = 0; i < n; ++i) {
+      char c = name[i];
+      buf[i] = static_cast<char>(c + ((c >= 'A' && c <= 'Z') * 32));
+    }
+    return n;
+  });
   custom_headers_.emplace_back(std::move(lower_name), std::string(value));
   return *this;
 }
