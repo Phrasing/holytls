@@ -3,7 +3,6 @@
 
 #include "holytls/http2/chrome_header_builder.h"
 
-#include <algorithm>
 #include <cctype>
 #include <cstring>
 
@@ -205,7 +204,12 @@ ChromeHeaderBuilder& ChromeHeaderBuilder::SetAcceptLanguage(
 
 ChromeHeaderBuilder& ChromeHeaderBuilder::AddCustomHeader(
     std::string_view name, std::string_view value) {
-  custom_headers_.emplace_back(std::string(name), std::string(value));
+  // HTTP/2 requires lowercase header names
+  std::string lower_name(name);
+  for (char& c : lower_name) {
+    c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  }
+  custom_headers_.emplace_back(std::move(lower_name), std::string(value));
   return *this;
 }
 
