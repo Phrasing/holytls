@@ -1,0 +1,91 @@
+}
+
+void SSL_set_key_shares_limit(SSL *ssl, uint8_t limit) {
+  if (!ssl->config) {
+    return;
+  }
+  ssl->config->key_shares_limit = limit;
+}
+
+void SSL_CTX_set_key_shares_limit(SSL_CTX *ctx, uint8_t limit) {
+  ctx->key_shares_limit = limit;
+}
+
+void SSL_get0_signed_cert_timestamp_list(const SSL *ssl, const uint8_t **out,
+                                         size_t *out_len) {
+  SSL_SESSION *session = SSL_get_session(ssl);
+  if (ssl->server || !session || !session->signed_cert_timestamp_list) {
+    *out_len = 0;
+    *out = NULL;
+    return;
+  }
+
+  *out = CRYPTO_BUFFER_data(session->signed_cert_timestamp_list.get());
+  *out_len = CRYPTO_BUFFER_len(session->signed_cert_timestamp_list.get());
+}
+
+void SSL_get0_ocsp_response(const SSL *ssl, const uint8_t **out,
+                            size_t *out_len) {
+  SSL_SESSION *session = SSL_get_session(ssl);
+  if (ssl->server || !session || !session->ocsp_response) {
+}
+
+void SSL_set_alps_use_new_codepoint(SSL *ssl, int use_new) {
+  if (!ssl->config) {
+    return;
+  }
+  ssl->config->alps_use_new_codepoint = !!use_new;
+}
+
+int SSL_CTX_add_cert_compression_alg(SSL_CTX *ctx, uint16_t alg_id,
+                                     ssl_cert_compression_func_t compress,
+                                     ssl_cert_decompression_func_t decompress) {
+  assert(compress != nullptr || decompress != nullptr);
+
+  for (const auto &alg : ctx->cert_compression_algs) {
+    if (alg.alg_id == alg_id) {
+      return 0;
+    }
+  }
+
+  CertCompressionAlg alg;
+  alg.alg_id = alg_id;
+  alg.compress = compress;
+}
+
+void SSL_CTX_set_permute_extensions(SSL_CTX *ctx, int enabled) {
+  ctx->permute_extensions = !!enabled;
+}
+
+// curl-impersonate: set extensions order
+int SSL_CTX_set_extension_order(SSL_CTX *ctx, char *order) {
+  ctx->extension_order = order;
+  return 0;
+}
+
+int SSL_CTX_set_key_usage_check_enabled(SSL_CTX *ctx, int enabled) {
+  ctx->key_usage_check_enabled = enabled;
+  return 0;
+}
+
+void SSL_set_permute_extensions(SSL *ssl, int enabled) {
+  if (!ssl->config) {
+    return;
+  }
+  ssl->config->permute_extensions = !!enabled;
+}
+
+int32_t SSL_get_ticket_age_skew(const SSL *ssl) {
+  return ssl->s3->ticket_age_skew;
+}
+
+void SSL_CTX_set_false_start_allowed_without_alpn(SSL_CTX *ctx, int allowed) {
+  ctx->false_start_allowed_without_alpn = !!allowed;
+}
+
+int SSL_used_hello_retry_request(const SSL *ssl) {
+  return ssl->s3->used_hello_retry_request;
+}
+
+void SSL_set_shed_handshake_config(SSL *ssl, int enable) {
+  if (!ssl->config) {

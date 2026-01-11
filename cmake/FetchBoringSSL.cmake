@@ -1,12 +1,12 @@
-# Fetch and build lexiforest/boringssl with Chrome impersonation patches
+# Fetch and build Phrasing/boringssl with Chrome impersonation patches
 
 include(FetchContent)
 
-message(STATUS "Fetching lexiforest/boringssl...")
+message(STATUS "Fetching Phrasing/boringssl...")
 
 FetchContent_Declare(
   boringssl
-  GIT_REPOSITORY https://github.com/lexiforest/boringssl.git
+  GIT_REPOSITORY https://github.com/Phrasing/boringssl.git
   GIT_TAG        impersonate
   GIT_SHALLOW    TRUE
   GIT_PROGRESS   TRUE
@@ -57,9 +57,10 @@ if(NOT boringssl_POPULATED)
     set(BORINGSSL_C_FLAGS "")
     set(BORINGSSL_CXX_FLAGS "")
   else()
-    # GCC/Clang: Use position-independent code
-    set(BORINGSSL_C_FLAGS "-fPIC")
-    set(BORINGSSL_CXX_FLAGS "-fPIC")
+    # GCC/Clang: Use position-independent code and disable spurious warnings
+    # -Wno-error=array-bounds: GCC false positive in e_aesgcmsiv.cc
+    set(BORINGSSL_C_FLAGS "-fPIC -Wno-error=array-bounds")
+    set(BORINGSSL_CXX_FLAGS "-fPIC -Wno-error=array-bounds")
   endif()
 
   # Build BoringSSL
@@ -189,9 +190,9 @@ if(WIN32)
     )
   endif()
 else()
-  # Unix
-  set(BORINGSSL_CRYPTO_LIB "${boringssl_BINARY_DIR}/crypto/libcrypto.a")
-  set(BORINGSSL_SSL_LIB "${boringssl_BINARY_DIR}/ssl/libssl.a")
+  # Unix - upstream BoringSSL puts libraries directly in build dir
+  set(BORINGSSL_CRYPTO_LIB "${boringssl_BINARY_DIR}/libcrypto.a")
+  set(BORINGSSL_SSL_LIB "${boringssl_BINARY_DIR}/libssl.a")
   set_target_properties(boringssl::crypto PROPERTIES
     IMPORTED_LOCATION "${BORINGSSL_CRYPTO_LIB}"
     INTERFACE_INCLUDE_DIRECTORIES "${boringssl_SOURCE_DIR}/include"
