@@ -3,8 +3,6 @@
 
 #include "holytls/tls/chrome_profile.h"
 
-#include <sstream>
-
 namespace holytls {
 namespace tls {
 
@@ -173,78 +171,50 @@ const ChromeTlsProfile& GetChromeTlsProfile(ChromeVersion version) {
   }
 }
 
-std::string GetCipherSuiteString(ChromeVersion version) {
-  // Get profile to validate version is known (ignoring result for now
-  // since all versions use the same cipher string)
-  (void)GetChromeTlsProfile(version);
+// Static cipher suite string (same for all Chrome versions)
+// TLS 1.3 ciphers first, then TLS 1.2 ECDHE, then legacy fallbacks
+constexpr const char* kChromeCipherString =
+    "TLS_AES_128_GCM_SHA256:"
+    "TLS_AES_256_GCM_SHA384:"
+    "TLS_CHACHA20_POLY1305_SHA256:"
+    "ECDHE-ECDSA-AES128-GCM-SHA256:"
+    "ECDHE-RSA-AES128-GCM-SHA256:"
+    "ECDHE-ECDSA-AES256-GCM-SHA384:"
+    "ECDHE-RSA-AES256-GCM-SHA384:"
+    "ECDHE-ECDSA-CHACHA20-POLY1305:"
+    "ECDHE-RSA-CHACHA20-POLY1305:"
+    "ECDHE-RSA-AES128-SHA:"
+    "ECDHE-RSA-AES256-SHA:"
+    "AES128-GCM-SHA256:"
+    "AES256-GCM-SHA384:"
+    "AES128-SHA:"
+    "AES256-SHA";
 
-  // Build OpenSSL-style cipher string
-  // Note: This maps hex codes to OpenSSL names
-  // BoringSSL uses similar naming conventions
-
-  std::ostringstream ss;
-
-  // TLS 1.3 ciphers (use colon separator)
-  ss << "TLS_AES_128_GCM_SHA256:";
-  ss << "TLS_AES_256_GCM_SHA384:";
-  ss << "TLS_CHACHA20_POLY1305_SHA256:";
-
-  // TLS 1.2 ECDHE ciphers
-  ss << "ECDHE-ECDSA-AES128-GCM-SHA256:";
-  ss << "ECDHE-RSA-AES128-GCM-SHA256:";
-  ss << "ECDHE-ECDSA-AES256-GCM-SHA384:";
-  ss << "ECDHE-RSA-AES256-GCM-SHA384:";
-  ss << "ECDHE-ECDSA-CHACHA20-POLY1305:";
-  ss << "ECDHE-RSA-CHACHA20-POLY1305:";
-
-  // Legacy fallbacks
-  ss << "ECDHE-RSA-AES128-SHA:";
-  ss << "ECDHE-RSA-AES256-SHA:";
-  ss << "AES128-GCM-SHA256:";
-  ss << "AES256-GCM-SHA384:";
-  ss << "AES128-SHA:";
-  ss << "AES256-SHA";
-
-  return ss.str();
+std::string GetCipherSuiteString(ChromeVersion /*version*/) {
+  return kChromeCipherString;
 }
 
 std::string GetSupportedGroupsString(ChromeVersion version) {
   const auto& profile = GetChromeTlsProfile(version);
 
-  std::ostringstream ss;
-  bool first = true;
+  std::string result;
+  result.reserve(64);  // Plenty for group names
 
   for (uint16_t group : profile.supported_groups) {
-    if (!first) {
-      ss << ":";
-    }
-    first = false;
+    if (!result.empty()) result += ':';
 
-    // Map group IDs to names
+    // Map group IDs to OpenSSL/BoringSSL names
     switch (group) {
-      case 0x11ec:
-        ss << "X25519MLKEM768";
-        break;
-      case 0x6399:
-        ss << "X25519Kyber768Draft00";
-        break;
-      case 0x001d:
-        ss << "X25519";
-        break;
-      case 0x0017:
-        ss << "P-256";
-        break;
-      case 0x0018:
-        ss << "P-384";
-        break;
-      default:
-        // Unknown group, skip
-        first = true;  // Don't add separator for next
-        break;
+      case 0x11ec: result += "X25519MLKEM768"; break;
+      case 0x6399: result += "X25519Kyber768Draft00"; break;
+      case 0x001d: result += "X25519"; break;
+      case 0x0017: result += "P-256"; break;
+      case 0x0018: result += "P-384"; break;
+      default: break;
     }
   }
 
-  return ss.str();
+  return result;
 }
 
 }  // namespace tls
