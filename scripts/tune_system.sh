@@ -1,8 +1,8 @@
 #!/bin/bash
-# Copyright 2024 Chad-TLS Authors
+# Copyright 2024 HolyTLS Authors
 # SPDX-License-Identifier: MIT
 #
-# Chad-TLS High-Concurrency System Tuning
+# HolyTLS High-Concurrency System Tuning
 # Run as root before stress testing for optimal performance.
 
 set -e
@@ -13,7 +13,7 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-echo "=== Chad-TLS High-Concurrency System Tuning ==="
+echo "=== HolyTLS High-Concurrency System Tuning ==="
 
 # File descriptor limits (system-wide)
 echo "Setting file descriptor limits..."
@@ -71,7 +71,7 @@ ulimit -n 100000 2>/dev/null || echo "  (ulimit -n requires pam_limits.conf for 
 echo ""
 echo "=== System Tuning Complete ==="
 echo ""
-echo "For persistent changes, add to /etc/sysctl.d/99-chad-tls.conf:"
+echo "For persistent changes, add to /etc/sysctl.d/99-holytls.conf:"
 echo "  fs.file-max = 2097152"
 echo "  net.ipv4.ip_local_port_range = 10000 65535"
 echo "  net.ipv4.tcp_rmem = 4096 87380 16777216"
