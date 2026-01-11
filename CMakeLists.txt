@@ -66,8 +66,6 @@ add_library(holytls STATIC
   src/holytls/pool/connection_pool.cc
   src/holytls/pool/host_pool.cc
   src/holytls/client/http_client.cc
-  src/holytls/client/request.cc
-  src/holytls/client/response.cc
   src/holytls/util/dns_resolver.cc
   src/holytls/util/url_parser.cc
   src/holytls/util/decompressor.cc
