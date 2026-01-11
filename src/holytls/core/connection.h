@@ -60,6 +60,9 @@ struct ConnectionOptions {
 // Implements EventHandler to integrate with Reactor.
 class Connection : public EventHandler {
  public:
+  // Callback for when connection becomes idle (no active requests)
+  IdleCallback idle_callback;
+
   Connection(Reactor* reactor, tls::TlsContextFactory* tls_factory,
              const std::string& host, uint16_t port,
              const ConnectionOptions& options = {});
@@ -83,11 +86,6 @@ class Connection : public EventHandler {
 
   // Close the connection
   void Close();
-
-  // Set callback for when connection becomes idle (no active requests)
-  void SetIdleCallback(IdleCallback callback) {
-    idle_callback_ = std::move(callback);
-  }
 
   // State accessors
   ConnectionState state() const { return state_; }
@@ -149,9 +147,6 @@ class Connection : public EventHandler {
 
   // Configuration
   ConnectionOptions options_;
-
-  // Idle callback (notifies pool when connection has no active requests)
-  IdleCallback idle_callback_;
 };
 
 }  // namespace core

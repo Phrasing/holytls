@@ -53,10 +53,15 @@ enum class TlsResult {
 // Per-connection TLS wrapper with non-blocking I/O support.
 class TlsConnection {
  public:
+  // Read-only connection properties (set at construction)
+  const int fd;
+  const uint16_t port;
+  const std::string hostname;
+
   // Create TLS connection wrapping the given socket fd.
   // Port is used for session cache keying.
-  TlsConnection(TlsContextFactory* factory, int fd, std::string_view hostname,
-                uint16_t port = 443);
+  TlsConnection(TlsContextFactory* factory, int socket_fd,
+                std::string_view host, uint16_t p = 443);
   ~TlsConnection();
 
   // Non-copyable, non-movable
@@ -89,7 +94,7 @@ class TlsConnection {
   // Returns kOk when complete, kWantRead/kWantWrite when blocked.
   TlsResult Shutdown();
 
-  // State accessors
+  // State queries
   TlsState state() const { return state_; }
   bool IsConnected() const { return state_ == TlsState::kConnected; }
   bool IsHandshaking() const { return state_ == TlsState::kHandshaking; }
@@ -104,23 +109,14 @@ class TlsConnection {
   // Only meaningful after handshake completes
   bool SessionResumed() const;
 
-  const std::string& hostname() const { return hostname_; }
-  uint16_t port() const { return port_; }
-  int fd() const { return fd_; }
   SSL* ssl() const { return ssl_.get(); }
 
  private:
-  // Map SSL error to TlsResult
   TlsResult HandleSslError(int ssl_ret);
-
-  // Set error state with message
   void SetError(const std::string& msg);
 
   SslPtr ssl_;
   TlsState state_ = TlsState::kInit;
-  int fd_;
-  uint16_t port_;
-  std::string hostname_;
   std::string last_error_;
 
   // Cached ALPN result (empty until handshake complete)

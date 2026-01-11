@@ -66,7 +66,9 @@ struct H2StreamCallbacks {
 // HTTP/2 stream - represents a single request/response pair
 class H2Stream {
  public:
-  H2Stream(int32_t stream_id, H2StreamCallbacks callbacks);
+  const int32_t stream_id;
+
+  H2Stream(int32_t id, H2StreamCallbacks callbacks);
   ~H2Stream();
 
   // Non-copyable, non-movable
@@ -75,19 +77,14 @@ class H2Stream {
   H2Stream(H2Stream&&) = delete;
   H2Stream& operator=(H2Stream&&) = delete;
 
-  // Stream ID
-  int32_t stream_id() const { return stream_id_; }
-
-  // State
+  // State queries
   H2StreamState state() const { return state_; }
   bool IsOpen() const { return state_ == H2StreamState::kOpen; }
   bool IsClosed() const { return state_ == H2StreamState::kClosed; }
 
-  // Response data
+  // Response data (built incrementally by session)
   const PackedHeaders& response_headers() const { return response_headers_; }
   const core::IoBuffer& response_body() const { return response_body_; }
-
-  // Response status code (0 if not yet received)
   int status_code() const;
 
   // Called by H2Session when headers are received
@@ -103,7 +100,6 @@ class H2Stream {
   void MarkLocalClosed();
 
  private:
-  int32_t stream_id_;
   H2StreamState state_ = H2StreamState::kIdle;
   H2StreamCallbacks callbacks_;
 

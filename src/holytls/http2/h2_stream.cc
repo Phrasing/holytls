@@ -69,8 +69,8 @@ bool H2Headers::Has(std::string_view name) const {
 
 // H2Stream implementation
 
-H2Stream::H2Stream(int32_t stream_id, H2StreamCallbacks callbacks)
-    : stream_id_(stream_id), callbacks_(std::move(callbacks)) {
+H2Stream::H2Stream(int32_t id, H2StreamCallbacks callbacks)
+    : stream_id(id), callbacks_(std::move(callbacks)) {
   state_ = H2StreamState::kOpen;
 }
 
@@ -82,7 +82,7 @@ void H2Stream::OnHeadersReceived(PackedHeaders&& headers) {
   response_headers_ = std::move(headers);
 
   if (callbacks_.on_headers) {
-    callbacks_.on_headers(stream_id_, response_headers_);
+    callbacks_.on_headers(stream_id, response_headers_);
   }
 }
 
@@ -90,7 +90,7 @@ void H2Stream::OnDataReceived(const uint8_t* data, size_t len) {
   response_body_.Append(data, len);
 
   if (callbacks_.on_data) {
-    callbacks_.on_data(stream_id_, data, len);
+    callbacks_.on_data(stream_id, data, len);
   }
 }
 
@@ -98,7 +98,7 @@ void H2Stream::OnStreamClose(uint32_t error_code) {
   state_ = H2StreamState::kClosed;
 
   if (callbacks_.on_close) {
-    callbacks_.on_close(stream_id_, error_code);
+    callbacks_.on_close(stream_id, error_code);
   }
 }
 

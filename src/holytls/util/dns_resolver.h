@@ -45,6 +45,9 @@ struct DnsCacheEntry {
 // Cache uses fixed-size array for zero allocation in hot path
 class DnsResolver {
  public:
+  // Cache TTL in milliseconds (default 60 seconds)
+  uint64_t cache_ttl_ms = kDefaultCacheTtlMs;
+
   // Create resolver attached to a libuv loop
   explicit DnsResolver(uv_loop_t* loop);
   ~DnsResolver();
@@ -62,9 +65,6 @@ class DnsResolver {
   // Async resolve - checks cache first, then libuv thread pool
   // Callback is invoked on the event loop thread
   void ResolveAsync(const std::string& hostname, DnsCallback callback);
-
-  // Set cache TTL (default 60 seconds)
-  void SetCacheTtl(uint64_t ttl_ms) { cache_ttl_ms_ = ttl_ms; }
 
   // Clear all cached entries
   void ClearCache();
@@ -91,7 +91,6 @@ class DnsResolver {
 
   // DNS cache (fixed-size array, no dynamic allocation)
   DnsCacheEntry cache_[kMaxCacheEntries] = {};
-  uint64_t cache_ttl_ms_ = kDefaultCacheTtlMs;
   size_t cache_hits_ = 0;
   size_t cache_misses_ = 0;
 };

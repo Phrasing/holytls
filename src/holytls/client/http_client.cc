@@ -81,39 +81,39 @@ std::string_view MethodToString(Method method) {
 }
 
 // Request implementation
-Request& Request::SetMethod(Method method) {
-  method_ = method;
+Request& Request::SetMethod(Method m) {
+  method = m;
   return *this;
 }
 
-Request& Request::SetUrl(std::string_view url) {
-  url_ = std::string(url);
+Request& Request::SetUrl(std::string_view u) {
+  url = std::string(u);
   return *this;
 }
 
 Request& Request::SetHeader(std::string_view name, std::string_view value) {
-  headers_.push_back({std::string(name), std::string(value)});
+  headers.push_back({std::string(name), std::string(value)});
   return *this;
 }
 
 Request& Request::SetBody(const uint8_t* data, size_t len) {
-  body_.assign(data, data + len);
+  body.assign(data, data + len);
   return *this;
 }
 
-Request& Request::SetBody(std::string_view body) {
-  body_.assign(body.begin(), body.end());
+Request& Request::SetBody(std::string_view b) {
+  body.assign(b.begin(), b.end());
   return *this;
 }
 
-Request& Request::SetTimeout(std::chrono::milliseconds timeout) {
-  timeout_ = timeout;
+Request& Request::SetTimeout(std::chrono::milliseconds t) {
+  timeout = t;
   return *this;
 }
 
 // Response implementation
 std::string_view Response::GetHeader(std::string_view name) const {
-  for (const auto& header : headers_) {
+  for (const auto& header : headers) {
     if (header.name == name) {
       return header.value;
     }
@@ -122,7 +122,7 @@ std::string_view Response::GetHeader(std::string_view name) const {
 }
 
 bool Response::HasHeader(std::string_view name) const {
-  for (const auto& header : headers_) {
+  for (const auto& header : headers) {
     if (header.name == name) {
       return true;
     }
@@ -131,14 +131,14 @@ bool Response::HasHeader(std::string_view name) const {
 }
 
 std::string_view Response::body_string() const {
-  return std::string_view(reinterpret_cast<const char*>(body_.data()),
-                          body_.size());
+  return std::string_view(reinterpret_cast<const char*>(body.data()),
+                          body.size());
 }
 
 size_t Response::content_length() const {
   auto cl = GetHeader("content-length");
   if (cl.empty()) {
-    return body_.size();
+    return body.size();
   }
   return static_cast<size_t>(std::stoul(std::string(cl)));
 }
@@ -180,7 +180,7 @@ class HttpClient::Impl {
                  ProgressCallback progress = nullptr) {
     // Parse URL
     util::ParsedUrl parsed;
-    if (!util::ParseUrl(request.url(), &parsed)) {
+    if (!util::ParseUrl(request.url, &parsed)) {
       if (callback) {
         callback(Response{}, Error{ErrorCode::kInvalidUrl, "Failed to parse URL"});
       }
@@ -356,17 +356,17 @@ class HttpClient::Impl {
     requests_sent_.fetch_add(1, std::memory_order_relaxed);
 
     // Convert headers to connection format
-    std::vector<std::pair<std::string, std::string>> headers;
-    for (const auto& h : request.headers()) {
-      headers.emplace_back(h.name, h.value);
+    std::vector<std::pair<std::string, std::string>> conn_headers;
+    for (const auto& h : request.headers) {
+      conn_headers.emplace_back(h.name, h.value);
     }
 
     // Share callback between success and error handlers to avoid double-move
     auto shared_cb = std::make_shared<ResponseCallback>(std::move(callback));
 
     pooled->connection->SendRequest(
-        std::string(MethodToString(request.method())), parsed.PathWithQuery(),
-        headers,
+        std::string(MethodToString(request.method)), parsed.PathWithQuery(),
+        conn_headers,
         [this, ctx, pooled,
          shared_cb](const core::Response& core_resp) mutable {
           // Convert headers

@@ -68,8 +68,8 @@ void TestEndpoint(holytls::core::Reactor& reactor,
                                                         host, 443);
 
         // Stop reactor when connection becomes idle (request complete)
-        conn->SetIdleCallback(
-            [&reactor](holytls::core::Connection*) { reactor.Stop(); });
+        conn->idle_callback =
+            [&reactor](holytls::core::Connection*) { reactor.Stop(); };
 
         std::println("Connecting...");
         if (!conn->Connect(addresses[0].ip, addresses[0].is_ipv6)) {

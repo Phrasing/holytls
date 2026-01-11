@@ -124,7 +124,7 @@ void DnsResolver::StoreInCache(const std::string& hostname,
     slot->addresses[i] = addrs[i];
   }
 
-  slot->expires_at_ms = now_ms + cache_ttl_ms_;
+  slot->expires_at_ms = now_ms + cache_ttl_ms;
   slot->valid = true;
 }
 

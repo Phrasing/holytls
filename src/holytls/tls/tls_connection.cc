@@ -15,9 +15,9 @@
 namespace holytls {
 namespace tls {
 
-TlsConnection::TlsConnection(TlsContextFactory* factory, int fd,
-                             std::string_view hostname, uint16_t port)
-    : fd_(fd), port_(port), hostname_(hostname) {
+TlsConnection::TlsConnection(TlsContextFactory* factory, int socket_fd,
+                             std::string_view host, uint16_t p)
+    : fd(socket_fd), port(p), hostname(host) {
   // Create SSL object
   ssl_.reset(factory->CreateSsl());
   if (!ssl_) {
@@ -32,8 +32,8 @@ TlsConnection::TlsConnection(TlsContextFactory* factory, int fd,
   }
 
   // Set SNI (Server Name Indication)
-  if (!hostname_.empty()) {
-    SSL_set_tlsext_host_name(ssl_.get(), hostname_.c_str());
+  if (!hostname.empty()) {
+    SSL_set_tlsext_host_name(ssl_.get(), hostname.c_str());
   }
 
   // Store port in SSL ex_data for new_session_cb

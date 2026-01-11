@@ -8,11 +8,11 @@
 namespace holytls {
 namespace pool {
 
-HostPool::HostPool(const std::string& host, uint16_t port,
+HostPool::HostPool(const std::string& h, uint16_t p,
                    const HostPoolConfig& config, core::Reactor* reactor,
                    tls::TlsContextFactory* tls_factory)
-    : host_(host),
-      port_(port),
+    : host(h),
+      port(p),
       config_(config),
       reactor_(reactor),
       tls_factory_(tls_factory) {}
@@ -79,7 +79,7 @@ bool HostPool::CreateConnection(const std::string& resolved_ip, bool ipv6) {
 
   // Create the connection
   auto connection =
-      std::make_unique<core::Connection>(reactor_, tls_factory_, host_, port_);
+      std::make_unique<core::Connection>(reactor_, tls_factory_, host, port);
 
   // Create pooled connection wrapper
   auto pooled = std::make_unique<PooledConnection>();
@@ -91,10 +91,10 @@ bool HostPool::CreateConnection(const std::string& resolved_ip, bool ipv6) {
 
   // Set up idle callback to track when streams complete
   PooledConnection* raw_ptr = pooled.get();
-  pooled->connection->SetIdleCallback([this, raw_ptr](core::Connection*) {
+  pooled->connection->idle_callback = [this, raw_ptr](core::Connection*) {
     // Connection is now idle - update last used time
     raw_ptr->last_used_ms = reactor_->now_ms();
-  });
+  };
 
   // Start the connection
   if (!pooled->connection->Connect(resolved_ip, ipv6)) {

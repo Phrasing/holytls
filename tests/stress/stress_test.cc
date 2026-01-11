@@ -537,7 +537,7 @@ class StressTest {
 
       if (!error) {
         metrics_.requests_completed.fetch_add(1, std::memory_order_relaxed);
-        metrics_.bytes_received.fetch_add(response.body().size(),
+        metrics_.bytes_received.fetch_add(response.body.size(),
                                           std::memory_order_relaxed);
         if (!warmup_phase_) {
           metrics_.RecordLatency(latency_us);

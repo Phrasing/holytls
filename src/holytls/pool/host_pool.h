@@ -65,7 +65,11 @@ struct HostPoolConfig {
 // NOT thread-safe - designed for single-reactor use.
 class HostPool {
  public:
-  HostPool(const std::string& host, uint16_t port, const HostPoolConfig& config,
+  // Read-only pool identity (set at construction)
+  const std::string host;
+  const uint16_t port;
+
+  HostPool(const std::string& h, uint16_t p, const HostPoolConfig& config,
            core::Reactor* reactor, tls::TlsContextFactory* tls_factory);
   ~HostPool();
 
@@ -96,9 +100,7 @@ class HostPool {
   // Returns number of connections closed.
   size_t CleanupIdle(uint64_t now_ms);
 
-  // Accessors
-  const std::string& host() const { return host_; }
-  uint16_t port() const { return port_; }
+  // Pool statistics
   size_t TotalConnections() const { return connections_.size(); }
   size_t ActiveConnections() const;
   size_t IdleConnections() const;
@@ -109,8 +111,6 @@ class HostPool {
   PooledConnection* FindConnectionWithCapacity();
   PooledConnection* FindIdleConnection();
 
-  std::string host_;
-  uint16_t port_;
   HostPoolConfig config_;
   core::Reactor* reactor_;
   tls::TlsContextFactory* tls_factory_;

@@ -31,78 +31,54 @@ enum class Method {
 // Convert method to string
 std::string_view MethodToString(Method method);
 
-// HTTP request builder
-class Request {
- public:
-  Request() = default;
+// HTTP request
+struct Request {
+  Method method = Method::kGet;
+  std::string url;
+  Headers headers;
+  std::vector<uint8_t> body;
+  std::chrono::milliseconds timeout{30000};
 
   // Builder methods (chainable)
-  Request& SetMethod(Method method);
-  Request& SetUrl(std::string_view url);
+  Request& SetMethod(Method m);
+  Request& SetUrl(std::string_view u);
   Request& SetHeader(std::string_view name, std::string_view value);
   Request& SetBody(const uint8_t* data, size_t len);
-  Request& SetBody(std::string_view body);
-  Request& SetTimeout(std::chrono::milliseconds timeout);
+  Request& SetBody(std::string_view b);
+  Request& SetTimeout(std::chrono::milliseconds t);
+};
 
-  // Accessors
-  Method method() const { return method_; }
-  const std::string& url() const { return url_; }
-  const Headers& headers() const { return headers_; }
-  const std::vector<uint8_t>& body() const { return body_; }
-  std::chrono::milliseconds timeout() const { return timeout_; }
-
- private:
-  Method method_ = Method::kGet;
-  std::string url_;
-  Headers headers_;
-  std::vector<uint8_t> body_;
-  std::chrono::milliseconds timeout_{30000};
+// Timing information for response
+struct Timing {
+  std::chrono::milliseconds dns{0};
+  std::chrono::milliseconds connect{0};
+  std::chrono::milliseconds tls{0};
+  std::chrono::milliseconds ttfb{0};  // Time to first byte
+  std::chrono::milliseconds total{0};
 };
 
 // HTTP response
-class Response {
- public:
+struct Response {
+  int status_code = 0;
+  Headers headers;
+  std::vector<uint8_t> body;
+  Timing timing;
+
   Response() = default;
+  Response(int code, Headers hdrs, std::vector<uint8_t> data)
+      : status_code(code), headers(std::move(hdrs)), body(std::move(data)) {}
 
-  // Internal constructor for building responses
-  Response(int status_code, Headers headers, std::vector<uint8_t> body)
-      : status_code_(status_code),
-        headers_(std::move(headers)),
-        body_(std::move(body)) {}
+  // Computed queries
+  bool is_success() const { return status_code >= 200 && status_code < 300; }
+  bool is_redirect() const { return status_code >= 300 && status_code < 400; }
 
-  // Status
-  int status_code() const { return status_code_; }
-  bool is_success() const { return status_code_ >= 200 && status_code_ < 300; }
-  bool is_redirect() const { return status_code_ >= 300 && status_code_ < 400; }
-
-  // Headers
-  const Headers& headers() const { return headers_; }
+  // Header utilities
   std::string_view GetHeader(std::string_view name) const;
   bool HasHeader(std::string_view name) const;
 
-  // Body
-  const std::vector<uint8_t>& body() const { return body_; }
+  // Body utilities
   std::string_view body_string() const;
   size_t content_length() const;
-
-  // Timing information
-  struct Timing {
-    std::chrono::milliseconds dns{0};
-    std::chrono::milliseconds connect{0};
-    std::chrono::milliseconds tls{0};
-    std::chrono::milliseconds ttfb{0};  // Time to first byte
-    std::chrono::milliseconds total{0};
-  };
-  const Timing& timing() const { return timing_; }
-
- private:
-  friend class HttpClient;  // Allow HttpClient::Impl access
-  friend class PooledConnection;
-
-  int status_code_ = 0;
-  Headers headers_;
-  std::vector<uint8_t> body_;
-  Timing timing_;
 };
 
 // Callback types

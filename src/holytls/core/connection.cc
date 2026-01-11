@@ -168,7 +168,7 @@ void Connection::SendRequest(
               // Check idle state now (before async work)
               bool should_notify_idle =
                   active_requests_.empty() && pending_requests_.empty();
-              auto idle_cb = idle_callback_;
+              auto idle_cb = idle_callback;
               Connection* self = this;
 
               // Queue async decompression - runs on thread pool
@@ -202,8 +202,8 @@ void Connection::SendRequest(
 
         // Notify pool/owner that connection is now idle
         if (active_requests_.empty() && pending_requests_.empty()) {
-          if (idle_callback_) {
-            idle_callback_(this);
+          if (idle_callback) {
+            idle_callback(this);
           }
         }
       }
