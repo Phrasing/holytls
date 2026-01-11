@@ -58,40 +58,44 @@ if errorlevel 1 (
     exit /b 1
 )
 
-:: Set up generator
-if %USE_NINJA%==1 (
-    where ninja >nul 2>&1
-    if errorlevel 1 (
-        echo WARNING: ninja not found, falling back to Visual Studio generator
-        echo For faster builds, install Ninja: winget install Ninja-build.Ninja
-        set USE_NINJA=0
-    )
+:: Set up generator - check for Ninja if requested
+if !USE_NINJA!==0 goto :use_vs_generator
+
+where ninja >nul 2>&1
+if errorlevel 1 (
+    echo WARNING: ninja not found, falling back to Visual Studio generator
+    echo For faster builds, install Ninja: winget install Ninja-build.Ninja
+    set USE_NINJA=0
+    goto :use_vs_generator
 )
 
-if %USE_NINJA%==1 (
-    :: Check if MSVC is in PATH (vcvars64.bat was run)
-    where cl >nul 2>&1
-    if errorlevel 1 (
-        echo.
-        echo ERROR: MSVC compiler (cl.exe) not found in PATH
-        echo.
-        echo To use Ninja with MSVC, run this script from:
-        echo   "x64 Native Tools Command Prompt for VS 2022"
-        echo.
-        echo Or run vcvars64.bat first:
-        echo   "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
-        echo.
-        echo Alternatively, use the slower VS generator:
-        echo   build.bat vs
-        echo.
-        exit /b 1
-    )
-    set GENERATOR=Ninja
-    set CMAKE_EXTRA_ARGS=-DCMAKE_BUILD_TYPE=%BUILD_TYPE%
-) else (
-    set GENERATOR=Visual Studio 17 2022
-    set CMAKE_EXTRA_ARGS=-A x64
+:: Check if MSVC is in PATH (vcvars64.bat was run)
+where cl >nul 2>&1
+if errorlevel 1 (
+    echo.
+    echo ERROR: MSVC compiler [cl.exe] not found in PATH
+    echo.
+    echo To use Ninja with MSVC, run this script from:
+    echo   "x64 Native Tools Command Prompt for VS 2022"
+    echo.
+    echo Or run vcvars64.bat first:
+    echo   "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
+    echo.
+    echo Alternatively, use the slower VS generator:
+    echo   build.bat vs
+    echo.
+    exit /b 1
 )
+
+set GENERATOR=Ninja
+set "CMAKE_EXTRA_ARGS=-DCMAKE_BUILD_TYPE=!BUILD_TYPE!"
+goto :generator_done
+
+:use_vs_generator
+set GENERATOR=Visual Studio 17 2022
+set CMAKE_EXTRA_ARGS=-A x64
+
+:generator_done
 
 :: Create build directory
 if not exist %BUILD_DIR% mkdir %BUILD_DIR%
@@ -118,7 +122,7 @@ echo Building HolyTLS (%BUILD_TYPE%)
 echo ========================================
 echo.
 
-if %USE_NINJA%==1 (
+if !USE_NINJA!==1 (
     cmake --build %BUILD_DIR% --parallel
 ) else (
     cmake --build %BUILD_DIR% --config %BUILD_TYPE% --parallel
@@ -134,7 +138,7 @@ echo ========================================
 echo Build successful!
 echo ========================================
 echo.
-if %USE_NINJA%==1 (
+if !USE_NINJA!==1 (
     echo Binaries are in: %BUILD_DIR%\
     echo.
     echo Examples:
