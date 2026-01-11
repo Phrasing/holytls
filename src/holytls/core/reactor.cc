@@ -13,8 +13,10 @@
 namespace holytls {
 namespace core {
 
+namespace {
 // Slab allocator for PollData - avoids per-fd heap allocations
-static memory::SlabAllocator<PollData, 256> g_poll_data_allocator;
+memory::SlabAllocator<PollData, 256> g_poll_data_allocator;
+}  // namespace
 
 Reactor::Reactor(const ReactorConfig& config) : config_(config) {
   // Allocate and initialize a new event loop
