@@ -135,6 +135,9 @@ ChromeTlsProfile CreateChrome143Profile() {
   profile.compress_certificates = true;
   profile.encrypted_client_hello = true;
 
+  // Set extension order from real Chrome 143 capture
+  profile.extension_order = kChrome143ExtensionOrder;
+
   profile.record_size_limit = 16385;
   profile.key_shares_limit = 2;
 

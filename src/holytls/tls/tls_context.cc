@@ -128,9 +128,10 @@ SSL* TlsContextFactory::CreateSsl() {
 
   // Per-connection settings from lexiforest/boringssl patches
 
-  // Enable extension permutation (Chrome 110+)
-  // This randomizes the order of TLS extensions in each ClientHello
-  if (profile_.permute_extensions) {
+  // Extension ordering: use fixed order from profile if available,
+  // otherwise fall back to random permutation (Chrome 110+)
+  // Note: extension_order at context level takes precedence
+  if (profile_.extension_order == nullptr && profile_.permute_extensions) {
     SSL_set_permute_extensions(ssl, 1);
   }
 
@@ -186,8 +187,14 @@ void TlsContextFactory::ConfigureExtensions() {
     SSL_CTX_set_grease_enabled(ctx_.get(), 1);
   }
 
-  // Enable extension permutation at context level
-  if (profile_.permute_extensions) {
+  // Set extension order from real Chrome capture (if available)
+  // This ensures extensions appear in the correct order matching Chrome
+  // Note: When extension_order is set, it replaces random permutation
+  if (profile_.extension_order != nullptr) {
+    SSL_CTX_set_extension_order(ctx_.get(),
+                                const_cast<char*>(profile_.extension_order));
+  } else if (profile_.permute_extensions) {
+    // Fall back to random permutation if no specific order set
     SSL_CTX_set_permute_extensions(ctx_.get(), 1);
   }
 

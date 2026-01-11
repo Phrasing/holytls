@@ -32,24 +32,22 @@ struct SslDeleter {
 
 using SslPtr = std::unique_ptr<SSL, SslDeleter>;
 
-// TLS connection state machine
 enum class TlsState {
-  kInit,          // Not started
-  kConnecting,    // TCP connect in progress
-  kHandshaking,   // TLS handshake in progress
-  kConnected,     // Handshake complete, ready for data
-  kShuttingDown,  // TLS shutdown in progress
-  kClosed,        // Connection closed
-  kError,         // Error occurred
+  kInit,
+  kConnecting,
+  kHandshaking,
+  kConnected,
+  kShuttingDown,
+  kClosed,
+  kError,
 };
 
-// Result of TLS I/O operations
 enum class TlsResult {
-  kOk,         // Operation completed successfully
-  kWantRead,   // Need to wait for socket readable
-  kWantWrite,  // Need to wait for socket writable
-  kEof,        // Connection closed cleanly
-  kError,      // Error occurred
+  kOk,
+  kWantRead,
+  kWantWrite,
+  kEof,
+  kError,
 };
 
 // Per-connection TLS wrapper with non-blocking I/O support.
@@ -97,29 +95,18 @@ class TlsConnection {
   bool IsHandshaking() const { return state_ == TlsState::kHandshaking; }
   bool HasError() const { return state_ == TlsState::kError; }
 
-  // Get the last error message
   const std::string& last_error() const { return last_error_; }
 
-  // Get negotiated ALPN protocol (e.g., "h2" or "http/1.1")
+  // Returns negotiated ALPN protocol (e.g., "h2" or "http/1.1")
   std::string_view AlpnProtocol() const;
-
-  // Check if HTTP/2 was negotiated
   bool IsHttp2() const;
 
-  // Check if session was resumed (PSK handshake).
-  // Only meaningful after handshake completes.
+  // Only meaningful after handshake completes
   bool SessionResumed() const;
 
-  // Get the hostname being connected to
   const std::string& hostname() const { return hostname_; }
-
-  // Get the port
   uint16_t port() const { return port_; }
-
-  // Get underlying socket fd
   int fd() const { return fd_; }
-
-  // Get underlying SSL object (for advanced use)
   SSL* ssl() const { return ssl_.get(); }
 
  private:

@@ -40,12 +40,10 @@ struct PooledConnection {
   size_t consecutive_errors = 0;
   bool marked_for_removal = false;
 
-  // Check if can accept more streams
   bool HasCapacity() const {
     return active_stream_count < max_streams && !marked_for_removal;
   }
 
-  // Check if connection is idle (no active streams)
   bool IsIdle() const { return active_stream_count == 0; }
 };
 

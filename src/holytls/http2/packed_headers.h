@@ -47,7 +47,6 @@ class PackedHeaders {
   PackedHeaders(const PackedHeaders& other);
   PackedHeaders& operator=(const PackedHeaders& other);
 
-  // Check if empty
   bool empty() const { return count_ == 0; }
   size_t size() const { return count_; }
 
@@ -127,7 +126,6 @@ class PackedHeadersBuilder {
   // Build the packed headers (consumes builder state)
   PackedHeaders Build();
 
-  // Check if any headers have been added
   bool empty() const { return pending_.empty() && status_.empty(); }
 
   // Clear all pending headers

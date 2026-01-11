@@ -44,7 +44,6 @@ struct SessionEntry {
   // Intrusive list node for LRU ordering
   DLLNode lru_node = {};
 
-  // Check if session has expired based on lifetime hint
   bool IsExpired() const {
     auto now = std::chrono::steady_clock::now();
     auto age =
@@ -53,7 +52,6 @@ struct SessionEntry {
     return age >= static_cast<int64_t>(lifetime_hint_seconds);
   }
 
-  // Check if this session supports 0-RTT early data
   bool SupportsEarlyData() const { return max_early_data_size > 0; }
 };
 

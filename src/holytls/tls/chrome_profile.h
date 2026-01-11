@@ -30,8 +30,9 @@ struct ChromeTlsProfile {
   // Signature algorithms in Chrome's order
   std::vector<uint16_t> signature_algorithms;
 
-  // TLS extensions in base order (before permutation)
-  std::vector<uint16_t> extensions;
+  // TLS extension order string for SSL_CTX_set_extension_order()
+  // Format: dash-separated TLSEXT_TYPE IDs (e.g., "11-23-45-18-...")
+  const char* extension_order = nullptr;
 
   // ALPN protocols
   std::vector<std::string> alpn_protocols;
@@ -156,6 +157,12 @@ inline const std::vector<uint16_t> kChrome143SignatureAlgorithms = {
     0x0806,  // rsa_pss_rsae_sha512
     0x0601,  // rsa_pkcs1_sha512
 };
+
+// Chrome 143 extension order (from real Chrome 143 capture)
+// Format: dash-separated TLSEXT_TYPE IDs for SSL_CTX_set_extension_order()
+// This order was captured from a genuine Chrome 143 ClientHello
+inline const char* kChrome143ExtensionOrder =
+    "11-23-45-18-35-65037-5-0-27-16-13-10-65281-17613-43-51";
 
 }  // namespace tls
 }  // namespace holytls

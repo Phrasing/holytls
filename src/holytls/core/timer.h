@@ -68,7 +68,6 @@ class TimerWheel {
   // Number of pending timers (including cancelled)
   size_t Size() const { return heap_.size(); }
 
-  // Check if empty
   bool Empty() const { return heap_.empty(); }
 
  private:
@@ -126,7 +125,6 @@ class TimerGuard {
     return released;
   }
 
-  // Check if valid
   bool Valid() const { return wheel_ != nullptr && id_ != 0; }
 
   TimerId id() const { return id_; }

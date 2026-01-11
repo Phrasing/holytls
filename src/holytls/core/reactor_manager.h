@@ -81,10 +81,7 @@ class ReactorManager {
   // Stop all reactor threads (blocks until stopped)
   void Stop();
 
-  // Check if running
   bool IsRunning() const { return running_.load(std::memory_order_acquire); }
-
-  // Get number of reactors
   size_t NumReactors() const { return contexts_.size(); }
 
   // Get reactor for a host (consistent hashing for connection affinity)

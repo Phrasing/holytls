@@ -111,18 +111,13 @@ class Reactor {
   // Remove handler from reactor
   bool Remove(EventHandler* handler);
 
-  // Check if handler is registered
   bool Contains(int fd) const;
 
-  // Run the event loop
-  void Run();                   // Run forever until Stop()
-  void RunOnce();               // Process events once and return
-  void RunFor(int timeout_ms);  // Run for specified duration
-
-  // Stop the event loop
+  void Run();
+  void RunOnce();
+  void RunFor(int timeout_ms);
   void Stop();
 
-  // Check if running
   bool running() const { return running_.load(std::memory_order_acquire); }
 
   // Get current monotonic time in milliseconds (cached per iteration)

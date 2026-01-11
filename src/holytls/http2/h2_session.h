@@ -80,22 +80,11 @@ class H2Session {
   // Call after successfully sending data from GetPendingData().
   void DataSent(size_t len);
 
-  // Check if session has data to send
   bool WantsWrite() const;
-
-  // Check if session can accept more requests
   bool CanSubmitRequest() const;
-
-  // Get a stream by ID
   H2Stream* GetStream(int32_t stream_id);
-
-  // Number of active streams
   size_t ActiveStreamCount() const { return streams_.size(); }
-
-  // Check if session is still usable
   bool IsAlive() const { return !fatal_error_; }
-
-  // Get the last error message
   const std::string& last_error() const { return last_error_; }
 
  private:

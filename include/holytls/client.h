@@ -140,7 +140,6 @@ class HttpClient {
   // Get current statistics
   ClientStats GetStats() const;
 
-  // Get the Chrome version being impersonated
   ChromeVersion GetChromeVersion() const;
 
  private:

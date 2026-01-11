@@ -31,7 +31,6 @@ inline void DLLInit(DLLList* list) {
   list->count = 0;
 }
 
-// Check if list is empty
 inline bool DLLIsEmpty(const DLLList* list) { return list->first == nullptr; }
 
 // Push node to back of list
@@ -140,7 +139,6 @@ inline void SLLInit(SLLList* list) {
   list->count = 0;
 }
 
-// Check if list is empty
 inline bool SLLIsEmpty(const SLLList* list) { return list->first == nullptr; }
 
 // Push to back (queue push)

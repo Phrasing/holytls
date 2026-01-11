@@ -45,10 +45,7 @@ struct H2Headers {
   // Add a header
   void Add(std::string_view name, std::string_view value);
 
-  // Get header value (returns empty if not found)
   std::string_view Get(std::string_view name) const;
-
-  // Check if header exists
   bool Has(std::string_view name) const;
 };
 

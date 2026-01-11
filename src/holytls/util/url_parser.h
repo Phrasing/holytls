@@ -26,7 +26,6 @@ struct ParsedUrl {
   // Full path including query (for HTTP request)
   std::string PathWithQuery() const;
 
-  // Check if HTTPS
   bool IsHttps() const { return scheme == "https"; }
 };
 

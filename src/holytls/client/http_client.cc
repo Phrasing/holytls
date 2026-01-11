@@ -195,7 +195,6 @@ class HttpClient::Impl {
       return;
     }
 
-    // Get the reactor for this host
     auto* ctx = reactor_manager_.GetReactorForHost(parsed.host, parsed.port);
     if (!ctx) {
       if (callback) {
