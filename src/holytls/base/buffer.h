@@ -1,4 +1,4 @@
-// Copyright 2024 HolyTLS Authors
+// Copyright 2026 HolyTLS Authors
 // SPDX-License-Identifier: MIT
 
 // Arena-backed zero-copy buffer for high-performance I/O.

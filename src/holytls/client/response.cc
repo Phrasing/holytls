@@ -1,4 +1,4 @@
-// Copyright 2024 HolyTLS Authors
+// Copyright 2026 HolyTLS Authors
 // SPDX-License-Identifier: MIT
 
 // Response implementation is in http_client.cc for now
