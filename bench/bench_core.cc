@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <list>
+#include <print>
 #include <unordered_map>
 #include <vector>
 
@@ -301,26 +302,26 @@ void BenchStdList() {
 }  // namespace
 
 int main() {
-  printf("=== HolyTLS Core Benchmarks ===\n");
-  printf("Comparing optimized vs standard library implementations\n\n");
+  std::println("=== HolyTLS Core Benchmarks ===");
+  std::println("Comparing optimized vs standard library implementations\n");
 
-  printf("--- Memory Allocation ---\n");
+  std::println("--- Memory Allocation ---");
   BenchArenaAlloc();
   BenchMallocAlloc();
   BenchSlabAlloc();
 
-  printf("\n--- Lookup Tables ---\n");
+  std::println("\n--- Lookup Tables ---");
   BenchFdTable();
   BenchUnorderedMap();
 
-  printf("\n--- Buffers ---\n");
+  std::println("\n--- Buffers ---");
   BenchBuffer();
   BenchVectorVsFixed();
 
-  printf("\n--- Linked Lists ---\n");
+  std::println("\n--- Linked Lists ---");
   BenchIntrusiveList();
   BenchStdList();
 
-  printf("\n=== Benchmark Complete ===\n");
+  std::println("\n=== Benchmark Complete ===");
   return 0;
 }

@@ -11,8 +11,8 @@
 //
 // Pass criteria: 2xx or 3xx response on both requests
 
-#include <iostream>
 #include <memory>
+#include <print>
 #include <string>
 #include <vector>
 
@@ -54,8 +54,7 @@ int MakeRequest(holytls::core::Reactor& reactor,
         }
 
         if (verbose) {
-          std::cout << "[DEBUG] Resolved " << host << " to " << addresses[0].ip
-                    << "\n";
+          std::println("[DEBUG] Resolved {} to {}", host, addresses[0].ip);
         }
 
         conn = std::make_unique<holytls::core::Connection>(&reactor, &tls_factory,
@@ -68,7 +67,7 @@ int MakeRequest(holytls::core::Reactor& reactor,
         }
 
         if (verbose) {
-          std::cout << "[DEBUG] Connected to " << host << "\n";
+          std::println("[DEBUG] Connected to {}", host);
         }
 
         conn->SendRequest(
@@ -76,16 +75,14 @@ int MakeRequest(holytls::core::Reactor& reactor,
             [&status, verbose, &host](const holytls::core::Response& response) {
               status = response.status_code;
               if (verbose) {
-                std::cout << "[DEBUG] Got response from " << host << ": "
-                          << status << " (" << response.body.size()
-                          << " bytes)\n";
+                std::println("[DEBUG] Got response from {}: {} ({} bytes)",
+                             host, status, response.body.size());
               }
             },
             [&error, &reactor, verbose, &host](const std::string& err) {
               error = err;
               if (verbose) {
-                std::cout << "[DEBUG] Error from " << host << ": " << err
-                          << "\n";
+                std::println("[DEBUG] Error from {}: {}", host, err);
               }
               reactor.Stop();
             });
@@ -100,14 +97,14 @@ void TestWebsite(holytls::core::Reactor& reactor,
                  holytls::tls::TlsContextFactory& tls_factory,
                  holytls::util::DnsResolver& resolver, const std::string& host,
                  TestResult& result, bool verbose = false) {
-  std::cout << "Testing " << host << "... " << std::flush;
+  std::print("Testing {}... ", host);
 
   // First request - full handshake
   result.first_status =
       MakeRequest(reactor, tls_factory, resolver, host, result.error, verbose);
 
   if (!result.error.empty()) {
-    std::cout << "FAIL (1st: " << result.error << ")\n";
+    std::println("FAIL (1st: {})", result.error);
     return;  // Don't try second request if first failed
   }
 
@@ -124,13 +121,11 @@ void TestWebsite(holytls::core::Reactor& reactor,
                   IsSuccessStatus(result.second_status);
 
   if (result.passed) {
-    std::cout << "OK [" << result.first_status << " -> " << result.second_status
-              << "]\n";
+    std::println("OK [{} -> {}]", result.first_status, result.second_status);
   } else if (!result.error.empty()) {
-    std::cout << "FAIL (" << result.error << ")\n";
+    std::println("FAIL ({})", result.error);
   } else {
-    std::cout << "FAIL [" << result.first_status << " -> "
-              << result.second_status << "]\n";
+    std::println("FAIL [{} -> {}]", result.first_status, result.second_status);
   }
 }
 
@@ -142,9 +137,9 @@ int main(int argc, char* argv[]) {
     verbose = true;
   }
 
-  std::cout << "=== Top 10 US Websites Integration Test ===\n";
-  std::cout << "Chrome 143 fingerprint, TLS 1.3, HTTP/2\n";
-  std::cout << "Testing session resumption (2 requests per site)\n\n";
+  std::println("=== Top 10 US Websites Integration Test ===");
+  std::println("Chrome 143 fingerprint, TLS 1.3, HTTP/2");
+  std::println("Testing session resumption (2 requests per site)\n");
 
   // Top 10 US websites by traffic
   // Using www. prefix for sites that commonly redirect there
@@ -172,35 +167,36 @@ int main(int argc, char* argv[]) {
   }
 
   // Print summary
-  std::cout << "\n=== Summary ===\n";
+  std::println("\n=== Summary ===");
   int passed = 0;
   for (const auto& r : results) {
     if (r.passed) passed++;
-    std::cout << (r.passed ? "[PASS]" : "[FAIL]") << " " << r.host;
-    if (!r.passed && !r.error.empty()) {
-      std::cout << " - " << r.error;
-    } else if (!r.passed) {
-      std::cout << " [" << r.first_status << " -> " << r.second_status << "]";
+    if (r.passed) {
+      std::println("[PASS] {}", r.host);
+    } else if (!r.error.empty()) {
+      std::println("[FAIL] {} - {}", r.host, r.error);
+    } else {
+      std::println("[FAIL] {} [{} -> {}]", r.host, r.first_status,
+                   r.second_status);
     }
-    std::cout << "\n";
   }
 
-  std::cout << "\nPassed: " << passed << "/" << websites.size() << "\n";
+  std::println("\nPassed: {}/{}", passed, websites.size());
 
   // Print session cache stats
   if (auto* cache = tls_factory.session_cache()) {
-    std::cout << "\n=== Session Cache Stats ===\n";
-    std::cout << "Hits: " << cache->Hits() << "\n";
-    std::cout << "Misses: " << cache->Misses() << "\n";
-    std::cout << "Cached: " << cache->Size() << "\n";
+    std::println("\n=== Session Cache Stats ===");
+    std::println("Hits: {}", cache->Hits());
+    std::println("Misses: {}", cache->Misses());
+    std::println("Cached: {}", cache->Size());
   }
 
   // Print DNS cache stats
-  std::cout << "\n=== DNS Cache Stats ===\n";
-  std::cout << "Hits: " << resolver.CacheHits() << "\n";
-  std::cout << "Misses: " << resolver.CacheMisses() << "\n";
+  std::println("\n=== DNS Cache Stats ===");
+  std::println("Hits: {}", resolver.CacheHits());
+  std::println("Misses: {}", resolver.CacheMisses());
 
-  std::cout << "\n=== Done ===\n";
+  std::println("\n=== Done ===");
 
   // Consider test passed if at least 8/10 succeed (allow for transient issues)
   bool overall_pass = passed >= 8;

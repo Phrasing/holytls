@@ -4,10 +4,10 @@
 #include "holytls/memory/buffer_pool.h"
 
 #include <cassert>
-#include <iostream>
+#include <print>
 
 void TestBufferPoolCreation() {
-  std::cout << "Testing buffer pool creation... ";
+  std::print("Testing buffer pool creation... ");
 
   holytls::memory::BufferPool::Config config;
   config.small_count = 32;
@@ -21,11 +21,11 @@ void TestBufferPoolCreation() {
   assert(stats.medium_available == 16);
   assert(stats.large_available == 8);
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestBufferAcquisition() {
-  std::cout << "Testing buffer acquisition... ";
+  std::print("Testing buffer acquisition... ");
 
   holytls::memory::BufferPool pool;
 
@@ -45,11 +45,11 @@ void TestBufferAcquisition() {
   assert(stats.acquisitions == 3);
   assert(stats.pool_hits == 3);
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestBufferRelease() {
-  std::cout << "Testing buffer release... ";
+  std::print("Testing buffer release... ");
 
   holytls::memory::BufferPool pool;
 
@@ -65,11 +65,11 @@ void TestBufferRelease() {
   auto stats_after = pool.GetStats();
   assert(stats_after.small_available == small_before);
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestActualSize() {
-  std::cout << "Testing actual size calculation... ";
+  std::print("Testing actual size calculation... ");
 
   assert(holytls::memory::BufferPool::ActualSize(100) == 4096);
   assert(holytls::memory::BufferPool::ActualSize(4096) == 4096);
@@ -78,17 +78,17 @@ void TestActualSize() {
   assert(holytls::memory::BufferPool::ActualSize(20000) == 65536);
   assert(holytls::memory::BufferPool::ActualSize(100000) == 100000);
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 int main() {
-  std::cout << "=== Buffer Pool Unit Tests ===\n";
+  std::println("=== Buffer Pool Unit Tests ===");
 
   TestBufferPoolCreation();
   TestBufferAcquisition();
   TestBufferRelease();
   TestActualSize();
 
-  std::cout << "\nAll buffer pool tests passed!\n";
+  std::println("\nAll buffer pool tests passed!");
   return 0;
 }

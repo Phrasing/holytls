@@ -8,9 +8,9 @@
 
 #include <chrono>
 #include <cstdint>
-#include <cstdio>
 #include <cstring>
 #include <functional>
+#include <print>
 #include <string>
 #include <vector>
 
@@ -72,10 +72,8 @@ struct Result {
   double ops_per_sec;
 
   void Print() const {
-    printf("%-40s %12llu iters %12.2f ns/op %12.2f M ops/sec\n", name.c_str(),
-           static_cast<unsigned long long>(iterations), ns_per_op,
-           ops_per_sec / 1e6);
-    fflush(stdout);
+    std::println("{:<40} {:>12} iters {:>12.2f} ns/op {:>12.2f} M ops/sec",
+                 name, iterations, ns_per_op, ops_per_sec / 1e6);
   }
 };
 
@@ -160,11 +158,11 @@ class Suite {
   }
 
   void Run() {
-    printf("\n=== Benchmark Results ===\n\n");
-    printf("%-40s %12s %12s %12s\n", "Benchmark", "Iterations", "ns/op",
-           "M ops/sec");
-    printf("%-40s %12s %12s %12s\n", "---------", "----------", "-----",
-           "---------");
+    std::println("\n=== Benchmark Results ===\n");
+    std::println("{:<40} {:>12} {:>12} {:>12}", "Benchmark", "Iterations",
+                 "ns/op", "M ops/sec");
+    std::println("{:<40} {:>12} {:>12} {:>12}", "---------", "----------",
+                 "-----", "---------");
 
     for (const auto& bench : benchmarks_) {
       auto result = AutoBenchmark(bench.name.c_str(), bench.func);
@@ -172,7 +170,7 @@ class Suite {
       results_.push_back(result);
     }
 
-    printf("\n");
+    std::println("");
   }
 
   const std::vector<Result>& Results() const { return results_; }
@@ -195,8 +193,8 @@ struct MemStats {
   size_t peak_bytes;
 
   void Print() const {
-    printf("Memory: %zu allocs, %zu deallocs, %zu KB peak\n", allocations,
-           deallocations, peak_bytes / 1024);
+    std::println("Memory: {} allocs, {} deallocs, {} KB peak", allocations,
+                 deallocations, peak_bytes / 1024);
   }
 };
 

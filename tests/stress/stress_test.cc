@@ -10,11 +10,10 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
-#include <cinttypes>
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <mutex>
+#include <print>
 #include <string>
 #include <thread>
 #include <vector>
@@ -137,9 +136,8 @@ ParsedUrl ParseUrl(const std::string& url) {
 }
 
 void PrintUsage(const char* prog) {
-  std::fprintf(
-      stderr,
-      "Usage: %s [options]\n"
+  std::println(stderr,
+      "Usage: {} [options]\n"
       "\n"
       "Options:\n"
       "  --url URL          Target URL (required unless --urls is used)\n"
@@ -158,10 +156,10 @@ void PrintUsage(const char* prog) {
       "  --help             Show this help\n"
       "\n"
       "Examples:\n"
-      "  %s --url https://httpbin.org/get --connections 100 --duration 30\n"
-      "  %s --urls "
+      "  {} --url https://httpbin.org/get --connections 100 --duration 30\n"
+      "  {} --urls "
       "https://localhost:8443/test.json,https://localhost:8444/test.json "
-      "--insecure\n",
+      "--insecure",
       prog, prog, prog);
 }
 
@@ -206,7 +204,7 @@ bool ParseArgs(int argc, char* argv[], StressConfig* config) {
     } else if (std::strcmp(argv[i], "--verbose") == 0) {
       config->verbose = true;
     } else {
-      std::fprintf(stderr, "Unknown option: %s\n", argv[i]);
+      std::println(stderr, "Unknown option: {}", argv[i]);
       PrintUsage(argv[0]);
       return false;
     }
@@ -218,12 +216,12 @@ bool ParseArgs(int argc, char* argv[], StressConfig* config) {
     for (const auto& url : config->urls) {
       auto parsed = ParseUrl(url);
       if (!parsed.valid) {
-        std::fprintf(stderr, "Error: Invalid URL: %s\n", url.c_str());
+        std::println(stderr, "Error: Invalid URL: {}", url);
         return false;
       }
     }
   } else if (config->url.empty()) {
-    std::fprintf(stderr, "Error: --url or --urls is required\n");
+    std::println(stderr, "Error: --url or --urls is required");
     PrintUsage(argv[0]);
     return false;
   } else {
@@ -263,10 +261,8 @@ void PrintLiveStats(size_t elapsed_sec, const StressMetrics& metrics,
     }
   }
 
-  std::printf("[T+%3zus] RPS: %7" PRIu64 " | InFlight: %5" PRIu64
-              " | Complete: %8" PRIu64 " | Failed: %5" PRIu64 " | P99: %s\n",
-              elapsed_sec, rps, in_flight, completed, failed, p99_label);
-  std::fflush(stdout);
+  std::println("[T+{:>3}s] RPS: {:>7} | InFlight: {:>5} | Complete: {:>8} | Failed: {:>5} | P99: {}",
+               elapsed_sec, rps, in_flight, completed, failed, p99_label);
 }
 
 double CalculatePercentile(std::vector<uint64_t>& samples, double percentile) {
@@ -313,30 +309,30 @@ void PrintFinalReport(const StressConfig& config, const StressMetrics& metrics,
   double p99 = CalculatePercentile(samples, 99.0);
   double p999 = CalculatePercentile(samples, 99.9);
 
-  std::printf("\n");
-  std::printf("=== Final Report ===\n");
-  std::printf("Target URL:      %s\n", config.url.c_str());
-  std::printf("Connections:     %zu\n", config.num_connections);
-  std::printf("Duration:        %.1fs\n", duration_sec);
-  std::printf("\n");
-  std::printf("Total Requests:  %" PRIu64 "\n", completed + failed);
-  std::printf("Successful:      %" PRIu64 "\n", completed);
-  std::printf("Failed:          %" PRIu64 "\n", failed);
-  std::printf("Success Rate:    %.2f%%\n", success_rate);
-  std::printf("\n");
-  std::printf("Avg RPS:         %.0f\n", avg_rps);
-  std::printf("Peak RPS:        %" PRIu64 "\n", peak_rps);
-  std::printf("Bytes Received:  %" PRIu64 " (%.2f MB)\n", bytes,
-              static_cast<double>(bytes) / (1024.0 * 1024.0));
-  std::printf("\n");
-  std::printf("Latency P50:     %.2f ms\n", p50);
-  std::printf("Latency P95:     %.2f ms\n", p95);
-  std::printf("Latency P99:     %.2f ms\n", p99);
-  std::printf("Latency P99.9:   %.2f ms\n", p999);
-  std::printf("\n");
+  std::println("");
+  std::println("=== Final Report ===");
+  std::println("Target URL:      {}", config.url);
+  std::println("Connections:     {}", config.num_connections);
+  std::println("Duration:        {:.1f}s", duration_sec);
+  std::println("");
+  std::println("Total Requests:  {}", completed + failed);
+  std::println("Successful:      {}", completed);
+  std::println("Failed:          {}", failed);
+  std::println("Success Rate:    {:.2f}%", success_rate);
+  std::println("");
+  std::println("Avg RPS:         {:.0f}", avg_rps);
+  std::println("Peak RPS:        {}", peak_rps);
+  std::println("Bytes Received:  {} ({:.2f} MB)", bytes,
+               static_cast<double>(bytes) / (1024.0 * 1024.0));
+  std::println("");
+  std::println("Latency P50:     {:.2f} ms", p50);
+  std::println("Latency P95:     {:.2f} ms", p95);
+  std::println("Latency P99:     {:.2f} ms", p99);
+  std::println("Latency P99.9:   {:.2f} ms", p999);
+  std::println("");
 
   // Print histogram
-  std::printf("Latency Distribution:\n");
+  std::println("Latency Distribution:");
   static const char* labels[] = {"  <1ms  ", "  <5ms  ", "  <10ms ", "  <50ms ",
                                  "  <100ms", "  <500ms", "  >=500ms"};
   uint64_t histogram_total = 0;
@@ -347,9 +343,8 @@ void PrintFinalReport(const StressConfig& config, const StressMetrics& metrics,
     uint64_t count = metrics.latency_buckets[i].load();
     double pct = histogram_total > 0 ? (100.0 * count / histogram_total) : 0.0;
     int bar_len = static_cast<int>(pct / 2);  // 50 chars = 100%
-    std::printf("  %s: %8" PRIu64 " (%5.1f%%) ", labels[i], count, pct);
-    for (int j = 0; j < bar_len; ++j) std::printf("#");
-    std::printf("\n");
+    std::string bar(bar_len, '#');
+    std::println("  {}: {:>8} ({:>5.1f}%) {}", labels[i], count, pct, bar);
   }
 }
 
@@ -358,27 +353,27 @@ class StressTest {
   StressTest(const StressConfig& config) : config_(config) {}
 
   int Run() {
-    std::printf("=== HolyTLS Stress Test ===\n");
+    std::println("=== HolyTLS Stress Test ===");
     if (config_.urls.size() == 1) {
-      std::printf("URL:         %s\n", config_.urls[0].c_str());
+      std::println("URL:         {}", config_.urls[0]);
     } else {
-      std::printf("URLs:        %zu targets (multi-reactor mode)\n",
-                  config_.urls.size());
+      std::println("URLs:        {} targets (multi-reactor mode)",
+                   config_.urls.size());
       for (size_t i = 0; i < config_.urls.size(); ++i) {
-        std::printf("  [%zu] %s\n", i, config_.urls[i].c_str());
+        std::println("  [{}] {}", i, config_.urls[i]);
       }
     }
-    std::printf("Connections: %zu\n", config_.num_connections);
-    std::printf("Duration:    %zus (+ %zus warmup)\n", config_.duration_sec,
-                config_.warmup_sec);
-    std::printf("Target RPS:  %s\n",
-                config_.target_rps == 0
-                    ? "unlimited"
-                    : std::to_string(config_.target_rps).c_str());
+    std::println("Connections: {}", config_.num_connections);
+    std::println("Duration:    {}s (+ {}s warmup)", config_.duration_sec,
+                 config_.warmup_sec);
+    std::println("Target RPS:  {}",
+                 config_.target_rps == 0
+                     ? "unlimited"
+                     : std::to_string(config_.target_rps));
     if (config_.insecure) {
-      std::printf("TLS Verify:  DISABLED (insecure mode)\n");
+      std::println("TLS Verify:  DISABLED (insecure mode)");
     }
-    std::printf("\n");
+    std::println("");
 
     // Configure client
     auto client_config = holytls::ClientConfig::ChromeLatest();
@@ -397,9 +392,8 @@ class StressTest {
     client_ = std::make_unique<holytls::HttpClient>(client_config);
 
     // Warmup phase
-    std::printf(
-        "[Warmup] Establishing connections and warming up for %zus...\n",
-        config_.warmup_sec);
+    std::println("[Warmup] Establishing connections and warming up for {}s...",
+                 config_.warmup_sec);
 
     warmup_phase_ = true;
     auto warmup_start = std::chrono::steady_clock::now();
@@ -420,9 +414,9 @@ class StressTest {
     uint64_t warmup_sent = metrics_.requests_sent.load();
     uint64_t warmup_done =
         metrics_.requests_completed.load() + metrics_.requests_failed.load();
-    std::printf("[Warmup] Complete. In-flight requests: %" PRIu64 "\n",
-                warmup_sent > warmup_done ? warmup_sent - warmup_done : 0);
-    std::printf("\n");
+    std::println("[Warmup] Complete. In-flight requests: {}",
+                 warmup_sent > warmup_done ? warmup_sent - warmup_done : 0);
+    std::println("");
 
     // Reset metrics for actual test
     metrics_.requests_sent.store(0);
@@ -445,7 +439,7 @@ class StressTest {
     uint64_t last_completed = 0;
     size_t elapsed_sec = 0;
 
-    std::printf("[Test] Running for %zus...\n", config_.duration_sec);
+    std::println("[Test] Running for {}s...", config_.duration_sec);
 
     while (std::chrono::steady_clock::now() < test_end) {
       client_->RunOnce();
@@ -501,7 +495,7 @@ class StressTest {
     auto test_duration = std::chrono::steady_clock::now() - test_start;
 
     // Stop and drain
-    std::printf("\n[Test] Stopping and draining...\n");
+    std::println("\n[Test] Stopping and draining...");
     running_ = false;
 
     // Brief drain period to collect final responses
@@ -555,7 +549,7 @@ class StressTest {
       } else {
         metrics_.requests_failed.fetch_add(1, std::memory_order_relaxed);
         if (config_.verbose) {
-          std::fprintf(stderr, "Request failed: %s\n", error.message().c_str());
+          std::println(stderr, "Request failed: {}", error.message);
         }
         // Don't send new request on failure - let main loop handle pacing
       }

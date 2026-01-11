@@ -4,10 +4,10 @@
 #include "holytls/core/reactor.h"
 
 #include <cassert>
-#include <iostream>
+#include <print>
 
 void TestReactorCreation() {
-  std::cout << "Testing reactor creation... ";
+  std::print("Testing reactor creation... ");
 
   holytls::core::ReactorConfig config;
   config.max_events = 512;
@@ -18,11 +18,11 @@ void TestReactorCreation() {
   assert(!reactor.running());
   assert(reactor.handler_count() == 0);
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestReactorTime() {
-  std::cout << "Testing reactor time... ";
+  std::print("Testing reactor time... ");
 
   holytls::core::Reactor reactor;
 
@@ -34,15 +34,15 @@ void TestReactorTime() {
   uint64_t t2 = reactor.now_ms();
   assert(t2 >= t1);
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 int main() {
-  std::cout << "=== Reactor Unit Tests ===\n";
+  std::println("=== Reactor Unit Tests ===");
 
   TestReactorCreation();
   TestReactorTime();
 
-  std::cout << "\nAll reactor tests passed!\n";
+  std::println("\nAll reactor tests passed!");
   return 0;
 }

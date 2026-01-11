@@ -6,10 +6,10 @@
 
 #include <cassert>
 #include <cstring>
-#include <iostream>
+#include <print>
 
 void TestArenaBasic() {
-  std::cout << "Testing arena basic allocation... ";
+  std::print("Testing arena basic allocation... ");
 
   holytls::Arena* arena = holytls::Arena::Create(1024);
   assert(arena != nullptr);
@@ -32,11 +32,11 @@ void TestArenaBasic() {
   }
 
   holytls::Arena::Destroy(arena);
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestArenaZero() {
-  std::cout << "Testing arena zero allocation... ";
+  std::print("Testing arena zero allocation... ");
 
   holytls::Arena* arena = holytls::Arena::Create(1024);
   assert(arena != nullptr);
@@ -50,11 +50,11 @@ void TestArenaZero() {
   }
 
   holytls::Arena::Destroy(arena);
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestArenaGrowth() {
-  std::cout << "Testing arena growth... ";
+  std::print("Testing arena growth... ");
 
   // Small block size to force growth
   holytls::Arena* arena = holytls::Arena::Create(64);
@@ -68,11 +68,11 @@ void TestArenaGrowth() {
   }
 
   holytls::Arena::Destroy(arena);
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestArenaLargeAllocation() {
-  std::cout << "Testing arena large allocation... ";
+  std::print("Testing arena large allocation... ");
 
   holytls::Arena* arena = holytls::Arena::Create(64);
   assert(arena != nullptr);
@@ -88,11 +88,11 @@ void TestArenaLargeAllocation() {
   }
 
   holytls::Arena::Destroy(arena);
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestArenaTemp() {
-  std::cout << "Testing arena temp scopes... ";
+  std::print("Testing arena temp scopes... ");
 
   holytls::Arena* arena = holytls::Arena::Create(1024);
   assert(arena != nullptr);
@@ -117,11 +117,11 @@ void TestArenaTemp() {
   assert(*a == 1);
 
   holytls::Arena::Destroy(arena);
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestArenaClear() {
-  std::cout << "Testing arena clear... ";
+  std::print("Testing arena clear... ");
 
   holytls::Arena* arena = holytls::Arena::Create(64);
   assert(arena != nullptr);
@@ -145,11 +145,11 @@ void TestArenaClear() {
   assert(*p == 123);
 
   holytls::Arena::Destroy(arena);
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestDLLBasic() {
-  std::cout << "Testing doubly-linked list... ";
+  std::print("Testing doubly-linked list... ");
 
   struct Item {
     int value;
@@ -191,11 +191,11 @@ void TestDLLBasic() {
   assert(ContainerOf(back, Item, node)->value == 4);
   assert(list.count == 2);
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestSLLBasic() {
-  std::cout << "Testing singly-linked list... ";
+  std::print("Testing singly-linked list... ");
 
   struct Item {
     int value;
@@ -224,11 +224,11 @@ void TestSLLBasic() {
 
   assert(holytls::SLLIsEmpty(&list));
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestSLLStack() {
-  std::cout << "Testing singly-linked list as stack... ";
+  std::print("Testing singly-linked list as stack... ");
 
   struct Item {
     int value;
@@ -252,11 +252,11 @@ void TestSLLStack() {
     assert(item->value == i);
   }
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 int main() {
-  std::cout << "=== Arena and List Unit Tests ===\n\n";
+  std::println("=== Arena and List Unit Tests ===\n");
 
   TestArenaBasic();
   TestArenaZero();
@@ -268,6 +268,6 @@ int main() {
   TestSLLBasic();
   TestSLLStack();
 
-  std::cout << "\nAll arena and list tests passed!\n";
+  std::println("\nAll arena and list tests passed!");
   return 0;
 }

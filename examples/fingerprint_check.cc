@@ -11,8 +11,8 @@
 // Usage: ./fingerprint_check [chrome_version]
 //   chrome_version: 120, 125, 130, 131, or 143 (default: 143)
 
-#include <iostream>
 #include <memory>
+#include <print>
 #include <string>
 
 #include "holytls/config.h"
@@ -26,8 +26,8 @@
 namespace {
 
 void PrintUsage(const char* prog) {
-  std::cerr << "Usage: " << prog << " [chrome_version]\n";
-  std::cerr << "  chrome_version: 120, 125, 130, 131, or 143 (default: 143)\n";
+  std::println(stderr, "Usage: {} [chrome_version]", prog);
+  std::println(stderr, "  chrome_version: 120, 125, 130, 131, or 143 (default: 143)");
 }
 
 holytls::ChromeVersion ParseChromeVersion(const std::string& arg) {
@@ -46,23 +46,23 @@ void TestEndpoint(holytls::core::Reactor& reactor,
                   const std::string& path, const std::string& label) {
   std::unique_ptr<holytls::core::Connection> conn;
 
-  std::cout << "\n=== Testing " << label << " ===\n";
-  std::cout << "Resolving " << host << "...\n";
+  std::println("\n=== Testing {} ===", label);
+  std::println("Resolving {}...", host);
 
   resolver.ResolveAsync(
       host, [&](const std::vector<holytls::util::ResolvedAddress>& addresses,
                 const std::string& error) {
         if (!error.empty() || addresses.empty()) {
-          std::cerr << "DNS resolution failed: " << error << "\n";
+          std::println(stderr, "DNS resolution failed: {}", error);
           reactor.Stop();
           return;
         }
 
-        std::cout << "Resolved to: " << addresses[0].ip;
+        std::print("Resolved to: {}", addresses[0].ip);
         if (addresses[0].is_ipv6) {
-          std::cout << " (IPv6)";
+          std::print(" (IPv6)");
         }
-        std::cout << "\n";
+        std::println("");
 
         conn = std::make_unique<holytls::core::Connection>(&reactor, &tls_factory,
                                                         host, 443);
@@ -71,9 +71,9 @@ void TestEndpoint(holytls::core::Reactor& reactor,
         conn->SetIdleCallback(
             [&reactor](holytls::core::Connection*) { reactor.Stop(); });
 
-        std::cout << "Connecting...\n";
+        std::println("Connecting...");
         if (!conn->Connect(addresses[0].ip, addresses[0].is_ipv6)) {
-          std::cerr << "Connection failed\n";
+          std::println(stderr, "Connection failed");
           reactor.Stop();
           return;
         }
@@ -83,15 +83,14 @@ void TestEndpoint(holytls::core::Reactor& reactor,
         conn->SendRequest(
             "GET", path, {},  // Chrome headers are auto-generated
             [&label](const holytls::core::Response& response) {
-              std::cout << "\n=== " << label << " Response ===\n";
-              std::cout << "Status: " << response.status_code << "\n";
-              std::cout << "Body length: " << response.body.size()
-                        << " bytes\n\n";
-              std::cout << "=== " << label << " Fingerprint Data ===\n";
-              std::cout << response.body_string() << "\n";
+              std::println("\n=== {} Response ===", label);
+              std::println("Status: {}", response.status_code);
+              std::println("Body length: {} bytes\n", response.body.size());
+              std::println("=== {} Fingerprint Data ===", label);
+              std::println("{}", response.body_string());
             },
             [](const std::string& err) {
-              std::cerr << "Request error: " << err << "\n";
+              std::println(stderr, "Request error: {}", err);
             });
       });
 
@@ -103,7 +102,7 @@ void TestEndpoint(holytls::core::Reactor& reactor,
 int main(int argc, char* argv[]) {
   // Initialize platform-specific networking (Winsock on Windows)
   if (!holytls::util::InitializeNetworking()) {
-    std::cerr << "Failed to initialize networking\n";
+    std::println(stderr, "Failed to initialize networking");
     return 1;
   }
 
@@ -118,11 +117,11 @@ int main(int argc, char* argv[]) {
     version = ParseChromeVersion(arg);
   }
 
-  std::cout << "=== TLS Fingerprint Check ===\n";
-  std::cout << "Impersonating Chrome " << static_cast<int>(version) << "\n";
-  std::cout << "Targets:\n";
-  std::cout << "  - https://tls.peet.ws/api/all\n";
-  std::cout << "  - https://tls.browserleaks.com/tls?minify=1\n";
+  std::println("=== TLS Fingerprint Check ===");
+  std::println("Impersonating Chrome {}", static_cast<int>(version));
+  std::println("Targets:");
+  std::println("  - https://tls.peet.ws/api/all");
+  std::println("  - https://tls.browserleaks.com/tls?minify=1");
 
   // Create reactor
   holytls::core::Reactor reactor;
@@ -132,8 +131,7 @@ int main(int argc, char* argv[]) {
   tls_config.chrome_version = version;
   tls_config.verify_certificates = true;
   holytls::tls::TlsContextFactory tls_factory(tls_config);
-  std::cout << "\nTLS context created for Chrome " << static_cast<int>(version)
-            << "\n";
+  std::println("\nTLS context created for Chrome {}", static_cast<int>(version));
 
   // Create DNS resolver
   holytls::util::DnsResolver resolver(reactor.loop());
@@ -147,25 +145,25 @@ int main(int argc, char* argv[]) {
                "/tls?minify=1", "BrowserLeaks");
 
   // Test session resumption by making a second request to the same host
-  std::cout << "\n=== Testing Session Resumption ===\n";
-  std::cout << "Making second request to tls.peet.ws...\n";
+  std::println("\n=== Testing Session Resumption ===");
+  std::println("Making second request to tls.peet.ws...");
   TestEndpoint(reactor, tls_factory, resolver, "tls.peet.ws", "/api/all",
                "Peet.ws (Resumption)");
 
   // Print DNS cache stats
-  std::cout << "\n=== DNS Cache Stats ===\n";
-  std::cout << "Cache hits: " << resolver.CacheHits() << "\n";
-  std::cout << "Cache misses: " << resolver.CacheMisses() << "\n";
+  std::println("\n=== DNS Cache Stats ===");
+  std::println("Cache hits: {}", resolver.CacheHits());
+  std::println("Cache misses: {}", resolver.CacheMisses());
 
   // Print TLS session cache stats
   if (auto* cache = tls_factory.session_cache()) {
-    std::cout << "\n=== TLS Session Cache Stats ===\n";
-    std::cout << "Session cache hits: " << cache->Hits() << "\n";
-    std::cout << "Session cache misses: " << cache->Misses() << "\n";
-    std::cout << "Cached sessions: " << cache->Size() << "\n";
+    std::println("\n=== TLS Session Cache Stats ===");
+    std::println("Session cache hits: {}", cache->Hits());
+    std::println("Session cache misses: {}", cache->Misses());
+    std::println("Cached sessions: {}", cache->Size());
   }
 
-  std::cout << "\n=== Done ===\n";
+  std::println("\n=== Done ===");
 
   // Cleanup platform-specific networking
   holytls::util::CleanupNetworking();

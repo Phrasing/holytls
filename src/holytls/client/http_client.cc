@@ -182,7 +182,7 @@ class HttpClient::Impl {
     util::ParsedUrl parsed;
     if (!util::ParseUrl(request.url(), &parsed)) {
       if (callback) {
-        callback(Response{}, Error::InvalidUrl("Failed to parse URL"));
+        callback(Response{}, Error{ErrorCode::kInvalidUrl, "Failed to parse URL"});
       }
       return;
     }
@@ -190,7 +190,7 @@ class HttpClient::Impl {
     // Only HTTPS is supported
     if (!parsed.IsHttps()) {
       if (callback) {
-        callback(Response{}, Error::InvalidUrl("Only HTTPS is supported"));
+        callback(Response{}, Error{ErrorCode::kInvalidUrl, "Only HTTPS is supported"});
       }
       return;
     }
@@ -199,7 +199,7 @@ class HttpClient::Impl {
     auto* ctx = reactor_manager_.GetReactorForHost(parsed.host, parsed.port);
     if (!ctx) {
       if (callback) {
-        callback(Response{}, Error::Internal("No reactor available"));
+        callback(Response{}, Error{ErrorCode::kInternal, "No reactor available"});
       }
       return;
     }
@@ -282,7 +282,7 @@ class HttpClient::Impl {
             if (callback) {
               callback(
                   Response{},
-                  Error::Dns(error.empty() ? "No addresses found" : error));
+                  Error{ErrorCode::kDns, error.empty() ? "No addresses found" : error});
             }
             requests_failed_.fetch_add(1, std::memory_order_relaxed);
             return;
@@ -299,7 +299,7 @@ class HttpClient::Impl {
             if (!host_pool) {
               if (callback) {
                 callback(Response{},
-                         Error::Connection("Failed to create host pool"));
+                         Error{ErrorCode::kConnection, "Failed to create host pool"});
               }
               requests_failed_.fetch_add(1, std::memory_order_relaxed);
               return;
@@ -310,7 +310,7 @@ class HttpClient::Impl {
             if (!host_pool->CreateConnection(addr.ip, addr.is_ipv6)) {
               if (callback) {
                 callback(Response{},
-                         Error::Connection("Failed to create connection"));
+                         Error{ErrorCode::kConnection, "Failed to create connection"});
               }
               requests_failed_.fetch_add(1, std::memory_order_relaxed);
               return;
@@ -343,7 +343,7 @@ class HttpClient::Impl {
         // Still not ready - retry with a slight delay
         // This is a simplified approach; production would use TimerWheel
         if (callback) {
-          callback(Response{}, Error::Connection("Connection not ready"));
+          callback(Response{}, Error{ErrorCode::kConnection, "Connection not ready"});
         }
         requests_failed_.fetch_add(1, std::memory_order_relaxed);
       }
@@ -397,7 +397,7 @@ class HttpClient::Impl {
           requests_failed_.fetch_add(1, std::memory_order_relaxed);
 
           if (*shared_cb) {
-            (*shared_cb)(Response{}, Error::Connection(error));
+            (*shared_cb)(Response{}, Error{ErrorCode::kConnection, error});
           }
         });
   }

@@ -6,12 +6,12 @@
 
 #include <cassert>
 #include <cstring>
-#include <iostream>
+#include <print>
 
 using namespace holytls::http2;
 
 void TestHeaderIdLookup() {
-  std::cout << "Testing HeaderId lookup... ";
+  std::print("Testing HeaderId lookup... ");
 
   // Test known headers
   assert(LookupHeaderId("content-type") == HeaderId::kContentType);
@@ -33,11 +33,11 @@ void TestHeaderIdLookup() {
   assert(LookupHeaderId("unknown") == HeaderId::kCustom);
   assert(LookupHeaderId("my-header") == HeaderId::kCustom);
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestHeaderIdToName() {
-  std::cout << "Testing HeaderId to name conversion... ";
+  std::print("Testing HeaderId to name conversion... ");
 
   assert(HeaderIdToName(HeaderId::kContentType) == "content-type");
   assert(HeaderIdToName(HeaderId::kContentLength) == "content-length");
@@ -50,11 +50,11 @@ void TestHeaderIdToName() {
   // Custom headers have no canonical name
   assert(HeaderIdToName(HeaderId::kCustom) == "");
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestPackedHeadersBuilderBasic() {
-  std::cout << "Testing PackedHeadersBuilder basic usage... ";
+  std::print("Testing PackedHeadersBuilder basic usage... ");
 
   PackedHeadersBuilder builder;
   builder.Add("content-type", "application/json");
@@ -82,11 +82,11 @@ void TestPackedHeadersBuilderBasic() {
   assert(headers.Has("content-length"));
   assert(!headers.Has("x-nonexistent"));
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestPackedHeadersCustomHeaders() {
-  std::cout << "Testing PackedHeaders with custom headers... ";
+  std::print("Testing PackedHeaders with custom headers... ");
 
   PackedHeadersBuilder builder;
   builder.Add("content-type", "text/html");
@@ -110,11 +110,11 @@ void TestPackedHeadersCustomHeaders() {
   assert(headers.Has("x-custom-header"));
   assert(headers.Has("x-another"));
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestPackedHeadersIteration() {
-  std::cout << "Testing PackedHeaders iteration... ";
+  std::print("Testing PackedHeaders iteration... ");
 
   PackedHeadersBuilder builder;
   builder.Add("content-type", "text/plain");
@@ -138,11 +138,11 @@ void TestPackedHeadersIteration() {
   assert(headers.name(2) == "x-custom");
   assert(headers.value(2) == "value");
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestPackedHeadersEmpty() {
-  std::cout << "Testing empty PackedHeaders... ";
+  std::print("Testing empty PackedHeaders... ");
 
   PackedHeadersBuilder builder;
   builder.SetStatus("204");
@@ -155,11 +155,11 @@ void TestPackedHeadersEmpty() {
   assert(headers.Get("content-type") == "");
   assert(!headers.Has("content-type"));
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestPackedHeadersMove() {
-  std::cout << "Testing PackedHeaders move semantics... ";
+  std::print("Testing PackedHeaders move semantics... ");
 
   PackedHeadersBuilder builder;
   builder.Add("content-type", "application/json");
@@ -190,11 +190,11 @@ void TestPackedHeadersMove() {
   assert(another.Get("content-type") == "application/json");
   assert(another.status_code() == 200);
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestPackedHeadersCopy() {
-  std::cout << "Testing PackedHeaders copy semantics... ";
+  std::print("Testing PackedHeaders copy semantics... ");
 
   PackedHeadersBuilder builder;
   builder.Add("content-type", "text/html");
@@ -229,11 +229,11 @@ void TestPackedHeadersCopy() {
   // Original still unchanged
   assert(original.size() == 2);
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestPackedHeadersBuilderClear() {
-  std::cout << "Testing PackedHeadersBuilder clear... ";
+  std::print("Testing PackedHeadersBuilder clear... ");
 
   PackedHeadersBuilder builder;
   builder.Add("content-type", "text/plain");
@@ -257,11 +257,11 @@ void TestPackedHeadersBuilderClear() {
   assert(headers1.size() == 2);
   assert(headers1.Get("content-type") == "text/plain");
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestPackedHeadersLargeHeaders() {
-  std::cout << "Testing PackedHeaders with many headers... ";
+  std::print("Testing PackedHeaders with many headers... ");
 
   PackedHeadersBuilder builder;
 
@@ -299,11 +299,11 @@ void TestPackedHeadersLargeHeaders() {
   assert(headers.Get("x-custom-2") == "value2");
   assert(headers.Get("x-custom-3") == "value3");
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 int main() {
-  std::cout << "=== PackedHeaders Unit Tests ===\n\n";
+  std::println("=== PackedHeaders Unit Tests ===\n");
 
   TestHeaderIdLookup();
   TestHeaderIdToName();
@@ -316,6 +316,6 @@ int main() {
   TestPackedHeadersBuilderClear();
   TestPackedHeadersLargeHeaders();
 
-  std::cout << "\nAll PackedHeaders tests passed!\n";
+  std::println("\nAll PackedHeaders tests passed!");
   return 0;
 }

@@ -8,7 +8,7 @@
 
 #include <cassert>
 #include <cstring>
-#include <iostream>
+#include <print>
 #include <string_view>
 
 using namespace holytls::http2;
@@ -36,7 +36,7 @@ int FindHeaderPosition(const std::vector<nghttp2_nv>& headers,
 }
 
 void TestBasicHeaderOrder() {
-  std::cout << "Testing basic header order... ";
+  std::print("Testing basic header order... ");
 
   const auto& profile = GetChromeHeaderProfile(ChromeVersion::kChrome143);
   SecChUaGenerator sec_ch_ua(143);
@@ -70,11 +70,11 @@ void TestBasicHeaderOrder() {
   // Verify user-agent comes after
   assert(GetHeaderName(headers[8]) == "user-agent");
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestHighEntropyHeaderPlacement() {
-  std::cout << "Testing high-entropy header placement... ";
+  std::print("Testing high-entropy header placement... ");
 
   const auto& profile = GetChromeHeaderProfile(ChromeVersion::kChrome143);
   SecChUaGenerator sec_ch_ua(143);
@@ -131,11 +131,11 @@ void TestHighEntropyHeaderPlacement() {
   assert(full_version_pos < arch_pos);
   assert(arch_pos < bitness_pos);
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestHighEntropyWithoutNavigation() {
-  std::cout << "Testing high-entropy headers without navigation... ";
+  std::print("Testing high-entropy headers without navigation... ");
 
   const auto& profile = GetChromeHeaderProfile(ChromeVersion::kChrome143);
   SecChUaGenerator sec_ch_ua(143);
@@ -171,11 +171,11 @@ void TestHighEntropyWithoutNavigation() {
   assert(full_version_pos > platform_pos);
   assert(full_version_pos < user_agent_pos);
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestNoHighEntropyHeaders() {
-  std::cout << "Testing without high-entropy headers... ";
+  std::print("Testing without high-entropy headers... ");
 
   const auto& profile = GetChromeHeaderProfile(ChromeVersion::kChrome143);
   SecChUaGenerator sec_ch_ua(143);
@@ -208,11 +208,11 @@ void TestNoHighEntropyHeaders() {
   // upgrade-insecure-requests should immediately follow sec-ch-ua-platform
   assert(upgrade_pos == platform_pos + 1);
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestCustomHeadersAtEnd() {
-  std::cout << "Testing custom headers at end... ";
+  std::print("Testing custom headers at end... ");
 
   const auto& profile = GetChromeHeaderProfile(ChromeVersion::kChrome143);
   SecChUaGenerator sec_ch_ua(143);
@@ -245,11 +245,11 @@ void TestCustomHeadersAtEnd() {
   assert(custom_pos > accept_lang_pos);
   assert(auth_pos > accept_lang_pos);
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestParseAcceptCh() {
-  std::cout << "Testing ParseAcceptCh... ";
+  std::print("Testing ParseAcceptCh... ");
 
   // Test single hint
   AcceptChHints hints1 = ParseAcceptCh("Sec-CH-UA-Full-Version-List");
@@ -280,11 +280,11 @@ void TestParseAcceptCh() {
   assert(hints5.full_version_list == false);
   assert(hints5.arch == false);
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 void TestAllHighEntropyHeaders() {
-  std::cout << "Testing all high-entropy headers... ";
+  std::print("Testing all high-entropy headers... ");
 
   const auto& profile = GetChromeHeaderProfile(ChromeVersion::kChrome143);
   SecChUaGenerator sec_ch_ua(143);
@@ -328,11 +328,11 @@ void TestAllHighEntropyHeaders() {
   assert(full_version_pos > platform_pos);
   assert(form_factors_pos < upgrade_pos);
 
-  std::cout << "PASSED\n";
+  std::println("PASSED");
 }
 
 int main() {
-  std::cout << "=== ChromeHeaderBuilder Unit Tests ===\n\n";
+  std::println("=== ChromeHeaderBuilder Unit Tests ===\n");
 
   TestBasicHeaderOrder();
   TestHighEntropyHeaderPlacement();
@@ -342,6 +342,6 @@ int main() {
   TestParseAcceptCh();
   TestAllHighEntropyHeaders();
 
-  std::cout << "\nAll ChromeHeaderBuilder tests passed!\n";
+  std::println("\nAll ChromeHeaderBuilder tests passed!");
   return 0;
 }
