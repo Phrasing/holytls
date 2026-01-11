@@ -327,26 +327,53 @@ class HttpClient::Impl {
   }
 
   void QueueRequest(core::ReactorContext* ctx, const util::ParsedUrl& parsed,
-                    Request request, ResponseCallback callback) {
-    // For simplicity, try again shortly after connection might be ready
-    // A more sophisticated implementation would use a proper request queue
-    ctx->reactor->Post([this, ctx, parsed, request = std::move(request),
-                        callback = std::move(callback)]() mutable {
+                    Request request, ResponseCallback callback,
+                    int retry_count = 0) {
+    constexpr int kMaxRetries = 50;       // Max retries (50 * 100ms = 5s total)
+    constexpr int kRetryDelayMs = 100;    // Delay between retries
+
+    // Schedule a delayed retry using a timer
+    auto retry_fn = [this, ctx, parsed, request = std::move(request),
+                     callback = std::move(callback), retry_count]() mutable {
       auto* pool = ctx->connection_pool.get();
       auto* pooled = pool->AcquireConnection(parsed.host, parsed.port);
 
       if (pooled && pooled->connection && pooled->connection->IsConnected()) {
         SendOnConnection(ctx, pooled, parsed, std::move(request),
                          std::move(callback));
+      } else if (retry_count < kMaxRetries) {
+        // Retry after delay
+        QueueRequest(ctx, parsed, std::move(request), std::move(callback),
+                     retry_count + 1);
       } else {
-        // Still not ready - retry with a slight delay
-        // This is a simplified approach; production would use TimerWheel
+        // Max retries exceeded
         if (callback) {
-          callback(Response{}, Error{ErrorCode::kConnection, "Connection not ready"});
+          callback(Response{},
+                   Error{ErrorCode::kTimeout, "Connection timeout after retries"});
         }
         requests_failed_.fetch_add(1, std::memory_order_relaxed);
       }
-    });
+    };
+
+    // Use libuv timer for the delay
+    if (retry_count > 0) {
+      auto* timer = new uv_timer_t;
+      timer->data = new std::function<void()>(std::move(retry_fn));
+      uv_timer_init(ctx->reactor->loop(), timer);
+      uv_timer_start(
+          timer,
+          [](uv_timer_t* handle) {
+            auto* fn = static_cast<std::function<void()>*>(handle->data);
+            (*fn)();
+            delete fn;
+            uv_close(reinterpret_cast<uv_handle_t*>(handle),
+                     [](uv_handle_t* h) { delete reinterpret_cast<uv_timer_t*>(h); });
+          },
+          kRetryDelayMs, 0);
+    } else {
+      // First attempt - try immediately via Post
+      ctx->reactor->Post(std::move(retry_fn));
+    }
   }
 
   void SendOnConnection(core::ReactorContext* ctx,

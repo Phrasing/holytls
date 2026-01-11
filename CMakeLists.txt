@@ -142,6 +142,10 @@ target_include_directories(fingerprint_check PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(fingerprint_check PRIVATE holytls)
 target_compile_options(fingerprint_check PRIVATE ${HOLYTLS_COMMON_FLAGS})
 
+add_executable(async_example examples/async_example.cc)
+target_link_libraries(async_example PRIVATE holytls)
+target_compile_options(async_example PRIVATE ${HOLYTLS_COMMON_FLAGS})
+
 # Install targets
 install(TARGETS holytls
   LIBRARY DESTINATION lib
