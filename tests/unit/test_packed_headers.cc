@@ -1,14 +1,14 @@
-// Copyright 2024 Chad-TLS Authors
+// Copyright 2024 HolyTLS Authors
 // SPDX-License-Identifier: MIT
 
-#include "http2/header_ids.h"
-#include "http2/packed_headers.h"
+#include "holytls/http2/header_ids.h"
+#include "holytls/http2/packed_headers.h"
 
 #include <cassert>
 #include <cstring>
 #include <iostream>
 
-using namespace chad::http2;
+using namespace holytls::http2;
 
 void TestHeaderIdLookup() {
   std::cout << "Testing HeaderId lookup... ";

@@ -1,4 +1,4 @@
-// Copyright 2024 Chad-TLS Authors
+// Copyright 2024 HolyTLS Authors
 // SPDX-License-Identifier: MIT
 
 // Integration test for TLS and HTTP/2 fingerprint validation.
@@ -8,16 +8,16 @@
 #include <cassert>
 #include <iostream>
 
-#include "chad/client.h"
-#include "chad/config.h"
-#include "http2/chrome_h2_profile.h"
-#include "tls/chrome_profile.h"
+#include "holytls/client.h"
+#include "holytls/config.h"
+#include "holytls/http2/chrome_h2_profile.h"
+#include "holytls/tls/chrome_profile.h"
 
 void TestTlsProfile() {
   std::cout << "Testing TLS profile configuration... ";
 
   const auto& profile =
-      chad::tls::GetChromeTlsProfile(chad::ChromeVersion::kChrome131);
+      holytls::tls::GetChromeTlsProfile(holytls::ChromeVersion::kChrome131);
 
   // Verify critical settings
   assert(profile.grease_enabled);
@@ -33,7 +33,7 @@ void TestH2Profile() {
   std::cout << "Testing HTTP/2 profile configuration... ";
 
   const auto& profile =
-      chad::http2::GetChromeH2Profile(chad::ChromeVersion::kChrome131);
+      holytls::http2::GetChromeH2Profile(holytls::ChromeVersion::kChrome131);
 
   // Verify Chrome SETTINGS values
   assert(profile.settings.header_table_size == 65536);
@@ -48,7 +48,7 @@ void TestH2Profile() {
 
   // Verify pseudo-header order
   assert(profile.pseudo_header_order ==
-         chad::http2::ChromeH2Profile::PseudoHeaderOrder::kMASP);
+         holytls::http2::ChromeH2Profile::PseudoHeaderOrder::kMASP);
 
   std::cout << "PASSED\n";
 }
@@ -57,7 +57,7 @@ void TestCipherSuiteString() {
   std::cout << "Testing cipher suite string generation... ";
 
   std::string ciphers =
-      chad::tls::GetCipherSuiteString(chad::ChromeVersion::kChrome131);
+      holytls::tls::GetCipherSuiteString(holytls::ChromeVersion::kChrome131);
 
   // Should contain TLS 1.3 ciphers
   assert(ciphers.find("TLS_AES_128_GCM_SHA256") != std::string::npos);
@@ -74,10 +74,10 @@ void TestCipherSuiteString() {
 void TestClientConfig() {
   std::cout << "Testing client configuration... ";
 
-  auto config = chad::ClientConfig::Chrome131();
+  auto config = holytls::ClientConfig::Chrome131();
 
-  assert(config.tls.chrome_version == chad::ChromeVersion::kChrome131);
-  assert(config.http2.chrome_version == chad::ChromeVersion::kChrome131);
+  assert(config.tls.chrome_version == holytls::ChromeVersion::kChrome131);
+  assert(config.http2.chrome_version == holytls::ChromeVersion::kChrome131);
   assert(config.tls.permute_extensions);
   assert(config.pool.max_connections_per_host == 6);
 
@@ -89,7 +89,7 @@ void TestChrome143Profile() {
 
   // Test TLS profile
   const auto& tls_profile =
-      chad::tls::GetChromeTlsProfile(chad::ChromeVersion::kChrome143);
+      holytls::tls::GetChromeTlsProfile(holytls::ChromeVersion::kChrome143);
 
   assert(tls_profile.grease_enabled);
   assert(tls_profile.permute_extensions);  // Random extension order
@@ -99,7 +99,7 @@ void TestChrome143Profile() {
 
   // Test HTTP/2 profile
   const auto& h2_profile =
-      chad::http2::GetChromeH2Profile(chad::ChromeVersion::kChrome143);
+      holytls::http2::GetChromeH2Profile(holytls::ChromeVersion::kChrome143);
 
   assert(h2_profile.settings.header_table_size == 65536);
   assert(h2_profile.settings.enable_push == 0);
@@ -113,8 +113,8 @@ void TestChrome143Profile() {
   assert(h2_profile.connection_window_update == 15663105);
 
   // Test that latest points to Chrome 143
-  auto latest_config = chad::ClientConfig::ChromeLatest();
-  assert(latest_config.tls.chrome_version == chad::ChromeVersion::kChrome143);
+  auto latest_config = holytls::ClientConfig::ChromeLatest();
+  assert(latest_config.tls.chrome_version == holytls::ChromeVersion::kChrome143);
 
   std::cout << "PASSED\n";
 }

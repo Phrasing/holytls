@@ -1,11 +1,11 @@
-# Chad-TLS Stress Test Benchmark
+# HolyTLS Stress Test Benchmark
 
 ## Test Configuration
 
 **Client:**
 - Windows Server 2025 (GCloud c4d-standard-8)
 - 8 vCPUs, 32GB RAM
-- chad-tls with Chrome TLS fingerprint
+- holytls with Chrome TLS fingerprint
 - 16 reactor threads, 6000 connections
 - 8 target URLs for multi-reactor distribution
 
@@ -19,7 +19,7 @@
 ## Results
 
 ```
-=== Chad-TLS Stress Test ===
+=== HolyTLS Stress Test ===
 URLs:        8 targets (multi-reactor mode)
 Connections: 6000
 Duration:    10s (+ 5s warmup)

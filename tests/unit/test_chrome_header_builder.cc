@@ -1,18 +1,18 @@
-// Copyright 2024 Chad-TLS Authors
+// Copyright 2024 HolyTLS Authors
 // SPDX-License-Identifier: MIT
 
-#include "chad/config.h"
-#include "http2/chrome_header_builder.h"
-#include "http2/chrome_header_profile.h"
-#include "http2/sec_ch_ua.h"
+#include "holytls/config.h"
+#include "holytls/http2/chrome_header_builder.h"
+#include "holytls/http2/chrome_header_profile.h"
+#include "holytls/http2/sec_ch_ua.h"
 
 #include <cassert>
 #include <cstring>
 #include <iostream>
 #include <string_view>
 
-using namespace chad::http2;
-using chad::ChromeVersion;
+using namespace holytls::http2;
+using holytls::ChromeVersion;
 
 // Helper to get header name as string_view
 std::string_view GetHeaderName(const nghttp2_nv& nv) {

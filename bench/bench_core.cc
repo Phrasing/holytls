@@ -1,4 +1,4 @@
-// Copyright 2024 Chad-TLS Authors
+// Copyright 2024 HolyTLS Authors
 // SPDX-License-Identifier: MIT
 
 // Core component benchmarks: arena, buffer, reactor, FdTable
@@ -9,15 +9,15 @@
 #include <unordered_map>
 #include <vector>
 
-#include "base/arena.h"
-#include "base/buffer.h"
-#include "base/list.h"
-#include "base/types.h"
+#include "holytls/base/arena.h"
+#include "holytls/base/buffer.h"
+#include "holytls/base/list.h"
+#include "holytls/base/types.h"
 #include "bench_common.h"
-#include "memory/slab_allocator.h"
+#include "holytls/memory/slab_allocator.h"
 
-using namespace chad;
-using namespace chad::bench;
+using namespace holytls;
+using namespace holytls::bench;
 
 namespace {
 
@@ -301,7 +301,7 @@ void BenchStdList() {
 }  // namespace
 
 int main() {
-  printf("=== Chad-TLS Core Benchmarks ===\n");
+  printf("=== HolyTLS Core Benchmarks ===\n");
   printf("Comparing optimized vs standard library implementations\n\n");
 
   printf("--- Memory Allocation ---\n");

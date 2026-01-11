@@ -3,7 +3,7 @@
 # Platform-specific common flags (applied via target_compile_options)
 if(MSVC)
   # MSVC flags
-  set(CHAD_COMMON_FLAGS
+  set(HOLYTLS_COMMON_FLAGS
     /W4                # Warning level 4
     /permissive-       # Strict conformance mode
     /utf-8             # UTF-8 source and execution charset
@@ -24,7 +24,7 @@ if(MSVC)
 
 else()
   # GCC/Clang flags
-  set(CHAD_COMMON_FLAGS
+  set(HOLYTLS_COMMON_FLAGS
     -Wall
     -Wextra
     -Wpedantic
@@ -39,7 +39,7 @@ else()
 
   # GCC-specific flags
   if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    list(APPEND CHAD_COMMON_FLAGS
+    list(APPEND HOLYTLS_COMMON_FLAGS
       -Wmisleading-indentation
       -Wduplicated-cond
       -Wlogical-op
@@ -61,16 +61,16 @@ endif()
 
 # NOTE: We do NOT use add_compile_options() globally because that applies
 # to ALL targets including dependencies like nghttp2 and boringssl.
-# Instead, flags are applied only to chad-tls targets in CMakeLists.txt.
+# Instead, flags are applied only to holytls targets in CMakeLists.txt.
 
 # Sanitizer support (GCC/Clang only)
 if(NOT MSVC)
-  if(CHAD_ASAN)
+  if(HOLYTLS_ASAN)
     add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
     add_link_options(-fsanitize=address)
   endif()
 
-  if(CHAD_TSAN)
+  if(HOLYTLS_TSAN)
     add_compile_options(-fsanitize=thread)
     add_link_options(-fsanitize=thread)
   endif()

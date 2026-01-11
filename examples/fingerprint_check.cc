@@ -1,4 +1,4 @@
-// Copyright 2024 Chad-TLS Authors
+// Copyright 2024 HolyTLS Authors
 // SPDX-License-Identifier: MIT
 
 // Example: Check TLS fingerprint against multiple services
@@ -15,13 +15,13 @@
 #include <memory>
 #include <string>
 
-#include "chad/config.h"
-#include "core/connection.h"
-#include "core/reactor.h"
-#include "tls/session_cache.h"
-#include "tls/tls_context.h"
-#include "util/dns_resolver.h"
-#include "util/platform.h"
+#include "holytls/config.h"
+#include "holytls/core/connection.h"
+#include "holytls/core/reactor.h"
+#include "holytls/tls/session_cache.h"
+#include "holytls/tls/tls_context.h"
+#include "holytls/util/dns_resolver.h"
+#include "holytls/util/platform.h"
 
 namespace {
 
@@ -30,27 +30,27 @@ void PrintUsage(const char* prog) {
   std::cerr << "  chrome_version: 120, 125, 130, 131, or 143 (default: 143)\n";
 }
 
-chad::ChromeVersion ParseChromeVersion(const std::string& arg) {
-  if (arg == "120") return chad::ChromeVersion::kChrome120;
-  if (arg == "125") return chad::ChromeVersion::kChrome125;
-  if (arg == "130") return chad::ChromeVersion::kChrome130;
-  if (arg == "131") return chad::ChromeVersion::kChrome131;
-  if (arg == "143") return chad::ChromeVersion::kChrome143;
-  return chad::ChromeVersion::kChrome143;
+holytls::ChromeVersion ParseChromeVersion(const std::string& arg) {
+  if (arg == "120") return holytls::ChromeVersion::kChrome120;
+  if (arg == "125") return holytls::ChromeVersion::kChrome125;
+  if (arg == "130") return holytls::ChromeVersion::kChrome130;
+  if (arg == "131") return holytls::ChromeVersion::kChrome131;
+  if (arg == "143") return holytls::ChromeVersion::kChrome143;
+  return holytls::ChromeVersion::kChrome143;
 }
 
 // Test a single fingerprint endpoint
-void TestEndpoint(chad::core::Reactor& reactor,
-                  chad::tls::TlsContextFactory& tls_factory,
-                  chad::util::DnsResolver& resolver, const std::string& host,
+void TestEndpoint(holytls::core::Reactor& reactor,
+                  holytls::tls::TlsContextFactory& tls_factory,
+                  holytls::util::DnsResolver& resolver, const std::string& host,
                   const std::string& path, const std::string& label) {
-  std::unique_ptr<chad::core::Connection> conn;
+  std::unique_ptr<holytls::core::Connection> conn;
 
   std::cout << "\n=== Testing " << label << " ===\n";
   std::cout << "Resolving " << host << "...\n";
 
   resolver.ResolveAsync(
-      host, [&](const std::vector<chad::util::ResolvedAddress>& addresses,
+      host, [&](const std::vector<holytls::util::ResolvedAddress>& addresses,
                 const std::string& error) {
         if (!error.empty() || addresses.empty()) {
           std::cerr << "DNS resolution failed: " << error << "\n";
@@ -64,12 +64,12 @@ void TestEndpoint(chad::core::Reactor& reactor,
         }
         std::cout << "\n";
 
-        conn = std::make_unique<chad::core::Connection>(&reactor, &tls_factory,
+        conn = std::make_unique<holytls::core::Connection>(&reactor, &tls_factory,
                                                         host, 443);
 
         // Stop reactor when connection becomes idle (request complete)
         conn->SetIdleCallback(
-            [&reactor](chad::core::Connection*) { reactor.Stop(); });
+            [&reactor](holytls::core::Connection*) { reactor.Stop(); });
 
         std::cout << "Connecting...\n";
         if (!conn->Connect(addresses[0].ip, addresses[0].is_ipv6)) {
@@ -82,7 +82,7 @@ void TestEndpoint(chad::core::Reactor& reactor,
         // and GREASE sec-ch-ua randomization. Pass empty list for defaults.
         conn->SendRequest(
             "GET", path, {},  // Chrome headers are auto-generated
-            [&label](const chad::core::Response& response) {
+            [&label](const holytls::core::Response& response) {
               std::cout << "\n=== " << label << " Response ===\n";
               std::cout << "Status: " << response.status_code << "\n";
               std::cout << "Body length: " << response.body.size()
@@ -102,13 +102,13 @@ void TestEndpoint(chad::core::Reactor& reactor,
 
 int main(int argc, char* argv[]) {
   // Initialize platform-specific networking (Winsock on Windows)
-  if (!chad::util::InitializeNetworking()) {
+  if (!holytls::util::InitializeNetworking()) {
     std::cerr << "Failed to initialize networking\n";
     return 1;
   }
 
   // Parse command line
-  chad::ChromeVersion version = chad::ChromeVersion::kChrome143;
+  holytls::ChromeVersion version = holytls::ChromeVersion::kChrome143;
   if (argc > 1) {
     std::string arg = argv[1];
     if (arg == "-h" || arg == "--help") {
@@ -125,18 +125,18 @@ int main(int argc, char* argv[]) {
   std::cout << "  - https://tls.browserleaks.com/tls?minify=1\n";
 
   // Create reactor
-  chad::core::Reactor reactor;
+  holytls::core::Reactor reactor;
 
   // Create TLS context with Chrome profile
-  chad::TlsConfig tls_config;
+  holytls::TlsConfig tls_config;
   tls_config.chrome_version = version;
   tls_config.verify_certificates = true;
-  chad::tls::TlsContextFactory tls_factory(tls_config);
+  holytls::tls::TlsContextFactory tls_factory(tls_config);
   std::cout << "\nTLS context created for Chrome " << static_cast<int>(version)
             << "\n";
 
   // Create DNS resolver
-  chad::util::DnsResolver resolver(reactor.loop());
+  holytls::util::DnsResolver resolver(reactor.loop());
 
   // Test peet.ws
   TestEndpoint(reactor, tls_factory, resolver, "tls.peet.ws", "/api/all",
@@ -168,7 +168,7 @@ int main(int argc, char* argv[]) {
   std::cout << "\n=== Done ===\n";
 
   // Cleanup platform-specific networking
-  chad::util::CleanupNetworking();
+  holytls::util::CleanupNetworking();
 
   return 0;
 }

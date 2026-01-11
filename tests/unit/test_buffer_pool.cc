@@ -1,7 +1,7 @@
-// Copyright 2024 Chad-TLS Authors
+// Copyright 2024 HolyTLS Authors
 // SPDX-License-Identifier: MIT
 
-#include "memory/buffer_pool.h"
+#include "holytls/memory/buffer_pool.h"
 
 #include <cassert>
 #include <iostream>
@@ -9,12 +9,12 @@
 void TestBufferPoolCreation() {
   std::cout << "Testing buffer pool creation... ";
 
-  chad::memory::BufferPool::Config config;
+  holytls::memory::BufferPool::Config config;
   config.small_count = 32;
   config.medium_count = 16;
   config.large_count = 8;
 
-  chad::memory::BufferPool pool(config);
+  holytls::memory::BufferPool pool(config);
 
   auto stats = pool.GetStats();
   assert(stats.small_available == 32);
@@ -27,7 +27,7 @@ void TestBufferPoolCreation() {
 void TestBufferAcquisition() {
   std::cout << "Testing buffer acquisition... ";
 
-  chad::memory::BufferPool pool;
+  holytls::memory::BufferPool pool;
 
   // Acquire small buffer
   auto small = pool.Acquire(1024);
@@ -51,7 +51,7 @@ void TestBufferAcquisition() {
 void TestBufferRelease() {
   std::cout << "Testing buffer release... ";
 
-  chad::memory::BufferPool pool;
+  holytls::memory::BufferPool pool;
 
   auto stats_before = pool.GetStats();
   size_t small_before = stats_before.small_available;
@@ -71,12 +71,12 @@ void TestBufferRelease() {
 void TestActualSize() {
   std::cout << "Testing actual size calculation... ";
 
-  assert(chad::memory::BufferPool::ActualSize(100) == 4096);
-  assert(chad::memory::BufferPool::ActualSize(4096) == 4096);
-  assert(chad::memory::BufferPool::ActualSize(5000) == 16384);
-  assert(chad::memory::BufferPool::ActualSize(16384) == 16384);
-  assert(chad::memory::BufferPool::ActualSize(20000) == 65536);
-  assert(chad::memory::BufferPool::ActualSize(100000) == 100000);
+  assert(holytls::memory::BufferPool::ActualSize(100) == 4096);
+  assert(holytls::memory::BufferPool::ActualSize(4096) == 4096);
+  assert(holytls::memory::BufferPool::ActualSize(5000) == 16384);
+  assert(holytls::memory::BufferPool::ActualSize(16384) == 16384);
+  assert(holytls::memory::BufferPool::ActualSize(20000) == 65536);
+  assert(holytls::memory::BufferPool::ActualSize(100000) == 100000);
 
   std::cout << "PASSED\n";
 }

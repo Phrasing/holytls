@@ -1,10 +1,10 @@
-// Copyright 2024 Chad-TLS Authors
+// Copyright 2024 HolyTLS Authors
 // SPDX-License-Identifier: MIT
 
 // Lightweight benchmark framework - no external dependencies.
 
-#ifndef CHAD_BENCH_COMMON_H_
-#define CHAD_BENCH_COMMON_H_
+#ifndef HOLYTLS_BENCH_COMMON_H_
+#define HOLYTLS_BENCH_COMMON_H_
 
 #include <chrono>
 #include <cstdint>
@@ -18,7 +18,7 @@
 #include <intrin.h>
 #endif
 
-namespace chad {
+namespace holytls {
 namespace bench {
 
 // Prevent compiler from optimizing away a value
@@ -201,6 +201,6 @@ struct MemStats {
 };
 
 }  // namespace bench
-}  // namespace chad
+}  // namespace holytls
 
-#endif  // CHAD_BENCH_COMMON_H_
+#endif  // HOLYTLS_BENCH_COMMON_H_

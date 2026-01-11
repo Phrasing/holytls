@@ -1,9 +1,9 @@
-// Copyright 2024 Chad-TLS Authors
+// Copyright 2024 HolyTLS Authors
 // SPDX-License-Identifier: MIT
 
 // Integration Test: Top 10 US Websites
 //
-// This test validates the chad-tls client against the top 10 US websites:
+// This test validates the holytls client against the top 10 US websites:
 // - Makes GET / requests with Chrome 143 headers
 // - Verifies TLS 1.3 handshake succeeds
 // - Verifies HTTP/2 response received
@@ -16,12 +16,12 @@
 #include <string>
 #include <vector>
 
-#include "chad/config.h"
-#include "core/connection.h"
-#include "core/reactor.h"
-#include "tls/session_cache.h"
-#include "tls/tls_context.h"
-#include "util/dns_resolver.h"
+#include "holytls/config.h"
+#include "holytls/core/connection.h"
+#include "holytls/core/reactor.h"
+#include "holytls/tls/session_cache.h"
+#include "holytls/tls/tls_context.h"
+#include "holytls/util/dns_resolver.h"
 
 namespace {
 
@@ -37,15 +37,15 @@ struct TestResult {
 bool IsSuccessStatus(int status) { return status >= 200 && status < 400; }
 
 // Make a single request and return the status code
-int MakeRequest(chad::core::Reactor& reactor,
-                chad::tls::TlsContextFactory& tls_factory,
-                chad::util::DnsResolver& resolver, const std::string& host,
+int MakeRequest(holytls::core::Reactor& reactor,
+                holytls::tls::TlsContextFactory& tls_factory,
+                holytls::util::DnsResolver& resolver, const std::string& host,
                 std::string& error, bool verbose = false) {
   int status = 0;
-  std::unique_ptr<chad::core::Connection> conn;
+  std::unique_ptr<holytls::core::Connection> conn;
 
   resolver.ResolveAsync(
-      host, [&](const std::vector<chad::util::ResolvedAddress>& addresses,
+      host, [&](const std::vector<holytls::util::ResolvedAddress>& addresses,
                 const std::string& dns_error) {
         if (!dns_error.empty() || addresses.empty()) {
           error = "DNS failed: " + dns_error;
@@ -58,7 +58,7 @@ int MakeRequest(chad::core::Reactor& reactor,
                     << "\n";
         }
 
-        conn = std::make_unique<chad::core::Connection>(&reactor, &tls_factory,
+        conn = std::make_unique<holytls::core::Connection>(&reactor, &tls_factory,
                                                         host, 443);
 
         if (!conn->Connect(addresses[0].ip, addresses[0].is_ipv6)) {
@@ -73,7 +73,7 @@ int MakeRequest(chad::core::Reactor& reactor,
 
         conn->SendRequest(
             "GET", "/", {},
-            [&status, verbose, &host](const chad::core::Response& response) {
+            [&status, verbose, &host](const holytls::core::Response& response) {
               status = response.status_code;
               if (verbose) {
                 std::cout << "[DEBUG] Got response from " << host << ": "
@@ -96,9 +96,9 @@ int MakeRequest(chad::core::Reactor& reactor,
 }
 
 // Test a single website with two requests (for session resumption)
-void TestWebsite(chad::core::Reactor& reactor,
-                 chad::tls::TlsContextFactory& tls_factory,
-                 chad::util::DnsResolver& resolver, const std::string& host,
+void TestWebsite(holytls::core::Reactor& reactor,
+                 holytls::tls::TlsContextFactory& tls_factory,
+                 holytls::util::DnsResolver& resolver, const std::string& host,
                  TestResult& result, bool verbose = false) {
   std::cout << "Testing " << host << "... " << std::flush;
 
@@ -155,12 +155,12 @@ int main(int argc, char* argv[]) {
                                        "www.linkedin.com",  "www.netflix.com"};
 
   // Setup
-  chad::core::Reactor reactor;
-  chad::TlsConfig tls_config;
-  tls_config.chrome_version = chad::ChromeVersion::kChrome143;
+  holytls::core::Reactor reactor;
+  holytls::TlsConfig tls_config;
+  tls_config.chrome_version = holytls::ChromeVersion::kChrome143;
   tls_config.verify_certificates = true;
-  chad::tls::TlsContextFactory tls_factory(tls_config);
-  chad::util::DnsResolver resolver(reactor.loop());
+  holytls::tls::TlsContextFactory tls_factory(tls_config);
+  holytls::util::DnsResolver resolver(reactor.loop());
 
   // Test each website
   std::vector<TestResult> results(websites.size());

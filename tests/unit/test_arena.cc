@@ -1,8 +1,8 @@
-// Copyright 2024 Chad-TLS Authors
+// Copyright 2024 HolyTLS Authors
 // SPDX-License-Identifier: MIT
 
-#include "base/arena.h"
-#include "base/list.h"
+#include "holytls/base/arena.h"
+#include "holytls/base/list.h"
 
 #include <cassert>
 #include <cstring>
@@ -11,7 +11,7 @@
 void TestArenaBasic() {
   std::cout << "Testing arena basic allocation... ";
 
-  chad::Arena* arena = chad::Arena::Create(1024);
+  holytls::Arena* arena = holytls::Arena::Create(1024);
   assert(arena != nullptr);
 
   // Allocate some memory
@@ -31,14 +31,14 @@ void TestArenaBasic() {
     assert(b[i] == i);
   }
 
-  chad::Arena::Destroy(arena);
+  holytls::Arena::Destroy(arena);
   std::cout << "PASSED\n";
 }
 
 void TestArenaZero() {
   std::cout << "Testing arena zero allocation... ";
 
-  chad::Arena* arena = chad::Arena::Create(1024);
+  holytls::Arena* arena = holytls::Arena::Create(1024);
   assert(arena != nullptr);
 
   // Allocate zero-initialized memory
@@ -49,7 +49,7 @@ void TestArenaZero() {
     assert(arr[i] == 0);
   }
 
-  chad::Arena::Destroy(arena);
+  holytls::Arena::Destroy(arena);
   std::cout << "PASSED\n";
 }
 
@@ -57,7 +57,7 @@ void TestArenaGrowth() {
   std::cout << "Testing arena growth... ";
 
   // Small block size to force growth
-  chad::Arena* arena = chad::Arena::Create(64);
+  holytls::Arena* arena = holytls::Arena::Create(64);
   assert(arena != nullptr);
 
   // Allocate more than block size
@@ -67,14 +67,14 @@ void TestArenaGrowth() {
     *p = i;
   }
 
-  chad::Arena::Destroy(arena);
+  holytls::Arena::Destroy(arena);
   std::cout << "PASSED\n";
 }
 
 void TestArenaLargeAllocation() {
   std::cout << "Testing arena large allocation... ";
 
-  chad::Arena* arena = chad::Arena::Create(64);
+  holytls::Arena* arena = holytls::Arena::Create(64);
   assert(arena != nullptr);
 
   // Allocate larger than block size
@@ -87,22 +87,22 @@ void TestArenaLargeAllocation() {
     assert(large[i] == 'X');
   }
 
-  chad::Arena::Destroy(arena);
+  holytls::Arena::Destroy(arena);
   std::cout << "PASSED\n";
 }
 
 void TestArenaTemp() {
   std::cout << "Testing arena temp scopes... ";
 
-  chad::Arena* arena = chad::Arena::Create(1024);
+  holytls::Arena* arena = holytls::Arena::Create(1024);
   assert(arena != nullptr);
 
   int* a = PushStruct(arena, int);
   *a = 1;
-  size_t pos_before = chad::ArenaPos(arena);
+  size_t pos_before = holytls::ArenaPos(arena);
 
   {
-    chad::TempScope temp(arena);
+    holytls::TempScope temp(arena);
     int* b = PushArray(arena, int, 100);
     assert(b != nullptr);
     for (int i = 0; i < 100; ++i) {
@@ -110,20 +110,20 @@ void TestArenaTemp() {
     }
   }
   // After temp scope, position should be restored
-  size_t pos_after = chad::ArenaPos(arena);
+  size_t pos_after = holytls::ArenaPos(arena);
   assert(pos_after == pos_before);
 
   // Original allocation should still be valid
   assert(*a == 1);
 
-  chad::Arena::Destroy(arena);
+  holytls::Arena::Destroy(arena);
   std::cout << "PASSED\n";
 }
 
 void TestArenaClear() {
   std::cout << "Testing arena clear... ";
 
-  chad::Arena* arena = chad::Arena::Create(64);
+  holytls::Arena* arena = holytls::Arena::Create(64);
   assert(arena != nullptr);
 
   // Force multiple blocks
@@ -132,7 +132,7 @@ void TestArenaClear() {
   }
 
   // Clear should free chained blocks
-  chad::ArenaClear(arena);
+  holytls::ArenaClear(arena);
 
   // Should be back to initial state
   assert(arena->pos == arena->base);
@@ -144,7 +144,7 @@ void TestArenaClear() {
   *p = 123;
   assert(*p == 123);
 
-  chad::Arena::Destroy(arena);
+  holytls::Arena::Destroy(arena);
   std::cout << "PASSED\n";
 }
 
@@ -153,21 +153,21 @@ void TestDLLBasic() {
 
   struct Item {
     int value;
-    chad::DLLNode node;
+    holytls::DLLNode node;
   };
 
-  chad::DLLList list;
-  chad::DLLInit(&list);
-  assert(chad::DLLIsEmpty(&list));
+  holytls::DLLList list;
+  holytls::DLLInit(&list);
+  assert(holytls::DLLIsEmpty(&list));
 
   Item items[5];
   for (int i = 0; i < 5; ++i) {
     items[i].value = i;
-    chad::DLLPushBack(&list, &items[i].node);
+    holytls::DLLPushBack(&list, &items[i].node);
   }
 
   assert(list.count == 5);
-  assert(!chad::DLLIsEmpty(&list));
+  assert(!holytls::DLLIsEmpty(&list));
 
   // Verify order
   int expected = 0;
@@ -178,16 +178,16 @@ void TestDLLBasic() {
   }
 
   // Remove middle element
-  chad::DLLRemove(&list, &items[2].node);
+  holytls::DLLRemove(&list, &items[2].node);
   assert(list.count == 4);
 
   // Pop front
-  chad::DLLNode* front = chad::DLLPopFront(&list);
+  holytls::DLLNode* front = holytls::DLLPopFront(&list);
   assert(ContainerOf(front, Item, node)->value == 0);
   assert(list.count == 3);
 
   // Pop back
-  chad::DLLNode* back = chad::DLLPopBack(&list);
+  holytls::DLLNode* back = holytls::DLLPopBack(&list);
   assert(ContainerOf(back, Item, node)->value == 4);
   assert(list.count == 2);
 
@@ -199,30 +199,30 @@ void TestSLLBasic() {
 
   struct Item {
     int value;
-    chad::SLLNode node;
+    holytls::SLLNode node;
   };
 
-  chad::SLLList list;
-  chad::SLLInit(&list);
-  assert(chad::SLLIsEmpty(&list));
+  holytls::SLLList list;
+  holytls::SLLInit(&list);
+  assert(holytls::SLLIsEmpty(&list));
 
   Item items[5];
   for (int i = 0; i < 5; ++i) {
     items[i].value = i;
-    chad::SLLPushBack(&list, &items[i].node);
+    holytls::SLLPushBack(&list, &items[i].node);
   }
 
   assert(list.count == 5);
 
   // Pop all in order (FIFO)
   for (int i = 0; i < 5; ++i) {
-    chad::SLLNode* n = chad::SLLPopFront(&list);
+    holytls::SLLNode* n = holytls::SLLPopFront(&list);
     assert(n != nullptr);
     Item* item = ContainerOf(n, Item, node);
     assert(item->value == i);
   }
 
-  assert(chad::SLLIsEmpty(&list));
+  assert(holytls::SLLIsEmpty(&list));
 
   std::cout << "PASSED\n";
 }
@@ -232,21 +232,21 @@ void TestSLLStack() {
 
   struct Item {
     int value;
-    chad::SLLNode node;
+    holytls::SLLNode node;
   };
 
-  chad::SLLList stack;
-  chad::SLLInit(&stack);
+  holytls::SLLList stack;
+  holytls::SLLInit(&stack);
 
   Item items[5];
   for (int i = 0; i < 5; ++i) {
     items[i].value = i;
-    chad::SLLPushFront(&stack, &items[i].node);
+    holytls::SLLPushFront(&stack, &items[i].node);
   }
 
   // Pop all in reverse order (LIFO)
   for (int i = 4; i >= 0; --i) {
-    chad::SLLNode* n = chad::SLLPopFront(&stack);
+    holytls::SLLNode* n = holytls::SLLPopFront(&stack);
     assert(n != nullptr);
     Item* item = ContainerOf(n, Item, node);
     assert(item->value == i);

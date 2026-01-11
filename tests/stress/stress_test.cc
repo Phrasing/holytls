@@ -1,11 +1,11 @@
-// Copyright 2024 Chad-TLS Authors
+// Copyright 2024 HolyTLS Authors
 // SPDX-License-Identifier: MIT
 //
-// Stress test for chad-tls HTTP client.
+// Stress test for holytls HTTP client.
 // Tests throughput and connection stability under high load.
 
-#include <chad/client.h>
-#include <chad/config.h>
+#include <holytls/client.h>
+#include <holytls/config.h>
 
 #include <algorithm>
 #include <atomic>
@@ -358,7 +358,7 @@ class StressTest {
   StressTest(const StressConfig& config) : config_(config) {}
 
   int Run() {
-    std::printf("=== Chad-TLS Stress Test ===\n");
+    std::printf("=== HolyTLS Stress Test ===\n");
     if (config_.urls.size() == 1) {
       std::printf("URL:         %s\n", config_.urls[0].c_str());
     } else {
@@ -381,7 +381,7 @@ class StressTest {
     std::printf("\n");
 
     // Configure client
-    auto client_config = chad::ClientConfig::ChromeLatest();
+    auto client_config = holytls::ClientConfig::ChromeLatest();
     client_config.pool.max_connections_per_host = config_.num_connections;
     client_config.pool.max_total_connections = config_.num_connections;
     if (config_.insecure) {
@@ -394,7 +394,7 @@ class StressTest {
     }
 
     // Create client
-    client_ = std::make_unique<chad::HttpClient>(client_config);
+    client_ = std::make_unique<holytls::HttpClient>(client_config);
 
     // Warmup phase
     std::printf(
@@ -527,14 +527,14 @@ class StressTest {
                      config_.urls.size();
     const std::string& url = config_.urls[url_idx];
 
-    chad::Request req;
-    req.SetMethod(chad::Method::kGet).SetUrl(url);
+    holytls::Request req;
+    req.SetMethod(holytls::Method::kGet).SetUrl(url);
 
     metrics_.requests_sent.fetch_add(1, std::memory_order_relaxed);
 
     client_->SendAsync(std::move(req), [this, start_time](
-                                           chad::Response response,
-                                           chad::Error error) {
+                                           holytls::Response response,
+                                           holytls::Error error) {
       auto end_time = std::chrono::steady_clock::now();
       uint64_t latency_us =
           std::chrono::duration_cast<std::chrono::microseconds>(end_time -
@@ -564,7 +564,7 @@ class StressTest {
 
   StressConfig config_;
   StressMetrics metrics_;
-  std::unique_ptr<chad::HttpClient> client_;
+  std::unique_ptr<holytls::HttpClient> client_;
   std::atomic<bool> running_{true};
   std::atomic<size_t> url_index_{0};  // For round-robin across URLs
   bool warmup_phase_ = false;
