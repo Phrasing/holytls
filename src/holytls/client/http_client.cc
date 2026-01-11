@@ -111,6 +111,11 @@ Request& Request::SetTimeout(std::chrono::milliseconds t) {
   return *this;
 }
 
+Request& Request::SetHeaderOrder(std::span<const std::string_view> order) {
+  header_order = order;
+  return *this;
+}
+
 // Response implementation
 std::string_view Response::GetHeader(std::string_view name) const {
   for (const auto& header : headers) {
@@ -393,7 +398,7 @@ class HttpClient::Impl {
 
     pooled->connection->SendRequest(
         std::string(MethodToString(request.method)), parsed.PathWithQuery(),
-        conn_headers,
+        conn_headers, request.header_order,
         [this, ctx, pooled,
          shared_cb](const core::Response& core_resp) mutable {
           // Convert headers

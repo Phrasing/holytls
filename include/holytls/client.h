@@ -7,6 +7,7 @@
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -39,6 +40,10 @@ struct Request {
   std::vector<uint8_t> body;
   std::chrono::milliseconds timeout{30000};
 
+  // Custom header order (full control mode)
+  // When set, bypasses Chrome auto-generation - user provides all headers
+  std::span<const std::string_view> header_order;
+
   // Builder methods (chainable)
   Request& SetMethod(Method m);
   Request& SetUrl(std::string_view u);
@@ -46,6 +51,7 @@ struct Request {
   Request& SetBody(const uint8_t* data, size_t len);
   Request& SetBody(std::string_view b);
   Request& SetTimeout(std::chrono::milliseconds t);
+  Request& SetHeaderOrder(std::span<const std::string_view> order);
 };
 
 // Timing information for response

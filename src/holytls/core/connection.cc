@@ -4,6 +4,7 @@
 #include "holytls/core/connection.h"
 
 #include <cstring>
+#include <unordered_map>
 
 #include "holytls/http2/chrome_h2_profile.h"
 #include "holytls/http2/chrome_header_profile.h"
@@ -75,6 +76,7 @@ bool Connection::Connect(const std::string& ip, bool ipv6) {
 void Connection::SendRequest(
     const std::string& method, const std::string& path,
     const std::vector<std::pair<std::string, std::string>>& headers,
+    std::span<const std::string_view> header_order,
     ResponseCallback on_response, ErrorCallback on_error) {
   if (state_ == ConnectionState::kConnected && h2_) {
     // Connection ready, submit request immediately
@@ -84,31 +86,54 @@ void Connection::SendRequest(
     h2_headers.authority = host_;
     h2_headers.path = path;
 
-    // Get Chrome header profile for proper ordering and defaults
-    auto chrome_version = tls_factory_->chrome_version();
-    const auto& header_profile = http2::GetChromeHeaderProfile(chrome_version);
+    if (!header_order.empty()) {
+      // Full control mode: user specifies exact header order
+      // Build a map for O(1) lookup
+      std::unordered_map<std::string_view, std::string_view> header_map;
+      for (const auto& [name, value] : headers) {
+        header_map[name] = value;
+      }
 
-    // Determine request type and fetch metadata
-    http2::RequestType request_type = http2::RequestType::kNavigation;
-    http2::FetchSite fetch_site = http2::FetchSite::kNone;
-    http2::FetchMode fetch_mode = http2::FetchMode::kNavigate;
-    http2::FetchDest fetch_dest = http2::FetchDest::kDocument;
-    bool user_activated = true;
+      // Add headers in specified order
+      for (const auto& name : header_order) {
+        auto it = header_map.find(name);
+        if (it != header_map.end()) {
+          h2_headers.Add(std::string(it->first), std::string(it->second));
+          header_map.erase(it);
+        }
+      }
 
-    // Convert user headers to HeaderEntry format for custom overrides
-    std::vector<http2::HeaderEntry> custom_headers;
-    for (const auto& [name, value] : headers) {
-      custom_headers.push_back({name, value});
-    }
+      // Append any remaining headers not in order list
+      for (const auto& [name, value] : header_map) {
+        h2_headers.Add(std::string(name), std::string(value));
+      }
+    } else {
+      // Auto mode: use Chrome header profile
+      auto chrome_version = tls_factory_->chrome_version();
+      const auto& header_profile = http2::GetChromeHeaderProfile(chrome_version);
 
-    // Build ordered Chrome headers with GREASE sec-ch-ua
-    auto chrome_headers = http2::BuildChromeHeaders(
-        header_profile, request_type, fetch_site, fetch_mode, fetch_dest,
-        user_activated, custom_headers);
+      // Determine request type and fetch metadata
+      http2::RequestType request_type = http2::RequestType::kNavigation;
+      http2::FetchSite fetch_site = http2::FetchSite::kNone;
+      http2::FetchMode fetch_mode = http2::FetchMode::kNavigate;
+      http2::FetchDest fetch_dest = http2::FetchDest::kDocument;
+      bool user_activated = true;
 
-    // Add all headers in Chrome's exact order
-    for (const auto& header : chrome_headers) {
-      h2_headers.Add(header.name, header.value);
+      // Convert user headers to HeaderEntry format for custom overrides
+      std::vector<http2::HeaderEntry> custom_headers;
+      for (const auto& [name, value] : headers) {
+        custom_headers.push_back({name, value});
+      }
+
+      // Build ordered Chrome headers with GREASE sec-ch-ua
+      auto chrome_headers = http2::BuildChromeHeaders(
+          header_profile, request_type, fetch_site, fetch_mode, fetch_dest,
+          user_activated, custom_headers);
+
+      // Add all headers in Chrome's exact order
+      for (const auto& header : chrome_headers) {
+        h2_headers.Add(header.name, header.value);
+      }
     }
 
     http2::H2StreamCallbacks stream_callbacks;
@@ -227,7 +252,11 @@ void Connection::SendRequest(
     FlushSendBuffer();
   } else {
     // Queue request for when connection is ready
-    pending_requests_.push_back({method, path, headers, on_response, on_error});
+    // Copy header_order span to vector for storage
+    std::vector<std::string_view> order_copy(header_order.begin(),
+                                              header_order.end());
+    pending_requests_.push_back(
+        {method, path, headers, std::move(order_copy), on_response, on_error});
   }
 }
 
@@ -367,8 +396,8 @@ void Connection::HandleTlsHandshake() {
 
       // Submit pending requests
       for (auto& req : pending_requests_) {
-        SendRequest(req.method, req.path, req.headers, req.on_response,
-                    req.on_error);
+        SendRequest(req.method, req.path, req.headers, req.header_order,
+                    req.on_response, req.on_error);
       }
       pending_requests_.clear();
       break;

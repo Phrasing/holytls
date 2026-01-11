@@ -146,6 +146,10 @@ add_executable(async_example examples/async_example.cc)
 target_link_libraries(async_example PRIVATE holytls)
 target_compile_options(async_example PRIVATE ${HOLYTLS_COMMON_FLAGS})
 
+add_executable(custom_headers_example examples/custom_headers_example.cc)
+target_link_libraries(custom_headers_example PRIVATE holytls)
+target_compile_options(custom_headers_example PRIVATE ${HOLYTLS_COMMON_FLAGS})
+
 # Install targets
 install(TARGETS holytls
   LIBRARY DESTINATION lib

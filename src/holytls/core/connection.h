@@ -10,7 +10,9 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "holytls/core/io_buffer.h"
@@ -78,10 +80,21 @@ class Connection : public EventHandler {
   // ip can be IPv4 or IPv6 address
   bool Connect(const std::string& ip, bool ipv6 = false);
 
-  // Send a GET request
+  // Send a request with auto-generated Chrome headers
   void SendRequest(
       const std::string& method, const std::string& path,
       const std::vector<std::pair<std::string, std::string>>& headers,
+      ResponseCallback on_response, ErrorCallback on_error = nullptr) {
+    SendRequest(method, path, headers, {}, on_response, on_error);
+  }
+
+  // Send a request with custom header order (full control mode)
+  // If header_order is non-empty, headers are sent in that order
+  // Otherwise, Chrome headers are auto-generated
+  void SendRequest(
+      const std::string& method, const std::string& path,
+      const std::vector<std::pair<std::string, std::string>>& headers,
+      std::span<const std::string_view> header_order,
       ResponseCallback on_response, ErrorCallback on_error = nullptr);
 
   // Close the connection
@@ -128,6 +141,7 @@ class Connection : public EventHandler {
     std::string method;
     std::string path;
     std::vector<std::pair<std::string, std::string>> headers;
+    std::vector<std::string_view> header_order;  // Stored copy for pending
     ResponseCallback on_response;
     ErrorCallback on_error;
   };
