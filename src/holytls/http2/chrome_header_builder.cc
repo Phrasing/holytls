@@ -3,38 +3,12 @@
 
 #include "holytls/http2/chrome_header_builder.h"
 
-#include <cctype>
 #include <cstring>
+
+#include "holytls/base/sv_util.h"
 
 namespace holytls {
 namespace http2 {
-
-namespace {
-
-// Trim whitespace from string view
-std::string_view Trim(std::string_view s) {
-  while (!s.empty() && std::isspace(static_cast<unsigned char>(s.front()))) {
-    s.remove_prefix(1);
-  }
-  while (!s.empty() && std::isspace(static_cast<unsigned char>(s.back()))) {
-    s.remove_suffix(1);
-  }
-  return s;
-}
-
-// Case-insensitive comparison
-bool EqualsIgnoreCase(std::string_view a, std::string_view b) {
-  if (a.size() != b.size()) return false;
-  for (size_t i = 0; i < a.size(); ++i) {
-    if (std::tolower(static_cast<unsigned char>(a[i])) !=
-        std::tolower(static_cast<unsigned char>(b[i]))) {
-      return false;
-    }
-  }
-  return true;
-}
-
-}  // namespace
 
 AcceptChHints ParseAcceptCh(std::string_view accept_ch) {
   AcceptChHints hints;
@@ -47,19 +21,19 @@ AcceptChHints ParseAcceptCh(std::string_view accept_ch) {
       comma = accept_ch.size();
     }
 
-    std::string_view hint = Trim(accept_ch.substr(pos, comma - pos));
+    std::string_view hint = sv::Trim(accept_ch.substr(pos, comma - pos));
 
-    if (EqualsIgnoreCase(hint, "Sec-CH-UA-Full-Version-List")) {
+    if (sv::EqualsIgnoreCase(hint, "Sec-CH-UA-Full-Version-List")) {
       hints.full_version_list = true;
-    } else if (EqualsIgnoreCase(hint, "Sec-CH-UA-Arch")) {
+    } else if (sv::EqualsIgnoreCase(hint, "Sec-CH-UA-Arch")) {
       hints.arch = true;
-    } else if (EqualsIgnoreCase(hint, "Sec-CH-UA-Bitness")) {
+    } else if (sv::EqualsIgnoreCase(hint, "Sec-CH-UA-Bitness")) {
       hints.bitness = true;
-    } else if (EqualsIgnoreCase(hint, "Sec-CH-UA-Model")) {
+    } else if (sv::EqualsIgnoreCase(hint, "Sec-CH-UA-Model")) {
       hints.model = true;
-    } else if (EqualsIgnoreCase(hint, "Sec-CH-UA-WoW64")) {
+    } else if (sv::EqualsIgnoreCase(hint, "Sec-CH-UA-WoW64")) {
       hints.wow64 = true;
-    } else if (EqualsIgnoreCase(hint, "Sec-CH-UA-Form-Factors")) {
+    } else if (sv::EqualsIgnoreCase(hint, "Sec-CH-UA-Form-Factors")) {
       hints.form_factors = true;
     }
 
