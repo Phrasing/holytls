@@ -15,6 +15,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -78,17 +79,17 @@ class TlsSessionCache {
 
   // Store a new session ticket (called from SSL_CTX_sess_set_new_cb).
   // Thread-safe. Session is serialized and stored.
-  void Store(const std::string& host, uint16_t port, SSL_SESSION* session);
+  void Store(std::string_view host, uint16_t port, SSL_SESSION* session);
 
   // Retrieve session for resumption.
   // Returns deserialized SSL_SESSION* or nullptr if not found/expired.
   // Caller MUST call SSL_SESSION_free() on returned pointer.
   // Thread-safe.
-  SSL_SESSION* Lookup(const std::string& host, uint16_t port);
+  SSL_SESSION* Lookup(std::string_view host, uint16_t port);
 
   // Remove session for a host:port (e.g., when resumption fails).
   // Thread-safe.
-  void Remove(const std::string& host, uint16_t port);
+  void Remove(std::string_view host, uint16_t port);
 
   // Clean up expired sessions. Returns number of sessions removed.
   // Thread-safe.
@@ -103,7 +104,7 @@ class TlsSessionCache {
 
  private:
   // Create cache key from host and port
-  static std::string MakeKey(const std::string& host, uint16_t port);
+  static std::string MakeKey(std::string_view host, uint16_t port);
 
   // Evict least recently used entry (caller must hold mutex)
   void EvictLruLocked();

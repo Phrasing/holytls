@@ -40,11 +40,16 @@ TlsSessionCache::~TlsSessionCache() {
   // Entries are cleaned up automatically via unique_ptr
 }
 
-std::string TlsSessionCache::MakeKey(const std::string& host, uint16_t port) {
-  return host + ":" + std::to_string(port);
+std::string TlsSessionCache::MakeKey(std::string_view host, uint16_t port) {
+  std::string key;
+  key.reserve(host.size() + 6);
+  key.append(host);
+  key += ':';
+  key += std::to_string(port);
+  return key;
 }
 
-void TlsSessionCache::Store(const std::string& host, uint16_t port,
+void TlsSessionCache::Store(std::string_view host, uint16_t port,
                             SSL_SESSION* session) {
   if (!session) return;
 
@@ -90,7 +95,7 @@ void TlsSessionCache::Store(const std::string& host, uint16_t port,
   DLLPushFront(&lru_list_, &entry_ptr->lru_node);
 }
 
-SSL_SESSION* TlsSessionCache::Lookup(const std::string& host, uint16_t port) {
+SSL_SESSION* TlsSessionCache::Lookup(std::string_view host, uint16_t port) {
   std::lock_guard<std::mutex> lock(mutex_);
 
   std::string key = MakeKey(host, port);
@@ -132,7 +137,7 @@ SSL_SESSION* TlsSessionCache::Lookup(const std::string& host, uint16_t port) {
   return session;  // Caller must SSL_SESSION_free()
 }
 
-void TlsSessionCache::Remove(const std::string& host, uint16_t port) {
+void TlsSessionCache::Remove(std::string_view host, uint16_t port) {
   std::lock_guard<std::mutex> lock(mutex_);
 
   std::string key = MakeKey(host, port);

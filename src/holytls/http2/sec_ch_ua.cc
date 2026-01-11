@@ -72,12 +72,16 @@ std::string SecChUaGenerator::GenerateGreaseBrand() {
   return brand;
 }
 
-std::string SecChUaGenerator::BuildSecChUa(const std::string& version) const {
+std::string SecChUaGenerator::BuildSecChUa(std::string_view version) const {
   // Build the three brand entries
   std::string grease_entry =
       "\"" + grease_brand_ + "\";v=\"" + std::to_string(grease_version_) + "\"";
-  std::string chromium_entry = "\"Chromium\";v=\"" + version + "\"";
-  std::string chrome_entry = "\"Google Chrome\";v=\"" + version + "\"";
+  std::string chromium_entry = "\"Chromium\";v=\"";
+  chromium_entry.append(version);
+  chromium_entry += "\"";
+  std::string chrome_entry = "\"Google Chrome\";v=\"";
+  chrome_entry.append(version);
+  chrome_entry += "\"";
 
   // Arrange in cached order
   std::array<std::string, 3> brands;
@@ -104,7 +108,7 @@ std::string_view SecChUaGenerator::GetMobile(bool is_mobile) {
 }
 
 std::string SecChUaGenerator::GetFullVersionList(
-    const std::string& full_version) const {
+    std::string_view full_version) const {
   // Same structure as sec-ch-ua but with full version string
   return BuildSecChUa(full_version);
 }

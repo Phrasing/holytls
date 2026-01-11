@@ -10,6 +10,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -86,7 +87,7 @@ class ReactorManager {
 
   // Get reactor for a host (consistent hashing for connection affinity)
   // Same host:port always maps to same reactor for connection reuse
-  ReactorContext* GetReactorForHost(const std::string& host, uint16_t port);
+  ReactorContext* GetReactorForHost(std::string_view host, uint16_t port);
 
   // Get reactor by index
   ReactorContext* GetReactor(size_t index);
@@ -105,7 +106,7 @@ class ReactorManager {
 
  private:
   void RunReactor(ReactorContext* ctx);
-  size_t GetReactorIndex(const std::string& host, uint16_t port) const;
+  size_t GetReactorIndex(std::string_view host, uint16_t port) const;
 
   ReactorManagerConfig config_;
   tls::TlsContextFactory* tls_factory_ = nullptr;

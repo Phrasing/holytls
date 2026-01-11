@@ -62,11 +62,11 @@ std::vector<ResolvedAddress> DnsResolver::ParseAddrinfo(struct addrinfo* res) {
 }
 
 // Cache lookup - returns cached entry if valid and not expired
-DnsCacheEntry* DnsResolver::FindCached(const std::string& hostname,
+DnsCacheEntry* DnsResolver::FindCached(std::string_view hostname,
                                        uint64_t now_ms) {
   for (auto& entry : cache_) {
     if (entry.valid && entry.expires_at_ms > now_ms &&
-        std::strcmp(entry.hostname, hostname.c_str()) == 0) {
+        hostname == entry.hostname) {
       return &entry;
     }
   }
@@ -105,7 +105,7 @@ DnsCacheEntry* DnsResolver::FindSlotForInsert(uint64_t now_ms) {
 }
 
 // Store resolution result in cache
-void DnsResolver::StoreInCache(const std::string& hostname,
+void DnsResolver::StoreInCache(std::string_view hostname,
                                const std::vector<ResolvedAddress>& addrs,
                                uint64_t now_ms) {
   DnsCacheEntry* slot = FindSlotForInsert(now_ms);
@@ -113,9 +113,10 @@ void DnsResolver::StoreInCache(const std::string& hostname,
     return;  // Shouldn't happen with fixed-size cache
   }
 
-  // Copy hostname
-  std::strncpy(slot->hostname, hostname.c_str(), sizeof(slot->hostname) - 1);
-  slot->hostname[sizeof(slot->hostname) - 1] = '\0';
+  // Copy hostname (truncate if too long)
+  size_t copy_len = std::min(hostname.size(), sizeof(slot->hostname) - 1);
+  std::memcpy(slot->hostname, hostname.data(), copy_len);
+  slot->hostname[copy_len] = '\0';
 
   // Copy addresses (up to max)
   slot->address_count =

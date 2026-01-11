@@ -29,7 +29,7 @@ Connection::Connection(Reactor* reactor, tls::TlsContextFactory* tls_factory,
 
 Connection::~Connection() { Close(); }
 
-bool Connection::Connect(const std::string& ip, bool ipv6) {
+bool Connection::Connect(std::string_view ip, bool ipv6) {
   // Create socket
   fd_ = util::CreateTcpSocket(ipv6);
   if (fd_ == util::kInvalidSocket) {

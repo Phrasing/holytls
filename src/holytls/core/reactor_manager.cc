@@ -18,7 +18,7 @@ namespace core {
 namespace {
 
 // FNV-1a hash for consistent host:port distribution
-uint64_t HashHostPort(const std::string& host, uint16_t port) {
+uint64_t HashHostPort(std::string_view host, uint16_t port) {
   uint64_t hash = 14695981039346656037ULL;  // FNV offset basis
   for (char c : host) {
     hash ^= static_cast<uint64_t>(static_cast<unsigned char>(c));
@@ -146,7 +146,7 @@ void ReactorManager::Stop() {
   }
 }
 
-ReactorContext* ReactorManager::GetReactorForHost(const std::string& host,
+ReactorContext* ReactorManager::GetReactorForHost(std::string_view host,
                                                   uint16_t port) {
   size_t index = GetReactorIndex(host, port);
   return contexts_[index].get();
@@ -208,7 +208,7 @@ void ReactorManager::RunReactor(ReactorContext* ctx) {
   ctx->reactor->Run();
 }
 
-size_t ReactorManager::GetReactorIndex(const std::string& host,
+size_t ReactorManager::GetReactorIndex(std::string_view host,
                                        uint16_t port) const {
   uint64_t hash = HashHostPort(host, port);
   return hash % contexts_.size();

@@ -38,7 +38,7 @@ class SecChUaGenerator {
   static std::string_view GetMobile(bool is_mobile);
 
   // Get sec-ch-ua-full-version-list with full version string
-  std::string GetFullVersionList(const std::string& full_version) const;
+  std::string GetFullVersionList(std::string_view full_version) const;
 
   // Get the generated GREASE brand (for debugging/testing)
   const std::string& grease_brand() const { return grease_brand_; }
@@ -54,7 +54,7 @@ class SecChUaGenerator {
   std::string GenerateGreaseBrand();
 
   // Build the full sec-ch-ua string from brands in cached order
-  std::string BuildSecChUa(const std::string& version) const;
+  std::string BuildSecChUa(std::string_view version) const;
 
   int major_version_;
   std::mt19937 rng_;

@@ -71,8 +71,15 @@ void ConfigureSocket(socket_t sock) {
              reinterpret_cast<const char*>(&bufsize), sizeof(bufsize));
 }
 
-int ConnectNonBlocking(socket_t sock, const std::string& ip, uint16_t port,
+int ConnectNonBlocking(socket_t sock, std::string_view ip, uint16_t port,
                        bool ipv6) {
+  // inet_pton requires null-terminated string, copy to stack buffer
+  // Max IPv6 length is 45 chars (e.g., "::ffff:255.255.255.255")
+  char ip_buf[46];
+  if (ip.size() >= sizeof(ip_buf)) return -1;
+  std::memcpy(ip_buf, ip.data(), ip.size());
+  ip_buf[ip.size()] = '\0';
+
   int ret;
 
   if (ipv6) {
@@ -80,7 +87,7 @@ int ConnectNonBlocking(socket_t sock, const std::string& ip, uint16_t port,
     std::memset(&addr, 0, sizeof(addr));
     addr.sin6_family = AF_INET6;
     addr.sin6_port = htons(port);
-    if (inet_pton(AF_INET6, ip.c_str(), &addr.sin6_addr) != 1) {
+    if (inet_pton(AF_INET6, ip_buf, &addr.sin6_addr) != 1) {
       return -1;
     }
     ret =
@@ -90,7 +97,7 @@ int ConnectNonBlocking(socket_t sock, const std::string& ip, uint16_t port,
     std::memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
-    if (inet_pton(AF_INET, ip.c_str(), &addr.sin_addr) != 1) {
+    if (inet_pton(AF_INET, ip_buf, &addr.sin_addr) != 1) {
       return -1;
     }
     ret =

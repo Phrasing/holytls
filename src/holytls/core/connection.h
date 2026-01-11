@@ -78,7 +78,7 @@ class Connection : public EventHandler {
 
   // Start connection (DNS resolution must be done already)
   // ip can be IPv4 or IPv6 address
-  bool Connect(const std::string& ip, bool ipv6 = false);
+  bool Connect(std::string_view ip, bool ipv6 = false);
 
   // Send a request with auto-generated Chrome headers
   void SendRequest(

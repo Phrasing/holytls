@@ -98,9 +98,13 @@ HostPool* ConnectionPool::GetOrCreateHostPool(const std::string& host,
   return raw_ptr;
 }
 
-std::string ConnectionPool::MakeHostKey(const std::string& host,
-                                        uint16_t port) {
-  return host + ":" + std::to_string(port);
+std::string ConnectionPool::MakeHostKey(std::string_view host, uint16_t port) {
+  std::string key;
+  key.reserve(host.size() + 6);  // host + ":" + max 5 digits
+  key.append(host);
+  key += ':';
+  key += std::to_string(port);
+  return key;
 }
 
 }  // namespace pool

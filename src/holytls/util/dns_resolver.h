@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace holytls {
@@ -82,9 +83,9 @@ class DnsResolver {
   static std::vector<ResolvedAddress> ParseAddrinfo(struct addrinfo* res);
 
   // Cache operations
-  DnsCacheEntry* FindCached(const std::string& hostname, uint64_t now_ms);
+  DnsCacheEntry* FindCached(std::string_view hostname, uint64_t now_ms);
   DnsCacheEntry* FindSlotForInsert(uint64_t now_ms);
-  void StoreInCache(const std::string& hostname,
+  void StoreInCache(std::string_view hostname,
                     const std::vector<ResolvedAddress>& addrs, uint64_t now_ms);
 
   uv_loop_t* loop_;

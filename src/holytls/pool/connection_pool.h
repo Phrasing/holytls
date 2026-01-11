@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 #include "holytls/config.h"
@@ -65,7 +66,7 @@ class ConnectionPool {
   size_t TotalHosts() const;
 
  private:
-  static std::string MakeHostKey(const std::string& host, uint16_t port);
+  static std::string MakeHostKey(std::string_view host, uint16_t port);
 
   ConnectionPoolConfig config_;
   core::Reactor* reactor_;
