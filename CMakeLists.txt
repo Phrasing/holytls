@@ -37,6 +37,7 @@ include(FetchLibuv)
 include(FetchZstd)
 include(FetchBrotli)
 include(FetchZlib)
+include(FetchRapidJSON)
 
 # Find threading library (cross-platform)
 find_package(Threads REQUIRED)
