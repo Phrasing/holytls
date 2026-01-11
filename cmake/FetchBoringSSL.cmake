@@ -154,15 +154,19 @@ if(NOT boringssl_POPULATED)
 
   message(STATUS "BoringSSL build complete")
 
-  # Verify libraries exist
+  # Verify libraries exist and find correct paths
   if(WIN32 AND NOT CMAKE_GENERATOR MATCHES "Visual Studio")
-    if(NOT EXISTS "${boringssl_BINARY_DIR}/ssl/ssl.lib")
-      message(FATAL_ERROR "BoringSSL ssl.lib not found at ${boringssl_BINARY_DIR}/ssl/ssl.lib")
+    # Ninja may put libs in root or subdirectories depending on BoringSSL version
+    if(EXISTS "${boringssl_BINARY_DIR}/ssl/ssl.lib")
+      set(BORINGSSL_SSL_LIB_PATH "${boringssl_BINARY_DIR}/ssl/ssl.lib")
+      set(BORINGSSL_CRYPTO_LIB_PATH "${boringssl_BINARY_DIR}/crypto/crypto.lib")
+    elseif(EXISTS "${boringssl_BINARY_DIR}/ssl.lib")
+      set(BORINGSSL_SSL_LIB_PATH "${boringssl_BINARY_DIR}/ssl.lib")
+      set(BORINGSSL_CRYPTO_LIB_PATH "${boringssl_BINARY_DIR}/crypto.lib")
+    else()
+      message(FATAL_ERROR "BoringSSL ssl.lib not found in ${boringssl_BINARY_DIR}")
     endif()
-    if(NOT EXISTS "${boringssl_BINARY_DIR}/crypto/crypto.lib")
-      message(FATAL_ERROR "BoringSSL crypto.lib not found at ${boringssl_BINARY_DIR}/crypto/crypto.lib")
-    endif()
-    message(STATUS "BoringSSL libraries verified")
+    message(STATUS "BoringSSL libraries found: ${BORINGSSL_SSL_LIB_PATH}")
   endif()
 endif()
 
@@ -196,8 +200,14 @@ if(WIN32)
     set(BORINGSSL_SSL_LIB "${BORINGSSL_SSL_LIB_RELEASE}")
   else()
     # Single-config generator on Windows (Ninja, etc.)
-    set(BORINGSSL_CRYPTO_LIB "${boringssl_BINARY_DIR}/crypto/crypto.lib")
-    set(BORINGSSL_SSL_LIB "${boringssl_BINARY_DIR}/ssl/ssl.lib")
+    # Detect actual library locations (may be root or subdirectories)
+    if(EXISTS "${boringssl_BINARY_DIR}/ssl/ssl.lib")
+      set(BORINGSSL_CRYPTO_LIB "${boringssl_BINARY_DIR}/crypto/crypto.lib")
+      set(BORINGSSL_SSL_LIB "${boringssl_BINARY_DIR}/ssl/ssl.lib")
+    else()
+      set(BORINGSSL_CRYPTO_LIB "${boringssl_BINARY_DIR}/crypto.lib")
+      set(BORINGSSL_SSL_LIB "${boringssl_BINARY_DIR}/ssl.lib")
+    endif()
     set_target_properties(boringssl::crypto PROPERTIES
       IMPORTED_LOCATION "${BORINGSSL_CRYPTO_LIB}"
       INTERFACE_INCLUDE_DIRECTORIES "${boringssl_SOURCE_DIR}/include"
