@@ -25,6 +25,7 @@ endif()
 # Options
 option(HOLYTLS_BUILD_TESTS "Build tests" ON)
 option(HOLYTLS_BUILD_BENCHMARKS "Build benchmarks" ON)
+option(HOLYTLS_BUILD_QUIC "Build with QUIC/HTTP3 support via ngtcp2/nghttp3" OFF)
 option(HOLYTLS_ASAN "Enable AddressSanitizer" OFF)
 option(HOLYTLS_TSAN "Enable ThreadSanitizer" OFF)
 
@@ -40,6 +41,12 @@ include(FetchZlib)
 include(FetchRapidJSON)
 include(FetchPicoHTTPParser)
 
+# QUIC/HTTP3 support (optional)
+if(HOLYTLS_BUILD_QUIC)
+  include(FetchNgtcp2)
+  include(FetchNghttp3)
+endif()
+
 # Find threading library (cross-platform)
 find_package(Threads REQUIRED)
 
@@ -50,6 +57,7 @@ add_library(holytls STATIC
   src/holytls/core/timer.cc
   src/holytls/core/io_buffer.cc
   src/holytls/core/connection.cc
+  src/holytls/core/udp_socket.cc
   src/holytls/util/socket_utils.cc
   src/holytls/memory/slab_allocator.cc
   src/holytls/memory/buffer_pool.cc
@@ -78,12 +86,33 @@ add_library(holytls STATIC
   src/holytls/util/platform.cc
 )
 
+# Add QUIC sources if enabled
+if(HOLYTLS_BUILD_QUIC)
+  target_sources(holytls PRIVATE
+    src/holytls/quic/quic_connection.cc
+    src/holytls/quic/h3_session.cc
+    src/holytls/pool/quic_pooled_connection.cc
+  )
+endif()
+
 target_include_directories(holytls
   PUBLIC
     ${CMAKE_SOURCE_DIR}/include
   PRIVATE
     ${CMAKE_SOURCE_DIR}/src
 )
+
+# Add QUIC include directories if enabled
+if(HOLYTLS_BUILD_QUIC)
+  target_include_directories(holytls
+    PRIVATE
+      ${ngtcp2_SOURCE_DIR}/lib/includes
+      ${ngtcp2_SOURCE_DIR}/crypto/includes
+      ${ngtcp2_BINARY_DIR}/lib/includes
+      ${nghttp3_SOURCE_DIR}/lib/includes
+      ${nghttp3_BINARY_DIR}/lib/includes
+  )
+endif()
 
 target_link_libraries(holytls
   PUBLIC
@@ -100,6 +129,18 @@ target_link_libraries(holytls
   PUBLIC
     picohttpparser::picohttpparser
 )
+
+# Add QUIC libraries if enabled
+if(HOLYTLS_BUILD_QUIC)
+  target_link_libraries(holytls
+    PRIVATE
+      ngtcp2::ngtcp2
+      ngtcp2::crypto_boringssl
+      nghttp3::nghttp3
+  )
+  # Define HOLYTLS_BUILD_QUIC so C++ code can detect it
+  target_compile_definitions(holytls PUBLIC HOLYTLS_BUILD_QUIC=1)
+endif()
 
 # Platform-specific libraries
 if(WIN32)
@@ -171,6 +212,22 @@ if(MSVC)
   target_compile_options(fingerprint_verify PRIVATE /W3)
 else()
   target_compile_options(fingerprint_verify PRIVATE -Wall -Wextra -Wno-error)
+endif()
+
+# QUIC examples (only when QUIC is enabled)
+if(HOLYTLS_BUILD_QUIC)
+  # High-level API example
+  add_executable(quic_example examples/quic_example.cc)
+  target_include_directories(quic_example PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${ngtcp2_SOURCE_DIR}/lib/includes
+    ${ngtcp2_SOURCE_DIR}/crypto/includes
+    ${ngtcp2_BINARY_DIR}/lib/includes
+    ${nghttp3_SOURCE_DIR}/lib/includes
+    ${nghttp3_BINARY_DIR}/lib/includes
+  )
+  target_link_libraries(quic_example PRIVATE holytls)
+  target_compile_options(quic_example PRIVATE ${HOLYTLS_COMMON_FLAGS})
 endif()
 
 # Install targets

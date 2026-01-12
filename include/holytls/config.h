@@ -28,6 +28,14 @@ enum class ChromeVersion {
   kLatest = kChrome143,
 };
 
+// Protocol preference for connection selection
+enum class ProtocolPreference {
+  kAuto,           // Prefer HTTP/3 if supported, fallback to HTTP/2, then HTTP/1.1
+  kHttp3Only,      // HTTP/3 (QUIC) only - fail if not available
+  kHttp2Preferred, // Prefer HTTP/2, fallback to HTTP/1.1 (no QUIC)
+  kHttp1Only,      // HTTP/1.1 only
+};
+
 // TLS configuration for Chrome impersonation
 struct TlsConfig {
   // Chrome version for TLS fingerprint (JA3/JA4)
@@ -72,6 +80,29 @@ struct Http2Config {
 
   // Connection-level flow control window
   std::optional<uint32_t> connection_window_size;
+};
+
+// HTTP/3 (QUIC) configuration for fingerprint matching
+struct Http3Config {
+  // Chrome version for QUIC fingerprint (transport params, QPACK)
+  ChromeVersion chrome_version = ChromeVersion::kLatest;
+
+  // QUIC transport parameters (Chrome defaults)
+  uint64_t max_idle_timeout = 30000;                     // 30 seconds
+  uint64_t max_udp_payload_size = 1350;                  // Standard QUIC MTU
+  uint64_t initial_max_data = 15728640;                  // 15 MB
+  uint64_t initial_max_stream_data_bidi_local = 6291456; // 6 MB
+  uint64_t initial_max_stream_data_bidi_remote = 6291456;
+  uint64_t initial_max_stream_data_uni = 6291456;
+  uint64_t initial_max_streams_bidi = 100;
+  uint64_t initial_max_streams_uni = 100;
+  uint64_t ack_delay_exponent = 3;
+  uint64_t max_ack_delay = 25;                           // 25ms
+  bool disable_active_migration = false;
+
+  // QPACK settings
+  uint64_t qpack_max_table_capacity = 65536;
+  uint64_t qpack_blocked_streams = 100;
 };
 
 // Connection pool configuration
@@ -129,10 +160,14 @@ struct ProxyConfig {
 struct ClientConfig {
   TlsConfig tls;
   Http2Config http2;
+  Http3Config http3;
   PoolConfig pool;
   ThreadConfig threads;
   DnsConfig dns;
   ProxyConfig proxy;
+
+  // Protocol selection
+  ProtocolPreference protocol = ProtocolPreference::kHttp2Preferred;
 
   // Cookie jar for automatic cookie handling (optional, not owned)
   // If set, cookies will be automatically sent with requests and

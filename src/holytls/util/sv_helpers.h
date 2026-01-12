@@ -1,51 +1,113 @@
 // Copyright 2026 HolyTLS Authors
 // SPDX-License-Identifier: MIT
 
-// String view helper functions for common string operations.
+// String view utilities - branchless, locale-free, SIMD-friendly operations.
 
 #ifndef HOLYTLS_UTIL_SV_HELPERS_H_
 #define HOLYTLS_UTIL_SV_HELPERS_H_
 
-#include <cctype>
+#include <cstddef>
 #include <string>
 #include <string_view>
 
 namespace holytls {
-namespace util {
+namespace sv {
 
-// Trim whitespace from both ends of a string_view
+// Trim whitespace from both ends (no allocation)
 inline std::string_view Trim(std::string_view s) {
-  while (!s.empty() && std::isspace(static_cast<unsigned char>(s.front()))) {
+  // ASCII whitespace: space, tab, newline, carriage return
+  while (!s.empty() && (s.front() == ' ' || s.front() == '\t' ||
+                        s.front() == '\n' || s.front() == '\r')) {
     s.remove_prefix(1);
   }
-  while (!s.empty() && std::isspace(static_cast<unsigned char>(s.back()))) {
+  while (!s.empty() && (s.back() == ' ' || s.back() == '\t' ||
+                        s.back() == '\n' || s.back() == '\r')) {
     s.remove_suffix(1);
   }
   return s;
 }
 
-// Case-insensitive string comparison
+// Branchless ASCII lowercase character (avoids std::tolower locale overhead)
+inline constexpr char ToLowerChar(char c) {
+  return static_cast<char>(c + ((c >= 'A' && c <= 'Z') * 32));
+}
+
+// Branchless ASCII uppercase character
+inline constexpr char ToUpperChar(char c) {
+  return static_cast<char>(c - ((c >= 'a' && c <= 'z') * 32));
+}
+
+// Case-insensitive equality (branchless, no allocation)
 inline bool EqualsIgnoreCase(std::string_view a, std::string_view b) {
   if (a.size() != b.size()) return false;
   for (size_t i = 0; i < a.size(); ++i) {
-    if (std::tolower(static_cast<unsigned char>(a[i])) !=
-        std::tolower(static_cast<unsigned char>(b[i]))) {
+    if (ToLowerChar(a[i]) != ToLowerChar(b[i])) {
       return false;
     }
   }
   return true;
 }
 
-// Convert string to lowercase
+// Convert to lowercase string (uses resize_and_overwrite for efficiency)
 inline std::string ToLower(std::string_view s) {
-  std::string result(s);
-  for (char& c : result) {
-    c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-  }
+  std::string result;
+  result.resize_and_overwrite(s.size(), [&](char* buf, size_t n) {
+    for (size_t i = 0; i < n; ++i) {
+      buf[i] = ToLowerChar(s[i]);
+    }
+    return n;
+  });
   return result;
 }
 
+// Convert to uppercase string
+inline std::string ToUpper(std::string_view s) {
+  std::string result;
+  result.resize_and_overwrite(s.size(), [&](char* buf, size_t n) {
+    for (size_t i = 0; i < n; ++i) {
+      buf[i] = ToUpperChar(s[i]);
+    }
+    return n;
+  });
+  return result;
+}
+
+// Check if string starts with prefix (case-sensitive)
+inline constexpr bool StartsWith(std::string_view s, std::string_view prefix) {
+  return s.size() >= prefix.size() &&
+         s.substr(0, prefix.size()) == prefix;
+}
+
+// Check if string ends with suffix (case-sensitive)
+inline constexpr bool EndsWith(std::string_view s, std::string_view suffix) {
+  return s.size() >= suffix.size() &&
+         s.substr(s.size() - suffix.size()) == suffix;
+}
+
+// Check if string starts with prefix (case-insensitive)
+inline bool StartsWithIgnoreCase(std::string_view s, std::string_view prefix) {
+  return s.size() >= prefix.size() &&
+         EqualsIgnoreCase(s.substr(0, prefix.size()), prefix);
+}
+
+// Check if string ends with suffix (case-insensitive)
+inline bool EndsWithIgnoreCase(std::string_view s, std::string_view suffix) {
+  return s.size() >= suffix.size() &&
+         EqualsIgnoreCase(s.substr(s.size() - suffix.size()), suffix);
+}
+
+}  // namespace sv
+
+// Alias for backward compatibility with util namespace
+namespace util {
+using sv::Trim;
+using sv::EqualsIgnoreCase;
+using sv::ToLower;
+using sv::ToUpper;
+using sv::StartsWith;
+using sv::EndsWith;
 }  // namespace util
+
 }  // namespace holytls
 
 #endif  // HOLYTLS_UTIL_SV_HELPERS_H_

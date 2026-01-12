@@ -10,6 +10,7 @@
 #include <mutex>
 #include <thread>
 #include <unordered_map>
+#include <variant>
 
 #include "holytls/config.h"
 #include "holytls/core/reactor_manager.h"
@@ -19,6 +20,14 @@
 #include "holytls/tls/tls_context.h"
 #include "holytls/util/dns_resolver.h"
 #include "holytls/util/url_parser.h"
+
+#if defined(HOLYTLS_BUILD_QUIC) || __has_include("holytls/pool/quic_pooled_connection.h")
+#include "holytls/http2/h2_stream.h"
+#include "holytls/pool/quic_pooled_connection.h"
+#define HOLYTLS_QUIC_AVAILABLE 1
+#else
+#define HOLYTLS_QUIC_AVAILABLE 0
+#endif
 
 namespace holytls {
 
@@ -180,6 +189,8 @@ class HttpClient::Impl {
     pool_config.max_streams_per_connection =
         config.pool.max_streams_per_connection;
     pool_config.proxy = config.proxy;
+    pool_config.protocol = config.protocol;
+    pool_config.http3 = config.http3;
 
     // Initialize reactor manager
     reactor_manager_.Initialize(&tls_factory_, pool_config);
@@ -301,12 +312,44 @@ class HttpClient::Impl {
             return;
           }
 
-          // Get or create connection
+          // Protocol-agnostic connection acquisition
           auto* pool = ctx->connection_pool.get();
-          auto* pooled = pool->AcquireConnection(parsed.host, parsed.port);
+          auto any_conn = pool->AcquireAnyConnection(parsed.host, parsed.port);
 
-          if (!pooled) {
-            // Need to create a new connection
+          // Check if we got a connection
+          bool has_connection = std::visit(
+              [](auto* c) -> bool { return c != nullptr; }, any_conn);
+
+          if (!has_connection) {
+            // Need to create a new connection based on protocol preference
+            const auto& addr = addresses[0];
+
+#if HOLYTLS_QUIC_AVAILABLE
+            if (pool->IsQuicEnabled()) {
+              // Try QUIC first
+              auto* quic_pool =
+                  pool->GetOrCreateQuicHostPool(parsed.host, parsed.port);
+              if (quic_pool &&
+                  quic_pool->CreateConnection(addr.ip, addr.is_ipv6)) {
+                // Queue request for when QUIC connection is ready
+                QueueRequest(ctx, parsed, addresses, std::move(request),
+                             std::move(callback), true);
+                return;
+              }
+              // QUIC failed, fall through to TCP if allowed
+              if (config_.protocol == ProtocolPreference::kHttp3Only) {
+                if (callback) {
+                  callback(Response{},
+                           Error{ErrorCode::kConnection,
+                                 "Failed to create QUIC connection"});
+                }
+                requests_failed_.fetch_add(1, std::memory_order_relaxed);
+                return;
+              }
+            }
+#endif
+
+            // Create TCP connection
             auto* host_pool =
                 pool->GetOrCreateHostPool(parsed.host, parsed.port);
             if (!host_pool) {
@@ -318,8 +361,6 @@ class HttpClient::Impl {
               return;
             }
 
-            // Create connection with first resolved address
-            const auto& addr = addresses[0];
             if (!host_pool->CreateConnection(addr.ip, addr.is_ipv6)) {
               if (callback) {
                 callback(Response{},
@@ -329,36 +370,70 @@ class HttpClient::Impl {
               return;
             }
 
-            // Queue request for when connection is ready
-            QueueRequest(ctx, parsed, std::move(request), std::move(callback));
+            // Queue request for when TCP connection is ready
+            QueueRequest(ctx, parsed, addresses, std::move(request),
+                         std::move(callback), false);
             return;
           }
 
           // Send request on existing connection
-          SendOnConnection(ctx, pooled, parsed, std::move(request),
-                           std::move(callback));
+          std::visit(
+              [this, &ctx, &parsed, &request, &callback](auto* conn) {
+                if constexpr (std::is_same_v<decltype(conn),
+                                             pool::PooledConnection*>) {
+                  SendOnTcpConnection(ctx, conn, parsed, std::move(request),
+                                      std::move(callback));
+                }
+#if HOLYTLS_QUIC_AVAILABLE
+                else if constexpr (std::is_same_v<
+                                       decltype(conn),
+                                       pool::QuicPooledConnection*>) {
+                  SendOnQuicConnection(ctx, conn, parsed, std::move(request),
+                                       std::move(callback));
+                }
+#endif
+              },
+              any_conn);
         });
   }
 
   void QueueRequest(core::ReactorContext* ctx, const util::ParsedUrl& parsed,
-                    Request request, ResponseCallback callback,
+                    const std::vector<util::ResolvedAddress>& addresses,
+                    Request request, ResponseCallback callback, bool use_quic,
                     int retry_count = 0) {
     constexpr int kMaxRetries = 50;       // Max retries (50 * 100ms = 5s total)
     constexpr int kRetryDelayMs = 100;    // Delay between retries
 
     // Schedule a delayed retry using a timer
-    auto retry_fn = [this, ctx, parsed, request = std::move(request),
-                     callback = std::move(callback), retry_count]() mutable {
+    auto retry_fn = [this, ctx, parsed, addresses, request = std::move(request),
+                     callback = std::move(callback), use_quic,
+                     retry_count]() mutable {
       auto* pool = ctx->connection_pool.get();
-      auto* pooled = pool->AcquireConnection(parsed.host, parsed.port);
 
-      if (pooled && pooled->connection && pooled->connection->IsConnected()) {
-        SendOnConnection(ctx, pooled, parsed, std::move(request),
-                         std::move(callback));
-      } else if (retry_count < kMaxRetries) {
+#if HOLYTLS_QUIC_AVAILABLE
+      if (use_quic) {
+        auto* quic_conn = pool->AcquireQuicConnection(parsed.host, parsed.port);
+        if (quic_conn && quic_conn->IsConnected()) {
+          SendOnQuicConnection(ctx, quic_conn, parsed, std::move(request),
+                               std::move(callback));
+          return;
+        }
+      } else
+#endif
+      {
+        (void)use_quic;  // Suppress unused warning when QUIC not available
+        auto* pooled = pool->AcquireTcpConnection(parsed.host, parsed.port);
+        if (pooled && pooled->connection && pooled->connection->IsConnected()) {
+          SendOnTcpConnection(ctx, pooled, parsed, std::move(request),
+                              std::move(callback));
+          return;
+        }
+      }
+
+      if (retry_count < kMaxRetries) {
         // Retry after delay
-        QueueRequest(ctx, parsed, std::move(request), std::move(callback),
-                     retry_count + 1);
+        QueueRequest(ctx, parsed, addresses, std::move(request),
+                     std::move(callback), use_quic, retry_count + 1);
       } else {
         // Max retries exceeded
         if (callback) {
@@ -390,10 +465,10 @@ class HttpClient::Impl {
     }
   }
 
-  void SendOnConnection(core::ReactorContext* ctx,
-                        pool::PooledConnection* pooled,
-                        const util::ParsedUrl& parsed, Request request,
-                        ResponseCallback callback) {
+  void SendOnTcpConnection(core::ReactorContext* ctx,
+                           pool::PooledConnection* pooled,
+                           const util::ParsedUrl& parsed, Request request,
+                           ResponseCallback callback) {
     requests_sent_.fetch_add(1, std::memory_order_relaxed);
 
     // Convert headers to connection format
@@ -443,7 +518,7 @@ class HttpClient::Impl {
                             core_resp.body);
 
           // Release connection back to pool
-          ctx->connection_pool->ReleaseConnection(pooled);
+          ctx->connection_pool->ReleaseTcpConnection(pooled);
 
           requests_completed_.fetch_add(1, std::memory_order_relaxed);
 
@@ -453,7 +528,7 @@ class HttpClient::Impl {
         },
         [this, ctx, pooled, shared_cb](const std::string& error) mutable {
           // Mark connection as failed
-          ctx->connection_pool->RemoveConnection(pooled);
+          ctx->connection_pool->RemoveTcpConnection(pooled);
 
           requests_failed_.fetch_add(1, std::memory_order_relaxed);
 
@@ -462,6 +537,125 @@ class HttpClient::Impl {
           }
         });
   }
+
+#if HOLYTLS_QUIC_AVAILABLE
+  void SendOnQuicConnection(core::ReactorContext* ctx,
+                            pool::QuicPooledConnection* quic_conn,
+                            const util::ParsedUrl& parsed, Request request,
+                            ResponseCallback callback) {
+    requests_sent_.fetch_add(1, std::memory_order_relaxed);
+
+    // Build H2Headers from request
+    http2::H2Headers h2_headers;
+    h2_headers.method = std::string(MethodToString(request.method));
+    h2_headers.authority = parsed.host;
+    if (parsed.port != 443) {
+      h2_headers.authority += ":" + std::to_string(parsed.port);
+    }
+    h2_headers.path = parsed.PathWithQuery();
+    h2_headers.scheme = "https";
+
+    // Add custom headers
+    for (const auto& h : request.headers) {
+      h2_headers.headers.emplace_back(h.name, h.value);
+    }
+
+    // Add cookies from cookie jar if available
+    if (cookie_jar_) {
+      std::string cookie_header = cookie_jar_->GetCookieHeader(request.url);
+      if (!cookie_header.empty()) {
+        h2_headers.headers.emplace_back("cookie", std::move(cookie_header));
+      }
+    }
+
+    // Share callback between success and error handlers
+    auto shared_cb = std::make_shared<ResponseCallback>(std::move(callback));
+    std::string request_url = request.url;
+
+    // Create response builder
+    auto response_builder = std::make_shared<Response>();
+    auto body_buffer = std::make_shared<std::vector<uint8_t>>();
+
+    // Set up stream callbacks
+    http2::H2StreamCallbacks stream_callbacks;
+
+    stream_callbacks.on_headers = [this, response_builder,
+                                   request_url](int /*stream_id*/,
+                                                const http2::PackedHeaders& packed) {
+      // Get status code from PackedHeaders (set via SetStatus in H3Session)
+      response_builder->status_code = packed.status_code();
+
+      // Extract regular headers
+      for (size_t i = 0; i < packed.size(); ++i) {
+        std::string_view name = packed.name(i);
+        std::string_view value = packed.value(i);
+        if (!name.empty() && name[0] != ':') {
+          // Regular header (skip pseudo-headers)
+          response_builder->headers.push_back(
+              {std::string(name), std::string(value)});
+
+          // Process Set-Cookie headers if cookie jar is available
+          if (cookie_jar_ && name == "set-cookie") {
+            cookie_jar_->ProcessSetCookie(request_url, value);
+          }
+        }
+      }
+    };
+
+    stream_callbacks.on_data = [body_buffer](int /*stream_id*/,
+                                             const uint8_t* data, size_t len) {
+      body_buffer->insert(body_buffer->end(), data, data + len);
+    };
+
+    stream_callbacks.on_close = [this, ctx, quic_conn, shared_cb,
+                                 response_builder,
+                                 body_buffer](int /*stream_id*/,
+                                              uint32_t error_code) {
+      if (error_code == 0) {
+        // Success
+        response_builder->body = std::move(*body_buffer);
+        ctx->connection_pool->ReleaseQuicConnection(quic_conn);
+        requests_completed_.fetch_add(1, std::memory_order_relaxed);
+
+        if (*shared_cb) {
+          (*shared_cb)(std::move(*response_builder), Error{});
+        }
+      } else {
+        // Error
+        ctx->connection_pool->RemoveQuicConnection(quic_conn);
+        requests_failed_.fetch_add(1, std::memory_order_relaxed);
+
+        if (*shared_cb) {
+          (*shared_cb)(Response{},
+                       Error{ErrorCode::kConnection,
+                             "HTTP/3 stream error: " + std::to_string(error_code)});
+        }
+      }
+    };
+
+    // Submit request using H3Session
+    const uint8_t* body_data =
+        request.body.empty() ? nullptr : request.body.data();
+    size_t body_len = request.body.size();
+
+    int64_t stream_id =
+        quic_conn->SubmitRequest(h2_headers, stream_callbacks, body_data, body_len);
+
+    if (stream_id < 0) {
+      ctx->connection_pool->RemoveQuicConnection(quic_conn);
+      requests_failed_.fetch_add(1, std::memory_order_relaxed);
+
+      if (*shared_cb) {
+        (*shared_cb)(Response{},
+                     Error{ErrorCode::kConnection, "Failed to submit HTTP/3 request"});
+      }
+      return;
+    }
+
+    // Flush pending data to QUIC
+    quic_conn->FlushPendingData();
+  }
+#endif
 
   ClientConfig config_;
   tls::TlsContextFactory tls_factory_;
