@@ -37,8 +37,8 @@ ConnectionPool::~ConnectionPool() {
 #endif
 }
 
-bool ConnectionPool::InitQuicContext() {
 #if HOLYTLS_QUIC_AVAILABLE
+bool ConnectionPool::InitQuicContext() {
   if (quic_tls_ctx_) {
     return true;  // Already initialized
   }
@@ -49,10 +49,8 @@ bool ConnectionPool::InitQuicContext() {
     return false;
   }
   return true;
-#else
-  return false;
-#endif
 }
+#endif
 
 bool ConnectionPool::IsQuicEnabled() const {
 #if HOLYTLS_QUIC_AVAILABLE
@@ -152,9 +150,9 @@ void ConnectionPool::RemoveTcpConnection(PooledConnection* conn) {
 }
 
 // QUIC connection methods
+#if HOLYTLS_QUIC_AVAILABLE
 QuicPooledConnection* ConnectionPool::AcquireQuicConnection(
     const std::string& host, uint16_t port) {
-#if HOLYTLS_QUIC_AVAILABLE
   if (!IsQuicEnabled()) {
     return nullptr;
   }
@@ -165,36 +163,24 @@ QuicPooledConnection* ConnectionPool::AcquireQuicConnection(
   }
 
   return pool->AcquireConnection();
-#else
-  (void)host;
-  (void)port;
-  return nullptr;
-#endif
 }
 
 void ConnectionPool::ReleaseQuicConnection(QuicPooledConnection* conn) {
-#if HOLYTLS_QUIC_AVAILABLE
   if (!conn || !conn->host_pool) {
     return;
   }
 
   conn->host_pool->ReleaseConnection(conn);
-#else
-  (void)conn;
-#endif
 }
 
 void ConnectionPool::RemoveQuicConnection(QuicPooledConnection* conn) {
-#if HOLYTLS_QUIC_AVAILABLE
   if (!conn || !conn->host_pool) {
     return;
   }
 
   conn->host_pool->FailConnection(conn);
-#else
-  (void)conn;
-#endif
 }
+#endif
 
 void ConnectionPool::CleanupIdle(uint64_t now_ms) {
   // Cleanup TCP host pools
@@ -290,9 +276,9 @@ HostPool* ConnectionPool::GetOrCreateHostPool(const std::string& host,
   return raw_ptr;
 }
 
+#if HOLYTLS_QUIC_AVAILABLE
 QuicHostPool* ConnectionPool::GetOrCreateQuicHostPool(const std::string& host,
                                                       uint16_t port) {
-#if HOLYTLS_QUIC_AVAILABLE
   if (!quic_tls_ctx_) {
     return nullptr;
   }
@@ -319,12 +305,8 @@ QuicHostPool* ConnectionPool::GetOrCreateQuicHostPool(const std::string& host,
   quic_host_pools_[key] = std::move(pool);
 
   return raw_ptr;
-#else
-  (void)host;
-  (void)port;
-  return nullptr;
-#endif
 }
+#endif
 
 std::string ConnectionPool::MakeHostKey(std::string_view host, uint16_t port) {
   std::string key;
