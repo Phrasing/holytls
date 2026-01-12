@@ -153,8 +153,8 @@ class Reactor {
   static void OnCloseCallback(uv_handle_t* handle);
 
   uv_loop_t* loop_ = nullptr;
-  uv_async_t async_;        // For cross-thread wakeup
-  uv_timer_t run_timer_;    // For RunFor()
+  uv_async_t* async_ = nullptr;      // For cross-thread wakeup
+  uv_timer_t* run_timer_ = nullptr;  // For RunFor()
   ReactorConfig config_;
   std::atomic<bool> running_{false};
   uint64_t now_ms_ = 0;

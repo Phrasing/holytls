@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <memory>
 
 namespace holytls {
 
@@ -96,10 +97,13 @@ struct Span {
 
 // FdTable - sparse array for fd -> pointer mapping
 // Much faster than unordered_map for fd lookups
+// Uses heap allocation to avoid large stack usage (65536 pointers = 512 KB)
 template <typename T, size_t MaxFds = 65536>
 class FdTable {
  public:
-  FdTable() { std::memset(entries_, 0, sizeof(entries_)); }
+  FdTable() : entries_(std::make_unique<T*[]>(MaxFds)) {
+    std::memset(entries_.get(), 0, MaxFds * sizeof(T*));
+  }
 
   void Set(int fd, T* ptr) {
     if (fd >= 0 && static_cast<size_t>(fd) < MaxFds) {
@@ -126,12 +130,12 @@ class FdTable {
   size_t Count() const { return count_; }
 
   void Clear() {
-    std::memset(entries_, 0, sizeof(entries_));
+    std::memset(entries_.get(), 0, MaxFds * sizeof(T*));
     count_ = 0;
   }
 
  private:
-  T* entries_[MaxFds];
+  std::unique_ptr<T*[]> entries_;
   size_t count_ = 0;
 };
 

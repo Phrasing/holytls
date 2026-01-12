@@ -64,6 +64,9 @@ class TlsContextFactory {
   // Get the Chrome version
   ChromeVersion chrome_version() const { return config_.chrome_version; }
 
+  // Check if HTTP/1.1 is forced (ALPN only advertises http/1.1)
+  bool force_http1() const { return config_.force_http1; }
+
   // Create a new SSL object for a connection
   SSL* CreateSsl();
 

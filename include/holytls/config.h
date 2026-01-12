@@ -28,6 +28,9 @@ struct TlsConfig {
   // Chrome version for TLS fingerprint (JA3/JA4)
   ChromeVersion chrome_version = ChromeVersion::kLatest;
 
+  // Force HTTP/1.1 (only advertise http/1.1 in ALPN, skip h2)
+  bool force_http1 = false;
+
   // Certificate verification
   bool verify_certificates = true;
   std::string ca_bundle_path;  // Empty = system default

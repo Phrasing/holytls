@@ -78,7 +78,7 @@ void Connection::SendRequest(
     const std::vector<std::pair<std::string, std::string>>& headers,
     std::span<const std::string_view> header_order,
     ResponseCallback on_response, ErrorCallback on_error) {
-  if (state_ == ConnectionState::kConnected && h2_) {
+  if (state_ == ConnectionState::kConnected && CanSubmitRequest()) {
     // Connection ready, submit request immediately
     http2::H2Headers h2_headers;
     h2_headers.method = method;
@@ -234,7 +234,12 @@ void Connection::SendRequest(
       }
     };
 
-    stream_id = h2_->SubmitRequest(h2_headers, stream_callbacks);
+    // Submit to appropriate session
+    if (h2_) {
+      stream_id = h2_->SubmitRequest(h2_headers, stream_callbacks);
+    } else if (h1_) {
+      stream_id = h1_->SubmitRequest(h2_headers, stream_callbacks, header_order);
+    }
     if (stream_id < 0) {
       if (on_error) {
         on_error("Failed to submit request");
@@ -271,6 +276,7 @@ void Connection::Close() {
   }
   state_ = ConnectionState::kClosed;
   h2_.reset();
+  h1_.reset();
   tls_.reset();
 }
 
@@ -362,12 +368,18 @@ void Connection::HandleTlsHandshake() {
   tls::TlsResult result = tls_->DoHandshake();
 
   switch (result) {
-    case tls::TlsResult::kOk:
+    case tls::TlsResult::kOk: {
       // Handshake complete
       state_ = ConnectionState::kConnected;
 
-      // Initialize HTTP/2 session
-      {
+      // Check ALPN protocol to determine HTTP version
+      std::string_view protocol = tls_->AlpnProtocol();
+
+      // Use HTTP/2 if negotiated, or if ALPN empty and not forcing HTTP/1.1
+      bool use_http2 = (protocol == "h2") ||
+                       (protocol.empty() && !tls_factory_->force_http1());
+      if (use_http2) {
+        // HTTP/2 (default if no ALPN or h2 negotiated)
         auto chrome_version = tls_factory_->chrome_version();
         const auto& h2_profile = http2::GetChromeH2Profile(chrome_version);
 
@@ -389,9 +401,24 @@ void Connection::HandleTlsHandshake() {
           reactor_->Stop();
           return;
         }
+      } else {
+        // HTTP/1.1
+        http1::H1Session::SessionCallbacks session_callbacks;
+        session_callbacks.on_error = [this](int code, const std::string& msg) {
+          SetError("H1 error " + std::to_string(code) + ": " + msg);
+        };
+
+        h1_ = std::make_unique<http1::H1Session>(session_callbacks);
+        if (!h1_->Initialize()) {
+          SetError("Failed to initialize H1 session");
+          state_ = ConnectionState::kError;
+          Close();
+          reactor_->Stop();
+          return;
+        }
       }
 
-      // Flush connection preface
+      // Flush connection preface (for HTTP/2) or nothing (for HTTP/1.1)
       FlushSendBuffer();
 
       // Submit pending requests
@@ -401,6 +428,7 @@ void Connection::HandleTlsHandshake() {
       }
       pending_requests_.clear();
       break;
+    }
 
     case tls::TlsResult::kWantRead:
       reactor_->Modify(this, EventType::kRead);
@@ -435,10 +463,15 @@ void Connection::HandleConnected() {
 
     if (n > 0) {
       ++reads;
-      // Feed data to HTTP/2 session
-      ssize_t consumed = h2_->Receive(buf, static_cast<size_t>(n));
+      // Feed data to HTTP session (h2 or h1)
+      ssize_t consumed = -1;
+      if (h2_) {
+        consumed = h2_->Receive(buf, static_cast<size_t>(n));
+      } else if (h1_) {
+        consumed = h1_->Receive(buf, static_cast<size_t>(n));
+      }
       if (consumed < 0) {
-        SetError("H2 receive error");
+        SetError(h2_ ? "H2 receive error" : "H1 receive error");
         state_ = ConnectionState::kError;
         Close();
         reactor_->Stop();
@@ -470,16 +503,34 @@ void Connection::HandleConnected() {
 }
 
 void Connection::FlushSendBuffer() {
-  if (!h2_ || !tls_) {
+  if (!tls_ || (!h2_ && !h1_)) {
     return;
   }
+
+  // Helper to check if session wants to write
+  auto wants_write = [this]() {
+    return (h2_ && h2_->WantsWrite()) || (h1_ && h1_->WantsWrite());
+  };
+
+  // Helper to get pending data
+  auto get_pending = [this]() -> std::pair<const uint8_t*, size_t> {
+    if (h2_) return h2_->GetPendingData();
+    if (h1_) return h1_->GetPendingData();
+    return {nullptr, 0};
+  };
+
+  // Helper to mark data as sent
+  auto data_sent = [this](size_t len) {
+    if (h2_) h2_->DataSent(len);
+    else if (h1_) h1_->DataSent(len);
+  };
 
   // Limit write iterations to prevent blocking on large sends
   constexpr int kMaxWritesPerFlush = 4;
   int writes = 0;
 
-  while (h2_->WantsWrite() && writes < kMaxWritesPerFlush) {
-    auto [data, len] = h2_->GetPendingData();
+  while (wants_write() && writes < kMaxWritesPerFlush) {
+    auto [data, len] = get_pending();
     if (len == 0) {
       break;
     }
@@ -488,7 +539,7 @@ void Connection::FlushSendBuffer() {
     tls::TlsResult result = tls_->Write(data, len, &written);
 
     if (written > 0) {
-      h2_->DataSent(written);
+      data_sent(written);
       ++writes;
     }
 
@@ -502,7 +553,7 @@ void Connection::FlushSendBuffer() {
   }
 
   // If we have more data but hit the limit, ensure we stay armed for write
-  if (h2_->WantsWrite() && writes >= kMaxWritesPerFlush) {
+  if (wants_write() && writes >= kMaxWritesPerFlush) {
     reactor_->Modify(this, EventType::kReadWrite);
   }
 }

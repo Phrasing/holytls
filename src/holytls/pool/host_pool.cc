@@ -172,13 +172,41 @@ void HostPool::RemoveConnection(PooledConnection* conn) {
   }
 }
 
+void HostPool::CleanupMarkedConnections() {
+  // Remove connections that are marked for removal and have no active streams
+  auto it = connections_.begin();
+  while (it != connections_.end()) {
+    auto& pc = *it;
+    if (pc && pc->marked_for_removal && pc->IsIdle()) {
+      if (pc->connection) {
+        pc->connection->Close();
+      }
+      it = connections_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
 PooledConnection* HostPool::FindConnectionWithCapacity() {
   PooledConnection* best = nullptr;
   size_t min_streams = SIZE_MAX;
 
   // Find connected connection with fewest active streams
+  // Also check CanSubmitRequest() to skip connections that received GOAWAY
   for (auto& pc : connections_) {
-    if (pc && pc->connection && pc->connection->IsConnected() &&
+    if (!pc || !pc->connection) {
+      continue;
+    }
+
+    // If connection is connected but can't submit requests (e.g., received
+    // GOAWAY), mark it for removal so a new connection can be created
+    if (pc->connection->IsConnected() && !pc->connection->CanSubmitRequest()) {
+      pc->marked_for_removal = true;
+      continue;
+    }
+
+    if (pc->connection->IsConnected() && pc->connection->CanSubmitRequest() &&
         pc->HasCapacity()) {
       if (pc->active_stream_count < min_streams) {
         best = pc.get();
@@ -186,6 +214,9 @@ PooledConnection* HostPool::FindConnectionWithCapacity() {
       }
     }
   }
+
+  // Clean up connections marked for removal that are idle
+  CleanupMarkedConnections();
 
   return best;
 }

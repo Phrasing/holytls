@@ -41,7 +41,12 @@ struct PooledConnection {
   bool marked_for_removal = false;
 
   bool HasCapacity() const {
-    return active_stream_count < max_streams && !marked_for_removal;
+    // Query connection for actual max streams (handles HTTP/1.1 vs HTTP/2)
+    size_t actual_max = max_streams;
+    if (connection && connection->IsConnected()) {
+      actual_max = connection->MaxConcurrentStreams();
+    }
+    return active_stream_count < actual_max && !marked_for_removal;
   }
 
   bool IsIdle() const { return active_stream_count == 0; }
@@ -108,6 +113,7 @@ class HostPool {
  private:
   void OnConnectionIdle(core::Connection* conn);
   void RemoveConnection(PooledConnection* conn);
+  void CleanupMarkedConnections();
   PooledConnection* FindConnectionWithCapacity();
   PooledConnection* FindIdleConnection();
 

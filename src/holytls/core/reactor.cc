@@ -36,26 +36,40 @@ bool Reactor::Initialize(const ReactorConfig& config) {
     return false;
   }
 
-  // Initialize async handle for cross-thread wakeup
-  if (uv_async_init(loop_, &async_, OnAsyncCallback) != 0) {
+  // Allocate and initialize async handle for cross-thread wakeup
+  async_ = new uv_async_t;
+  std::memset(async_, 0, sizeof(uv_async_t));
+  if (uv_async_init(loop_, async_, OnAsyncCallback) != 0) {
+    delete async_;
+    async_ = nullptr;
     uv_loop_close(loop_);
     delete loop_;
     loop_ = nullptr;
     last_error_ = "Failed to initialize async handle";
     return false;
   }
-  async_.data = this;
+  async_->data = this;
 
-  // Initialize timer for RunFor()
-  if (uv_timer_init(loop_, &run_timer_) != 0) {
-    uv_close(reinterpret_cast<uv_handle_t*>(&async_), nullptr);
+  // Allocate and initialize timer for RunFor()
+  run_timer_ = new uv_timer_t;
+  std::memset(run_timer_, 0, sizeof(uv_timer_t));
+  int timer_result = uv_timer_init(loop_, run_timer_);
+  if (timer_result != 0) {
+    uv_close(reinterpret_cast<uv_handle_t*>(async_), nullptr);
+    delete async_;
+    async_ = nullptr;
     uv_loop_close(loop_);
     delete loop_;
     loop_ = nullptr;
     last_error_ = "Failed to initialize timer";
     return false;
   }
-  run_timer_.data = this;
+  run_timer_->data = this;
+  // Debug: verify timer was initialized with loop pointer
+  if (run_timer_->loop != loop_) {
+    last_error_ = "Timer loop pointer mismatch after init";
+    return false;
+  }
 
   // Initialize time
   UpdateTime();
@@ -79,11 +93,15 @@ Reactor::~Reactor() {
   fd_table_.Clear();
 
   // Stop and close the timer
-  uv_timer_stop(&run_timer_);
-  uv_close(reinterpret_cast<uv_handle_t*>(&run_timer_), nullptr);
+  if (run_timer_) {
+    uv_timer_stop(run_timer_);
+    uv_close(reinterpret_cast<uv_handle_t*>(run_timer_), nullptr);
+  }
 
   // Close the async handle
-  uv_close(reinterpret_cast<uv_handle_t*>(&async_), nullptr);
+  if (async_) {
+    uv_close(reinterpret_cast<uv_handle_t*>(async_), nullptr);
+  }
 
   // Run the loop one more time to process close callbacks (including PollData
   // deallocation)
@@ -92,6 +110,10 @@ Reactor::~Reactor() {
   // Close and free the loop
   uv_loop_close(loop_);
   delete loop_;
+
+  // Delete heap-allocated handles
+  delete run_timer_;
+  delete async_;
 }
 
 bool Reactor::Add(EventHandler* handler, EventType events) {
@@ -198,10 +220,29 @@ void Reactor::RunOnce() {
 }
 
 void Reactor::RunFor(int timeout_ms) {
+  if (loop_ == nullptr || run_timer_ == nullptr) {
+    return;  // Not initialized
+  }
+
   running_.store(true, std::memory_order_release);
 
+  // Check handle state before starting timer
+  // uv_timer_start internally calls uv_timer_stop which dereferences handle->loop
+  // If the handle is not properly initialized, this can crash
+  if (run_timer_->loop == nullptr) {
+    // Handle was corrupted - re-initialize it
+    std::memset(run_timer_, 0, sizeof(uv_timer_t));
+    uv_timer_init(loop_, run_timer_);
+    run_timer_->data = this;
+    // Verify initialization succeeded
+    if (run_timer_->loop == nullptr) {
+      running_.store(false, std::memory_order_release);
+      return;
+    }
+  }
+
   // Start a one-shot timer
-  uv_timer_start(&run_timer_, OnTimerCallback,
+  uv_timer_start(run_timer_, OnTimerCallback,
                  static_cast<uint64_t>(timeout_ms), 0);
 
   while (running_.load(std::memory_order_acquire)) {
@@ -212,13 +253,13 @@ void Reactor::RunFor(int timeout_ms) {
   }
 
   // Stop the timer in case we exited early
-  uv_timer_stop(&run_timer_);
+  uv_timer_stop(run_timer_);
 }
 
 void Reactor::Stop() {
   running_.store(false, std::memory_order_release);
   // Wake up the loop if it's blocked
-  uv_async_send(&async_);
+  uv_async_send(async_);
 }
 
 void Reactor::Post(std::function<void()> callback) {
@@ -228,7 +269,7 @@ void Reactor::Post(std::function<void()> callback) {
   }
   has_posted_.store(true, std::memory_order_release);
   // Wake up the loop to process the callback
-  uv_async_send(&async_);
+  uv_async_send(async_);
 }
 
 void Reactor::UpdateTime() {

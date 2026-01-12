@@ -242,14 +242,21 @@ void TlsContextFactory::ConfigureExtensions() {
 }
 
 void TlsContextFactory::ConfigureAlpn() {
-  // Set ALPN protocols - Chrome sends "h2" and "http/1.1"
   // Wire format: length-prefixed strings
-  static const unsigned char kAlpnProtos[] = {
-      2, 'h', '2',                               // HTTP/2
-      8, 'h', 't', 't', 'p', '/', '1', '.', '1'  // HTTP/1.1
-  };
-
-  SSL_CTX_set_alpn_protos(ctx_.get(), kAlpnProtos, sizeof(kAlpnProtos));
+  if (config_.force_http1) {
+    // Only advertise HTTP/1.1 (for testing or compatibility)
+    static const unsigned char kHttp1Only[] = {
+        8, 'h', 't', 't', 'p', '/', '1', '.', '1'  // HTTP/1.1
+    };
+    SSL_CTX_set_alpn_protos(ctx_.get(), kHttp1Only, sizeof(kHttp1Only));
+  } else {
+    // Chrome sends "h2" and "http/1.1"
+    static const unsigned char kAlpnProtos[] = {
+        2, 'h', '2',                               // HTTP/2
+        8, 'h', 't', 't', 'p', '/', '1', '.', '1'  // HTTP/1.1
+    };
+    SSL_CTX_set_alpn_protos(ctx_.get(), kAlpnProtos, sizeof(kAlpnProtos));
+  }
 }
 
 void TlsContextFactory::ConfigureSessionCache() {

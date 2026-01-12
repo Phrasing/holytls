@@ -38,6 +38,7 @@ include(FetchZstd)
 include(FetchBrotli)
 include(FetchZlib)
 include(FetchRapidJSON)
+include(FetchPicoHTTPParser)
 
 # Find threading library (cross-platform)
 find_package(Threads REQUIRED)
@@ -56,6 +57,7 @@ add_library(holytls STATIC
   src/holytls/tls/tls_connection.cc
   src/holytls/tls/chrome_profile.cc
   src/holytls/tls/session_cache.cc
+  src/holytls/http1/h1_session.cc
   src/holytls/http2/h2_session.cc
   src/holytls/http2/h2_stream.cc
   src/holytls/http2/chrome_h2_profile.cc
@@ -93,6 +95,8 @@ target_link_libraries(holytls
     brotli::brotlicommon
     zstd::zstd
     zlib::zlib
+  PUBLIC
+    picohttpparser::picohttpparser
 )
 
 # Platform-specific libraries
@@ -157,6 +161,10 @@ if(MSVC)
 else()
   target_compile_options(fingerprint_verify PRIVATE -Wall -Wextra -Wno-error)
 endif()
+
+add_executable(http1_test examples/http1_test.cc)
+target_link_libraries(http1_test PRIVATE holytls)
+target_compile_options(http1_test PRIVATE ${HOLYTLS_COMMON_FLAGS})
 
 # Install targets
 install(TARGETS holytls

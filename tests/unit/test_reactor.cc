@@ -26,16 +26,17 @@ void TestReactorCreation() {
 void TestReactorTime() {
   std::print("Testing reactor time... ");
 
-  holytls::core::Reactor reactor;
-  assert(reactor.Initialize());
-  assert(reactor.IsInitialized());
+  // Allocate on heap to avoid potential stack issues
+  auto reactor = std::make_unique<holytls::core::Reactor>();
+  assert(reactor->Initialize());
+  assert(reactor->IsInitialized());
 
-  uint64_t t1 = reactor.now_ms();
+  uint64_t t1 = reactor->now_ms();
   assert(t1 > 0);
 
   // Time should be monotonic
-  reactor.RunFor(10);
-  uint64_t t2 = reactor.now_ms();
+  reactor->RunFor(10);
+  uint64_t t2 = reactor->now_ms();
   assert(t2 >= t1);
 
   std::println("PASSED");

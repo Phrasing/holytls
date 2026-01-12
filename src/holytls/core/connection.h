@@ -17,6 +17,7 @@
 
 #include "holytls/core/io_buffer.h"
 #include "holytls/core/reactor.h"
+#include "holytls/http1/h1_session.h"
 #include "holytls/http2/h2_session.h"
 #include "holytls/tls/tls_connection.h"
 
@@ -108,6 +109,21 @@ class Connection : public EventHandler {
     return active_requests_.empty() && pending_requests_.empty();
   }
 
+  // Check if the session can accept new requests.
+  // Returns false after receiving GOAWAY or if session is in error state.
+  bool CanSubmitRequest() const {
+    if (state_ != ConnectionState::kConnected) return false;
+    if (h2_) return h2_->CanSubmitRequest();
+    if (h1_) return h1_->CanSubmitRequest();
+    return false;
+  }
+
+  // Check if connection is using HTTP/2
+  bool IsHttp2() const { return h2_ != nullptr; }
+
+  // Get max concurrent streams (1 for HTTP/1.1, higher for HTTP/2)
+  size_t MaxConcurrentStreams() const { return h2_ ? 100 : 1; }
+
   // Stream capacity (for HTTP/2 multiplexing)
   size_t ActiveStreamCount() const { return active_requests_.size(); }
 
@@ -135,6 +151,7 @@ class Connection : public EventHandler {
 
   std::unique_ptr<tls::TlsConnection> tls_;
   std::unique_ptr<http2::H2Session> h2_;
+  std::unique_ptr<http1::H1Session> h1_;
 
   // Pending request data (for when connection is still being established)
   struct PendingRequest {
