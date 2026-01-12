@@ -5,7 +5,7 @@
 
 #include "holytls/pool/host_pool.h"
 
-#if defined(HOLYTLS_BUILD_QUIC) || __has_include("holytls/pool/quic_pooled_connection.h")
+#if defined(HOLYTLS_BUILD_QUIC)
 #include "holytls/pool/quic_pooled_connection.h"
 #include "holytls/quic/quic_connection.h"
 #define HOLYTLS_QUIC_AVAILABLE 1

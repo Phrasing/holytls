@@ -21,7 +21,7 @@
 #include "holytls/util/dns_resolver.h"
 #include "holytls/util/url_parser.h"
 
-#if defined(HOLYTLS_BUILD_QUIC) || __has_include("holytls/pool/quic_pooled_connection.h")
+#if defined(HOLYTLS_BUILD_QUIC)
 #include "holytls/http2/h2_stream.h"
 #include "holytls/pool/quic_pooled_connection.h"
 #define HOLYTLS_QUIC_AVAILABLE 1
