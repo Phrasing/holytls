@@ -207,6 +207,7 @@ target_link_libraries(cookie_example PRIVATE holytls)
 target_compile_options(cookie_example PRIVATE ${HOLYTLS_COMMON_FLAGS})
 
 add_executable(fingerprint_verify examples/fingerprint_verify.cc)
+target_include_directories(fingerprint_verify PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(fingerprint_verify PRIVATE holytls rapidjson::rapidjson)
 # RapidJSON headers have const-assignment issues with strict flags, use relaxed flags
 if(MSVC)

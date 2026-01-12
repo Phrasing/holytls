@@ -16,6 +16,7 @@
 
 #include "holytls/async.h"
 #include "holytls/client.h"
+#include "holytls/http/alt_svc_cache.h"
 
 using namespace holytls;
 
@@ -171,8 +172,21 @@ Task<void> Run(AsyncClient& client) {
 }
 
 int main() {
-  AsyncClient client(ClientConfig::Chrome143());
+  // Create Alt-Svc cache for automatic HTTP/3 discovery
+  http::AltSvcCache alt_svc_cache;
+
+  // Configure client with Alt-Svc support
+  ClientConfig config = ClientConfig::Chrome143();
+  config.protocol = ProtocolPreference::kAuto;  // Enable H3 when discovered
+  config.alt_svc_cache = &alt_svc_cache;
+
+  AsyncClient client(config);
   RunAsync(client, Run(client));
+
+  // Show Alt-Svc cache stats
+  if (alt_svc_cache.Size() > 0) {
+    std::println("\nAlt-Svc cache: {} origin(s) cached", alt_svc_cache.Size());
+  }
 
   return g_results.AllPassed() ? 0 : 1;
 }
