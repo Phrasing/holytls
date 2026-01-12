@@ -7,7 +7,7 @@ message(STATUS "Fetching RapidJSON...")
 FetchContent_Declare(
   rapidjson
   GIT_REPOSITORY https://github.com/Tencent/rapidjson.git
-  GIT_TAG        v1.1.0
+  GIT_TAG        master
   GIT_SHALLOW    TRUE
   GIT_PROGRESS   TRUE
 )

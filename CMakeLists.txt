@@ -149,6 +149,15 @@ add_executable(custom_headers_example examples/custom_headers_example.cc)
 target_link_libraries(custom_headers_example PRIVATE holytls)
 target_compile_options(custom_headers_example PRIVATE ${HOLYTLS_COMMON_FLAGS})
 
+add_executable(fingerprint_verify examples/fingerprint_verify.cc)
+target_link_libraries(fingerprint_verify PRIVATE holytls rapidjson::rapidjson)
+# RapidJSON headers have const-assignment issues with strict flags, use relaxed flags
+if(MSVC)
+  target_compile_options(fingerprint_verify PRIVATE /W3)
+else()
+  target_compile_options(fingerprint_verify PRIVATE -Wall -Wextra -Wno-error)
+endif()
+
 # Install targets
 install(TARGETS holytls
   LIBRARY DESTINATION lib
