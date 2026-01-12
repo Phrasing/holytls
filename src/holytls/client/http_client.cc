@@ -14,6 +14,7 @@
 
 #include "holytls/config.h"
 #include "holytls/core/reactor_manager.h"
+#include "holytls/http/alt_svc_cache.h"
 #include "holytls/http/cookie_jar.h"
 #include "holytls/pool/connection_pool.h"
 #include "holytls/pool/host_pool.h"
@@ -197,6 +198,10 @@ class HttpClient::Impl {
 
     // Store cookie jar reference
     cookie_jar_ = config.cookie_jar;
+
+    // Store Alt-Svc cache reference
+    alt_svc_cache_ = config.alt_svc_cache;
+    alt_svc_enabled_ = config.alt_svc.enabled;
   }
 
   ~Impl() { Stop(); }
@@ -325,7 +330,21 @@ class HttpClient::Impl {
             const auto& addr = addresses[0];
 
 #if HOLYTLS_QUIC_AVAILABLE
-            if (pool->IsQuicEnabled()) {
+            // Determine if we should try QUIC:
+            // 1. If kHttp3Only - always try QUIC
+            // 2. If kAuto and Alt-Svc cache indicates H3 support - try QUIC
+            // 3. If kAuto and pool has QUIC enabled - try QUIC
+            bool should_try_quic = pool->IsQuicEnabled();
+
+            // Check Alt-Svc cache for H3 hint when in Auto mode
+            if (config_.protocol == ProtocolPreference::kAuto &&
+                alt_svc_cache_ && alt_svc_enabled_) {
+              if (alt_svc_cache_->HasHttp3Support(parsed.host, parsed.port)) {
+                should_try_quic = true;
+              }
+            }
+
+            if (should_try_quic) {
               // Try QUIC first
               auto* quic_pool =
                   pool->GetOrCreateQuicHostPool(parsed.host, parsed.port);
@@ -336,7 +355,10 @@ class HttpClient::Impl {
                              std::move(callback), true);
                 return;
               }
-              // QUIC failed, fall through to TCP if allowed
+              // QUIC failed, mark in cache and fall through to TCP if allowed
+              if (alt_svc_cache_) {
+                alt_svc_cache_->MarkHttp3Failed(parsed.host, parsed.port);
+              }
               if (config_.protocol == ProtocolPreference::kHttp3Only) {
                 if (callback) {
                   callback(Response{},
@@ -488,14 +510,17 @@ class HttpClient::Impl {
     // Share callback between success and error handlers to avoid double-move
     auto shared_cb = std::make_shared<ResponseCallback>(std::move(callback));
 
-    // Capture URL for cookie processing
+    // Capture URL and host/port for cookie and Alt-Svc processing
     std::string request_url = request.url;
+    std::string origin_host = parsed.host;
+    uint16_t origin_port = parsed.port;
 
     pooled->connection->SendRequest(
         std::string(MethodToString(request.method)), parsed.PathWithQuery(),
         conn_headers, request.header_order,
-        [this, ctx, pooled, shared_cb,
-         request_url = std::move(request_url)](const core::Response& core_resp) mutable {
+        [this, ctx, pooled, shared_cb, request_url = std::move(request_url),
+         origin_host = std::move(origin_host),
+         origin_port](const core::Response& core_resp) mutable {
           // Convert headers
           Headers resp_headers;
           for (size_t i = 0; i < core_resp.headers.size(); ++i) {
@@ -509,6 +534,17 @@ class HttpClient::Impl {
               std::string_view name = core_resp.headers.name(i);
               if (name == "set-cookie") {
                 cookie_jar_->ProcessSetCookie(request_url, core_resp.headers.value(i));
+              }
+            }
+          }
+
+          // Process Alt-Svc headers for HTTP/3 discovery
+          if (alt_svc_cache_ && alt_svc_enabled_) {
+            for (size_t i = 0; i < core_resp.headers.size(); ++i) {
+              std::string_view name = core_resp.headers.name(i);
+              if (name == "alt-svc") {
+                alt_svc_cache_->ProcessAltSvc(origin_host, origin_port,
+                                               core_resp.headers.value(i));
               }
             }
           }
@@ -571,6 +607,8 @@ class HttpClient::Impl {
     // Share callback between success and error handlers
     auto shared_cb = std::make_shared<ResponseCallback>(std::move(callback));
     std::string request_url = request.url;
+    std::string origin_host = parsed.host;
+    uint16_t origin_port = parsed.port;
 
     // Create response builder
     auto response_builder = std::make_shared<Response>();
@@ -579,8 +617,9 @@ class HttpClient::Impl {
     // Set up stream callbacks
     http2::H2StreamCallbacks stream_callbacks;
 
-    stream_callbacks.on_headers = [this, response_builder,
-                                   request_url](int /*stream_id*/,
+    stream_callbacks.on_headers = [this, response_builder, request_url,
+                                   origin_host,
+                                   origin_port](int /*stream_id*/,
                                                 const http2::PackedHeaders& packed) {
       // Get status code from PackedHeaders (set via SetStatus in H3Session)
       response_builder->status_code = packed.status_code();
@@ -598,6 +637,11 @@ class HttpClient::Impl {
           if (cookie_jar_ && name == "set-cookie") {
             cookie_jar_->ProcessSetCookie(request_url, value);
           }
+
+          // Process Alt-Svc headers (even over H3, server may advertise)
+          if (alt_svc_cache_ && alt_svc_enabled_ && name == "alt-svc") {
+            alt_svc_cache_->ProcessAltSvc(origin_host, origin_port, value);
+          }
         }
       }
     };
@@ -608,11 +652,15 @@ class HttpClient::Impl {
     };
 
     stream_callbacks.on_close = [this, ctx, quic_conn, shared_cb,
-                                 response_builder,
-                                 body_buffer](int /*stream_id*/,
+                                 response_builder, body_buffer, origin_host,
+                                 origin_port](int /*stream_id*/,
                                               uint32_t error_code) {
       if (error_code == 0) {
-        // Success
+        // Success - clear any H3 failure flag
+        if (alt_svc_cache_) {
+          alt_svc_cache_->ClearHttp3Failure(origin_host, origin_port);
+        }
+
         response_builder->body = std::move(*body_buffer);
         ctx->connection_pool->ReleaseQuicConnection(quic_conn);
         requests_completed_.fetch_add(1, std::memory_order_relaxed);
@@ -621,7 +669,11 @@ class HttpClient::Impl {
           (*shared_cb)(std::move(*response_builder), Error{});
         }
       } else {
-        // Error
+        // Error - mark H3 as failed for this origin
+        if (alt_svc_cache_) {
+          alt_svc_cache_->MarkHttp3Failed(origin_host, origin_port);
+        }
+
         ctx->connection_pool->RemoveQuicConnection(quic_conn);
         requests_failed_.fetch_add(1, std::memory_order_relaxed);
 
@@ -664,6 +716,10 @@ class HttpClient::Impl {
 
   // Cookie jar (borrowed pointer, not owned)
   http::CookieJar* cookie_jar_ = nullptr;
+
+  // Alt-Svc cache for HTTP/3 discovery (borrowed pointer, not owned)
+  http::AltSvcCache* alt_svc_cache_ = nullptr;
+  bool alt_svc_enabled_ = true;
 
   // Statistics
   std::atomic<size_t> requests_sent_{0};

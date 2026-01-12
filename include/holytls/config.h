@@ -13,9 +13,10 @@
 
 namespace holytls {
 
-// Forward declaration
+// Forward declarations
 namespace http {
 class CookieJar;
+class AltSvcCache;
 }  // namespace http
 
 // Chrome version to impersonate
@@ -156,6 +157,24 @@ struct ProxyConfig {
   bool IsEnabled() const { return port != 0 && !host.empty(); }
 };
 
+// Alt-Svc cache configuration for automatic HTTP/3 discovery
+struct AltSvcConfig {
+  // Enable Alt-Svc header processing
+  bool enabled = true;
+
+  // Maximum number of origins to cache
+  size_t max_entries = 1024;
+
+  // Default max-age if not specified in header (24 hours)
+  std::chrono::seconds default_max_age{86400};
+
+  // Maximum allowed max-age (7 days cap)
+  std::chrono::seconds max_max_age{604800};
+
+  // How long to skip H3 after a failure (5 minutes)
+  std::chrono::seconds failure_penalty{300};
+};
+
 // Main client configuration
 struct ClientConfig {
   TlsConfig tls;
@@ -165,6 +184,7 @@ struct ClientConfig {
   ThreadConfig threads;
   DnsConfig dns;
   ProxyConfig proxy;
+  AltSvcConfig alt_svc;
 
   // Protocol selection
   ProtocolPreference protocol = ProtocolPreference::kHttp2Preferred;
@@ -173,6 +193,11 @@ struct ClientConfig {
   // If set, cookies will be automatically sent with requests and
   // Set-Cookie headers will be processed from responses.
   http::CookieJar* cookie_jar = nullptr;
+
+  // Alt-Svc cache for automatic HTTP/3 discovery (optional, not owned)
+  // If set and alt_svc.enabled is true, Alt-Svc headers will be processed
+  // from responses and subsequent requests may use HTTP/3 automatically.
+  http::AltSvcCache* alt_svc_cache = nullptr;
 
   // Default request timeout
   std::chrono::milliseconds default_timeout{30000};

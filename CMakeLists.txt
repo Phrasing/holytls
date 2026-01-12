@@ -78,6 +78,7 @@ add_library(holytls STATIC
   src/holytls/pool/host_pool.cc
   src/holytls/proxy/http_proxy.cc
   src/holytls/http/cookie_jar.cc
+  src/holytls/http/alt_svc_cache.cc
   src/holytls/client/http_client.cc
   src/holytls/util/dns_resolver.cc
   src/holytls/util/url_parser.cc
