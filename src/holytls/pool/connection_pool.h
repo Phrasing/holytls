@@ -15,11 +15,13 @@
 #include "holytls/tls/tls_context.h"
 
 // Forward declare QUIC types to avoid including heavy headers
+#if defined(HOLYTLS_BUILD_QUIC)
 namespace holytls {
 namespace quic {
 class QuicTlsContext;
 }
 }  // namespace holytls
+#endif
 
 namespace holytls {
 namespace pool {
@@ -27,8 +29,10 @@ namespace pool {
 // Forward declarations
 class HostPool;
 class PooledConnection;
+#if defined(HOLYTLS_BUILD_QUIC)
 class QuicHostPool;
 struct QuicPooledConnection;
+#endif
 
 // Connection pool configuration
 struct ConnectionPoolConfig {
@@ -50,7 +54,11 @@ struct ConnectionPoolConfig {
 };
 
 // Result type for protocol-agnostic connection acquisition
+#if defined(HOLYTLS_BUILD_QUIC)
 using AnyPooledConnection = std::variant<PooledConnection*, QuicPooledConnection*>;
+#else
+using AnyPooledConnection = std::variant<PooledConnection*>;
+#endif
 
 // Global connection pool manager.
 // NOT thread-safe - designed for single-reactor use.
@@ -89,6 +97,7 @@ class ConnectionPool {
   // TCP-specific: Remove a closed/failed connection
   void RemoveTcpConnection(PooledConnection* conn);
 
+#if defined(HOLYTLS_BUILD_QUIC)
   // QUIC-specific: Acquire a QUIC connection to host:port
   // Returns nullptr if pool is exhausted or QUIC not enabled
   QuicPooledConnection* AcquireQuicConnection(const std::string& host,
@@ -99,6 +108,7 @@ class ConnectionPool {
 
   // QUIC-specific: Remove a closed/failed QUIC connection
   void RemoveQuicConnection(QuicPooledConnection* conn);
+#endif
 
   // Cleanup idle connections across all hosts (both TCP and QUIC)
   void CleanupIdle(uint64_t now_ms);
@@ -106,8 +116,10 @@ class ConnectionPool {
   // Get or create a TCP host pool (for direct connection creation)
   HostPool* GetOrCreateHostPool(const std::string& host, uint16_t port);
 
+#if defined(HOLYTLS_BUILD_QUIC)
   // Get or create a QUIC host pool
   QuicHostPool* GetOrCreateQuicHostPool(const std::string& host, uint16_t port);
+#endif
 
   // Check if QUIC is enabled for this pool
   bool IsQuicEnabled() const;
@@ -126,7 +138,9 @@ class ConnectionPool {
 
  private:
   static std::string MakeHostKey(std::string_view host, uint16_t port);
+#if defined(HOLYTLS_BUILD_QUIC)
   bool InitQuicContext();
+#endif
 
   ConnectionPoolConfig config_;
   core::Reactor* reactor_;
@@ -135,9 +149,11 @@ class ConnectionPool {
   // TCP host pools (HTTP/1.1 and HTTP/2)
   std::unordered_map<std::string, std::unique_ptr<HostPool>> host_pools_;
 
+#if defined(HOLYTLS_BUILD_QUIC)
   // QUIC host pools (HTTP/3)
   std::unordered_map<std::string, std::unique_ptr<QuicHostPool>> quic_host_pools_;
   std::unique_ptr<quic::QuicTlsContext> quic_tls_ctx_;
+#endif
 
   size_t total_connections_ = 0;
 };
