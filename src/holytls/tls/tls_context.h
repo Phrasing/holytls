@@ -11,6 +11,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include "holytls/config.h"
 #include "holytls/tls/chrome_profile.h"
@@ -36,7 +37,7 @@ using SslCtxPtr = std::unique_ptr<SSL_CTX, SslCtxDeleter>;
 // The SSL_CTX is thread-safe for concurrent SSL_new() calls.
 class TlsContextFactory {
  public:
-  explicit TlsContextFactory(const TlsConfig& config);
+  TlsContextFactory();
   ~TlsContextFactory();
 
   // Non-copyable, non-movable
@@ -44,6 +45,15 @@ class TlsContextFactory {
   TlsContextFactory& operator=(const TlsContextFactory&) = delete;
   TlsContextFactory(TlsContextFactory&&) = delete;
   TlsContextFactory& operator=(TlsContextFactory&&) = delete;
+
+  // Two-phase initialization - must call before use
+  bool Initialize(const TlsConfig& config);
+
+  // Check if initialized successfully
+  bool IsInitialized() const { return ctx_ != nullptr; }
+
+  // Error message from last failed operation
+  std::string_view last_error() const { return last_error_; }
 
   // Get the SSL_CTX for creating new SSL connections
   SSL_CTX* ctx() const { return ctx_.get(); }
@@ -62,18 +72,21 @@ class TlsContextFactory {
 
  private:
   // Configure SSL_CTX for Chrome impersonation
-  void ConfigureCipherSuites();
+  bool ConfigureCipherSuites();
   void ConfigureSupportedGroups();
   void ConfigureExtensions();
   void ConfigureAlpn();
   void ConfigureSessionCache();
-  void ConfigureCertificateVerification();
-  void ConfigureClientCertificate();
+  bool ConfigureCertificateVerification();
+  bool ConfigureClientCertificate();
 
   SslCtxPtr ctx_;
   TlsConfig config_;
   ChromeTlsProfile profile_;
   std::unique_ptr<TlsSessionCache> session_cache_;
+
+  // Error message from last failed initialization
+  std::string last_error_;
 };
 
 }  // namespace tls

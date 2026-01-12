@@ -8,6 +8,8 @@ if(MSVC)
     /permissive-       # Strict conformance mode
     /utf-8             # UTF-8 source and execution charset
     /Zc:__cplusplus    # Report correct __cplusplus macro
+    /GR-               # Disable RTTI
+    /EHs-c-            # Disable C++ exceptions
   )
 
   # Release flags for MSVC
@@ -35,6 +37,8 @@ else()
     -Wunused
     -Wimplicit-fallthrough
     -fno-common
+    -fno-exceptions
+    -fno-rtti
   )
 
   # GCC-specific flags

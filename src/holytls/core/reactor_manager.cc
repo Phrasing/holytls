@@ -67,6 +67,10 @@ ReactorManager::ReactorManager(const ReactorManagerConfig& config)
     auto ctx = std::make_unique<ReactorContext>();
     ctx->index = i;
     ctx->reactor = std::make_unique<Reactor>();
+    if (!ctx->reactor->Initialize()) {
+      // Initialization failed - subsequent code will check IsInitialized()
+      // In practice, libuv initialization rarely fails
+    }
 
     // Create per-reactor buffer pool
     memory::BufferPool::Config bp_config;

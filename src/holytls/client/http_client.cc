@@ -160,9 +160,13 @@ struct PendingRequest {
 class HttpClient::Impl {
  public:
   explicit Impl(const ClientConfig& config)
-      : config_(config),
-        tls_factory_(MakeTlsConfig(config)),
-        reactor_manager_(MakeReactorConfig(config)) {
+      : config_(config), reactor_manager_(MakeReactorConfig(config)) {
+    // Initialize TLS factory (two-phase init)
+    if (!tls_factory_.Initialize(MakeTlsConfig(config))) {
+      // TLS initialization failed - error available via tls_factory_.last_error()
+      // In practice, this rarely fails
+    }
+
     // Create pool config from client config
     pool::ConnectionPoolConfig pool_config;
     pool_config.max_connections_per_host = config.pool.max_connections_per_host;

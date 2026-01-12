@@ -13,7 +13,9 @@ void TestReactorCreation() {
   config.max_events = 512;
   config.epoll_timeout_ms = 50;
 
-  holytls::core::Reactor reactor(config);
+  holytls::core::Reactor reactor;
+  assert(reactor.Initialize(config));
+  assert(reactor.IsInitialized());
 
   assert(!reactor.running());
   assert(reactor.handler_count() == 0);
@@ -25,6 +27,8 @@ void TestReactorTime() {
   std::print("Testing reactor time... ");
 
   holytls::core::Reactor reactor;
+  assert(reactor.Initialize());
+  assert(reactor.IsInitialized());
 
   uint64_t t1 = reactor.now_ms();
   assert(t1 > 0);

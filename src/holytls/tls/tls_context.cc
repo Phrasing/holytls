@@ -8,7 +8,6 @@
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
 
-#include <stdexcept>
 #include <vector>
 
 #ifdef _WIN32
@@ -100,22 +99,43 @@ int NewSessionCallback(SSL* ssl, SSL_SESSION* session) {
 
 }  // namespace
 
-TlsContextFactory::TlsContextFactory(const TlsConfig& config)
-    : config_(config), profile_(GetChromeTlsProfile(config.chrome_version)) {
+TlsContextFactory::TlsContextFactory() = default;
+
+bool TlsContextFactory::Initialize(const TlsConfig& config) {
+  if (ctx_ != nullptr) {
+    last_error_ = "TlsContextFactory already initialized";
+    return false;
+  }
+
+  config_ = config;
+  profile_ = GetChromeTlsProfile(config.chrome_version);
+
   // Create TLS client context
   ctx_.reset(SSL_CTX_new(TLS_client_method()));
   if (!ctx_) {
-    throw std::runtime_error("Failed to create SSL_CTX");
+    last_error_ = "Failed to create SSL_CTX";
+    return false;
   }
 
   // Configure for Chrome impersonation
-  ConfigureCipherSuites();
+  if (!ConfigureCipherSuites()) {
+    ctx_.reset();
+    return false;
+  }
   ConfigureSupportedGroups();
   ConfigureExtensions();
   ConfigureAlpn();
   ConfigureSessionCache();
-  ConfigureCertificateVerification();
-  ConfigureClientCertificate();
+  if (!ConfigureCertificateVerification()) {
+    ctx_.reset();
+    return false;
+  }
+  if (!ConfigureClientCertificate()) {
+    ctx_.reset();
+    return false;
+  }
+
+  return true;
 }
 
 TlsContextFactory::~TlsContextFactory() = default;
@@ -156,15 +176,17 @@ SSL* TlsContextFactory::CreateSsl() {
   return ssl;
 }
 
-void TlsContextFactory::ConfigureCipherSuites() {
+bool TlsContextFactory::ConfigureCipherSuites() {
   // Get Chrome cipher suite string
   std::string ciphers = GetCipherSuiteString(config_.chrome_version);
 
   // BoringSSL uses SSL_CTX_set_cipher_list for all ciphers (TLS 1.2 and 1.3)
   // Unlike OpenSSL 1.1.1+, there's no separate SSL_CTX_set_ciphersuites
   if (SSL_CTX_set_cipher_list(ctx_.get(), ciphers.c_str()) != 1) {
-    throw std::runtime_error("Failed to set cipher suites");
+    last_error_ = "Failed to set cipher suites";
+    return false;
   }
+  return true;
 }
 
 void TlsContextFactory::ConfigureSupportedGroups() {
@@ -257,7 +279,7 @@ void TlsContextFactory::ConfigureSessionCache() {
   }
 }
 
-void TlsContextFactory::ConfigureCertificateVerification() {
+bool TlsContextFactory::ConfigureCertificateVerification() {
   if (config_.verify_certificates) {
     // Enable certificate verification
     SSL_CTX_set_verify(ctx_.get(), SSL_VERIFY_PEER, nullptr);
@@ -266,8 +288,9 @@ void TlsContextFactory::ConfigureCertificateVerification() {
     if (!config_.ca_bundle_path.empty()) {
       if (SSL_CTX_load_verify_locations(
               ctx_.get(), config_.ca_bundle_path.c_str(), nullptr) != 1) {
-        throw std::runtime_error("Failed to load CA certificates from: " +
-                                 config_.ca_bundle_path);
+        last_error_ = "Failed to load CA certificates from: " +
+                      config_.ca_bundle_path;
+        return false;
       }
     } else {
 #ifdef _WIN32
@@ -276,7 +299,8 @@ void TlsContextFactory::ConfigureCertificateVerification() {
 #else
       // On Unix, use default CA paths (/etc/ssl/certs, etc.)
       if (SSL_CTX_set_default_verify_paths(ctx_.get()) != 1) {
-        throw std::runtime_error("Failed to set default CA paths");
+        last_error_ = "Failed to set default CA paths";
+        return false;
       }
 #endif
     }
@@ -284,33 +308,39 @@ void TlsContextFactory::ConfigureCertificateVerification() {
     // Disable verification (not recommended for production)
     SSL_CTX_set_verify(ctx_.get(), SSL_VERIFY_NONE, nullptr);
   }
+  return true;
 }
 
-void TlsContextFactory::ConfigureClientCertificate() {
+bool TlsContextFactory::ConfigureClientCertificate() {
   if (config_.client_cert_path.empty()) {
-    return;
+    return true;
   }
 
   // Load client certificate
   if (SSL_CTX_use_certificate_file(ctx_.get(), config_.client_cert_path.c_str(),
                                    SSL_FILETYPE_PEM) != 1) {
-    throw std::runtime_error("Failed to load client certificate: " +
-                             config_.client_cert_path);
+    last_error_ = "Failed to load client certificate: " +
+                  config_.client_cert_path;
+    return false;
   }
 
   // Load client private key
   if (!config_.client_key_path.empty()) {
     if (SSL_CTX_use_PrivateKey_file(ctx_.get(), config_.client_key_path.c_str(),
                                     SSL_FILETYPE_PEM) != 1) {
-      throw std::runtime_error("Failed to load client private key: " +
-                               config_.client_key_path);
+      last_error_ = "Failed to load client private key: " +
+                    config_.client_key_path;
+      return false;
     }
   }
 
   // Verify key matches certificate
   if (SSL_CTX_check_private_key(ctx_.get()) != 1) {
-    throw std::runtime_error("Client certificate and private key don't match");
+    last_error_ = "Client certificate and private key don't match";
+    return false;
   }
+
+  return true;
 }
 
 }  // namespace tls

@@ -5,7 +5,7 @@
 #define HOLYTLS_TASK_H_
 
 #include <coroutine>
-#include <exception>
+#include <cstdlib>
 #include <optional>
 #include <utility>
 #include <variant>
@@ -24,13 +24,11 @@ namespace detail {
 template <typename T>
 struct TaskPromiseBase {
   std::coroutine_handle<> continuation_;
-  std::exception_ptr exception_;
 
   auto initial_suspend() noexcept { return std::suspend_always{}; }
 
-  void unhandled_exception() noexcept {
-    exception_ = std::current_exception();
-  }
+  // Coroutines should not throw - terminate if they do
+  [[noreturn]] void unhandled_exception() noexcept { std::abort(); }
 };
 
 // Promise for Task<T> where T is not void
@@ -62,19 +60,8 @@ struct TaskPromise : TaskPromiseBase<T> {
     value_.emplace(std::move(value));
   }
 
-  T& result() & {
-    if (this->exception_) {
-      std::rethrow_exception(this->exception_);
-    }
-    return *value_;
-  }
-
-  T&& result() && {
-    if (this->exception_) {
-      std::rethrow_exception(this->exception_);
-    }
-    return std::move(*value_);
-  }
+  T& result() & { return *value_; }
+  T&& result() && { return std::move(*value_); }
 };
 
 // Promise for Task<void>
@@ -100,12 +87,7 @@ struct TaskPromise<void> : TaskPromiseBase<void> {
   }
 
   void return_void() noexcept {}
-
-  void result() {
-    if (exception_) {
-      std::rethrow_exception(exception_);
-    }
-  }
+  void result() noexcept {}
 };
 
 }  // namespace detail
@@ -281,21 +263,6 @@ class AsyncResult {
   Error& error() & { return std::get<Error>(data_); }
   const Error& error() const& { return std::get<Error>(data_); }
 
-  // Unwrap - throws if error
-  T& unwrap() & {
-    if (has_error()) {
-      throw std::runtime_error(std::get<Error>(data_).message);
-    }
-    return value();
-  }
-
-  T&& unwrap() && {
-    if (has_error()) {
-      throw std::runtime_error(std::get<Error>(data_).message);
-    }
-    return std::move(value());
-  }
-
   // Map - transform the value if present
   template <typename F>
   auto map(F&& f) -> AsyncResult<decltype(f(std::declval<T>()))> {
@@ -324,12 +291,6 @@ class AsyncResult<void> {
 
   Error& error() & { return *error_; }
   const Error& error() const& { return *error_; }
-
-  void unwrap() {
-    if (has_error()) {
-      throw std::runtime_error(error_->message);
-    }
-  }
 
  private:
   std::optional<Error> error_;

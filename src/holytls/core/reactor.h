@@ -14,6 +14,8 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <string>
+#include <string_view>
 #include <vector>
 
 #include "holytls/base/types.h"
@@ -93,7 +95,7 @@ struct PollData {
 // Optimized with FdTable for O(1) handler lookup
 class Reactor {
  public:
-  explicit Reactor(const ReactorConfig& config = {});
+  Reactor();
   ~Reactor();
 
   // Non-copyable, non-movable
@@ -101,6 +103,15 @@ class Reactor {
   Reactor& operator=(const Reactor&) = delete;
   Reactor(Reactor&&) = delete;
   Reactor& operator=(Reactor&&) = delete;
+
+  // Two-phase initialization - must call before use
+  bool Initialize(const ReactorConfig& config = {});
+
+  // Check if initialized successfully
+  bool IsInitialized() const { return loop_ != nullptr; }
+
+  // Error message from last failed operation
+  std::string_view last_error() const { return last_error_; }
 
   // Register a handler for events
   bool Add(EventHandler* handler, EventType events);
@@ -141,9 +152,9 @@ class Reactor {
   static void OnAsyncCallback(uv_async_t* handle);
   static void OnCloseCallback(uv_handle_t* handle);
 
-  uv_loop_t* loop_;
-  uv_async_t async_;      // For cross-thread wakeup
-  uv_timer_t run_timer_;  // For RunFor()
+  uv_loop_t* loop_ = nullptr;
+  uv_async_t async_;        // For cross-thread wakeup
+  uv_timer_t run_timer_;    // For RunFor()
   ReactorConfig config_;
   std::atomic<bool> running_{false};
   uint64_t now_ms_ = 0;
@@ -156,6 +167,9 @@ class Reactor {
   std::vector<std::function<void()>> posted_callbacks_;
   std::vector<std::function<void()>> pending_callbacks_;
   std::atomic<bool> has_posted_{false};
+
+  // Error message from last failed initialization
+  std::string last_error_;
 };
 
 }  // namespace core

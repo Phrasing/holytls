@@ -151,10 +151,18 @@ int main(int argc, char* argv[]) {
 
   // Setup
   holytls::core::Reactor reactor;
+  if (!reactor.Initialize()) {
+    std::println("Failed to initialize reactor: {}", reactor.last_error());
+    return 1;
+  }
   holytls::TlsConfig tls_config;
   tls_config.chrome_version = holytls::ChromeVersion::kChrome143;
   tls_config.verify_certificates = true;
-  holytls::tls::TlsContextFactory tls_factory(tls_config);
+  holytls::tls::TlsContextFactory tls_factory;
+  if (!tls_factory.Initialize(tls_config)) {
+    std::println("Failed to initialize TLS: {}", tls_factory.last_error());
+    return 1;
+  }
   holytls::util::DnsResolver resolver(reactor.loop());
 
   // Test each website

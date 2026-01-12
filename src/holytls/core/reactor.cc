@@ -5,7 +5,6 @@
 
 #include <cerrno>
 #include <cstring>
-#include <stdexcept>
 #include <utility>
 
 #include "holytls/memory/slab_allocator.h"
@@ -18,19 +17,32 @@ namespace {
 memory::SlabAllocator<PollData, 256> g_poll_data_allocator;
 }  // namespace
 
-Reactor::Reactor(const ReactorConfig& config) : config_(config) {
+Reactor::Reactor() = default;
+
+bool Reactor::Initialize(const ReactorConfig& config) {
+  if (loop_ != nullptr) {
+    last_error_ = "Reactor already initialized";
+    return false;
+  }
+
+  config_ = config;
+
   // Allocate and initialize a new event loop
   loop_ = new uv_loop_t;
   if (uv_loop_init(loop_) != 0) {
     delete loop_;
-    throw std::runtime_error("Failed to initialize libuv loop");
+    loop_ = nullptr;
+    last_error_ = "Failed to initialize libuv loop";
+    return false;
   }
 
   // Initialize async handle for cross-thread wakeup
   if (uv_async_init(loop_, &async_, OnAsyncCallback) != 0) {
     uv_loop_close(loop_);
     delete loop_;
-    throw std::runtime_error("Failed to initialize async handle");
+    loop_ = nullptr;
+    last_error_ = "Failed to initialize async handle";
+    return false;
   }
   async_.data = this;
 
@@ -39,15 +51,22 @@ Reactor::Reactor(const ReactorConfig& config) : config_(config) {
     uv_close(reinterpret_cast<uv_handle_t*>(&async_), nullptr);
     uv_loop_close(loop_);
     delete loop_;
-    throw std::runtime_error("Failed to initialize timer");
+    loop_ = nullptr;
+    last_error_ = "Failed to initialize timer";
+    return false;
   }
   run_timer_.data = this;
 
   // Initialize time
   UpdateTime();
+  return true;
 }
 
 Reactor::~Reactor() {
+  if (loop_ == nullptr) {
+    return;  // Never initialized
+  }
+
   // Stop and close all poll handles
   for (size_t fd = 0; fd < kMaxFds; ++fd) {
     PollData* poll_data = fd_table_.Get(static_cast<int>(fd));
