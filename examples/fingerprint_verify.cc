@@ -177,7 +177,9 @@ int main() {
 
   // Configure client with Alt-Svc support
   ClientConfig config = ClientConfig::Chrome143();
-  config.protocol = ProtocolPreference::kAuto;  // Enable H3 when discovered
+
+  // Use H2 for fingerprint verification (H3 via Alt-Svc discovery comes later)
+  config.protocol = ProtocolPreference::kHttp2Preferred;
   config.alt_svc_cache = &alt_svc_cache;
 
   AsyncClient client(config);
