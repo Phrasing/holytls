@@ -162,10 +162,6 @@ else()
   target_compile_options(fingerprint_verify PRIVATE -Wall -Wextra -Wno-error)
 endif()
 
-add_executable(http1_test examples/http1_test.cc)
-target_link_libraries(http1_test PRIVATE holytls)
-target_compile_options(http1_test PRIVATE ${HOLYTLS_COMMON_FLAGS})
-
 # Install targets
 install(TARGETS holytls
   LIBRARY DESTINATION lib
