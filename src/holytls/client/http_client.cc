@@ -13,6 +13,7 @@
 
 #include "holytls/config.h"
 #include "holytls/core/reactor_manager.h"
+#include "holytls/http/cookie_jar.h"
 #include "holytls/pool/connection_pool.h"
 #include "holytls/pool/host_pool.h"
 #include "holytls/tls/tls_context.h"
@@ -178,9 +179,13 @@ class HttpClient::Impl {
     pool_config.enable_multiplexing = config.pool.enable_multiplexing;
     pool_config.max_streams_per_connection =
         config.pool.max_streams_per_connection;
+    pool_config.proxy = config.proxy;
 
     // Initialize reactor manager
     reactor_manager_.Initialize(&tls_factory_, pool_config);
+
+    // Store cookie jar reference
+    cookie_jar_ = config.cookie_jar;
   }
 
   ~Impl() { Stop(); }
@@ -397,19 +402,40 @@ class HttpClient::Impl {
       conn_headers.emplace_back(h.name, h.value);
     }
 
+    // Add cookies from cookie jar if available
+    if (cookie_jar_) {
+      std::string cookie_header = cookie_jar_->GetCookieHeader(request.url);
+      if (!cookie_header.empty()) {
+        conn_headers.emplace_back("cookie", std::move(cookie_header));
+      }
+    }
+
     // Share callback between success and error handlers to avoid double-move
     auto shared_cb = std::make_shared<ResponseCallback>(std::move(callback));
+
+    // Capture URL for cookie processing
+    std::string request_url = request.url;
 
     pooled->connection->SendRequest(
         std::string(MethodToString(request.method)), parsed.PathWithQuery(),
         conn_headers, request.header_order,
-        [this, ctx, pooled,
-         shared_cb](const core::Response& core_resp) mutable {
+        [this, ctx, pooled, shared_cb,
+         request_url = std::move(request_url)](const core::Response& core_resp) mutable {
           // Convert headers
           Headers resp_headers;
           for (size_t i = 0; i < core_resp.headers.size(); ++i) {
             resp_headers.push_back({std::string(core_resp.headers.name(i)),
                                     std::string(core_resp.headers.value(i))});
+          }
+
+          // Process Set-Cookie headers if cookie jar is available
+          if (cookie_jar_) {
+            for (size_t i = 0; i < core_resp.headers.size(); ++i) {
+              std::string_view name = core_resp.headers.name(i);
+              if (name == "set-cookie") {
+                cookie_jar_->ProcessSetCookie(request_url, core_resp.headers.value(i));
+              }
+            }
           }
 
           // Build response
@@ -441,6 +467,9 @@ class HttpClient::Impl {
   tls::TlsContextFactory tls_factory_;
   core::ReactorManager reactor_manager_;
   std::atomic<bool> running_{false};
+
+  // Cookie jar (borrowed pointer, not owned)
+  http::CookieJar* cookie_jar_ = nullptr;
 
   // Statistics
   std::atomic<size_t> requests_sent_{0};

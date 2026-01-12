@@ -9,9 +9,9 @@
 #include "holytls/http2/chrome_h2_profile.h"
 #include "holytls/http2/chrome_header_profile.h"
 #include "holytls/http2/header_ids.h"
+#include "holytls/proxy/http_proxy.h"
 #include "holytls/util/async_decompressor.h"
 #include "holytls/util/decompressor.h"
-
 #include "holytls/util/platform.h"
 #include "holytls/util/socket_utils.h"
 
@@ -30,6 +30,17 @@ Connection::Connection(Reactor* reactor, tls::TlsContextFactory* tls_factory,
 Connection::~Connection() { Close(); }
 
 bool Connection::Connect(std::string_view ip, bool ipv6) {
+  // Determine connect target: proxy or direct
+  std::string_view connect_ip = ip;
+  uint16_t connect_port = port_;
+
+  if (options_.proxy.IsEnabled()) {
+    // When proxy is enabled, connect to proxy instead of target
+    // The 'ip' parameter should be the resolved proxy IP in this case
+    connect_ip = options_.proxy.host;
+    connect_port = options_.proxy.port;
+  }
+
   // Create socket
   fd_ = util::CreateTcpSocket(ipv6);
   if (fd_ == util::kInvalidSocket) {
@@ -40,7 +51,7 @@ bool Connection::Connect(std::string_view ip, bool ipv6) {
   util::ConfigureSocket(fd_);
 
   // Start non-blocking connect
-  int ret = util::ConnectNonBlocking(fd_, ip, port_, ipv6);
+  int ret = util::ConnectNonBlocking(fd_, connect_ip, connect_port, ipv6);
   if (ret < 0) {
     SetError("Connect failed: " + util::GetLastSocketErrorString());
     util::CloseSocket(fd_);
@@ -166,12 +177,8 @@ void Connection::SendRequest(
           response.status_code = it->second.status_code;
           response.headers = std::move(it->second.headers);
 
-          // Copy body from IoBuffer to vector (single allocation + copy)
-          size_t body_size = it->second.body_buffer.Size();
-          if (body_size > 0) {
-            response.body.resize(body_size);
-            it->second.body_buffer.Read(response.body.data(), body_size);
-          }
+          // Zero-copy body extraction - moves data from IoBuffer to vector
+          response.body = it->second.body_buffer.TakeContiguous();
 
           // Decompress response body if enabled and Content-Encoding header is
           // present
@@ -287,6 +294,9 @@ void Connection::OnReadable() {
       // status
       HandleConnecting();
       break;
+    case ConnectionState::kProxyTunnel:
+      HandleProxyTunnel();
+      break;
     case ConnectionState::kTlsHandshake:
       HandleTlsHandshake();
       break;
@@ -302,6 +312,9 @@ void Connection::OnWritable() {
   switch (state_) {
     case ConnectionState::kConnecting:
       HandleConnecting();
+      break;
+    case ConnectionState::kProxyTunnel:
+      HandleProxyTunnel();
       break;
     case ConnectionState::kTlsHandshake:
       HandleTlsHandshake();
@@ -353,15 +366,86 @@ void Connection::HandleConnecting() {
     return;
   }
 
-  // TCP connected, start TLS handshake
-  tls_ = std::make_unique<tls::TlsConnection>(tls_factory_, fd_, host_, port_);
-  state_ = ConnectionState::kTlsHandshake;
+  // TCP connected - check if we need to establish proxy tunnel first
+  if (options_.proxy.IsEnabled()) {
+    // Create proxy tunnel handler
+    proxy_ = std::make_unique<proxy::HttpProxyTunnel>(
+        host_, port_, options_.proxy.username, options_.proxy.password);
 
-  // Update reactor to watch for read and write
-  reactor_->Modify(this, EventType::kReadWrite);
+    // Start tunnel handshake
+    proxy::TunnelResult result = proxy_->Start();
+    if (result == proxy::TunnelResult::kError) {
+      SetError("Proxy tunnel failed: " + proxy_->last_error());
+      state_ = ConnectionState::kError;
+      Close();
+      reactor_->Stop();
+      return;
+    }
 
-  // Start handshake
-  HandleTlsHandshake();
+    state_ = ConnectionState::kProxyTunnel;
+    reactor_->Modify(this, EventType::kReadWrite);
+    HandleProxyTunnel();
+  } else {
+    // No proxy - start TLS handshake directly
+    tls_ = std::make_unique<tls::TlsConnection>(tls_factory_, fd_, host_, port_);
+    state_ = ConnectionState::kTlsHandshake;
+
+    // Update reactor to watch for read and write
+    reactor_->Modify(this, EventType::kReadWrite);
+
+    // Start handshake
+    HandleTlsHandshake();
+  }
+}
+
+void Connection::HandleProxyTunnel() {
+  if (!proxy_) {
+    SetError("Proxy tunnel not initialized");
+    state_ = ConnectionState::kError;
+    Close();
+    reactor_->Stop();
+    return;
+  }
+
+  proxy::TunnelResult result = proxy::TunnelResult::kOk;
+
+  // Drive the proxy tunnel state machine based on current state
+  switch (proxy_->state()) {
+    case proxy::TunnelState::kSendingRequest:
+      result = proxy_->OnWritable(fd_);
+      break;
+    case proxy::TunnelState::kReadingResponse:
+      result = proxy_->OnReadable(fd_);
+      break;
+    default:
+      break;
+  }
+
+  switch (result) {
+    case proxy::TunnelResult::kOk:
+      // Tunnel established - proceed to TLS handshake
+      proxy_.reset();  // No longer needed
+      tls_ = std::make_unique<tls::TlsConnection>(tls_factory_, fd_, host_, port_);
+      state_ = ConnectionState::kTlsHandshake;
+      reactor_->Modify(this, EventType::kReadWrite);
+      HandleTlsHandshake();
+      break;
+
+    case proxy::TunnelResult::kWantRead:
+      reactor_->Modify(this, EventType::kRead);
+      break;
+
+    case proxy::TunnelResult::kWantWrite:
+      reactor_->Modify(this, EventType::kWrite);
+      break;
+
+    case proxy::TunnelResult::kError:
+      SetError("Proxy tunnel failed: " + proxy_->last_error());
+      state_ = ConnectionState::kError;
+      Close();
+      reactor_->Stop();
+      break;
+  }
 }
 
 void Connection::HandleTlsHandshake() {

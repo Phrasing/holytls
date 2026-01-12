@@ -68,6 +68,8 @@ add_library(holytls STATIC
   src/holytls/http2/packed_headers.cc
   src/holytls/pool/connection_pool.cc
   src/holytls/pool/host_pool.cc
+  src/holytls/proxy/http_proxy.cc
+  src/holytls/http/cookie_jar.cc
   src/holytls/client/http_client.cc
   src/holytls/util/dns_resolver.cc
   src/holytls/util/url_parser.cc
@@ -152,6 +154,15 @@ target_compile_options(async_example PRIVATE ${HOLYTLS_COMMON_FLAGS})
 add_executable(custom_headers_example examples/custom_headers_example.cc)
 target_link_libraries(custom_headers_example PRIVATE holytls)
 target_compile_options(custom_headers_example PRIVATE ${HOLYTLS_COMMON_FLAGS})
+
+add_executable(proxy_example examples/proxy_example.cc)
+target_link_libraries(proxy_example PRIVATE holytls)
+target_compile_options(proxy_example PRIVATE ${HOLYTLS_COMMON_FLAGS})
+
+add_executable(cookie_example examples/cookie_example.cc)
+target_include_directories(cookie_example PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(cookie_example PRIVATE holytls)
+target_compile_options(cookie_example PRIVATE ${HOLYTLS_COMMON_FLAGS})
 
 add_executable(fingerprint_verify examples/fingerprint_verify.cc)
 target_link_libraries(fingerprint_verify PRIVATE holytls rapidjson::rapidjson)

@@ -28,6 +28,9 @@ struct ConnectionPoolConfig {
   uint64_t connect_timeout_ms = 30000;  // 30 seconds
   bool enable_multiplexing = true;
   size_t max_streams_per_connection = 100;
+
+  // Proxy configuration
+  ProxyConfig proxy;
 };
 
 // Global connection pool manager.

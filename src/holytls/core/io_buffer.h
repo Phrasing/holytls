@@ -80,6 +80,10 @@ class IoBuffer {
   std::vector<iovec_t> GetReadableIovec() const;
   std::vector<iovec_t> GetWritableIovec(size_t len);
 
+  // Zero-allocation iovec: write to caller-provided array
+  // Returns number of iovecs written (may be less than max_count)
+  size_t GetReadableIovecInto(iovec_t* out, size_t max_count) const;
+
   // Size information
   size_t Size() const { return size_; }
   size_t Capacity() const { return capacity_; }
@@ -95,6 +99,11 @@ class IoBuffer {
   // Only valid when buffer is contiguous (single chunk)
   bool IsContiguous() const;
   const uint8_t* Data() const;  // Only call if IsContiguous()
+
+  // Zero-copy extraction: move all data out as contiguous vector
+  // Consolidates chunks if needed, then takes ownership
+  // Buffer is left empty after this call
+  std::vector<uint8_t> TakeContiguous();
 
  private:
   struct Chunk {

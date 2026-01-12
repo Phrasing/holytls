@@ -13,6 +13,11 @@
 
 namespace holytls {
 
+// Forward declaration
+namespace http {
+class CookieJar;
+}  // namespace http
+
 // Chrome version to impersonate
 enum class ChromeVersion {
   kChrome120 = 120,
@@ -110,6 +115,16 @@ struct DnsConfig {
   std::chrono::seconds cache_ttl{60};
 };
 
+// Proxy configuration
+struct ProxyConfig {
+  std::string host;       // Proxy hostname or IP
+  uint16_t port = 0;      // Proxy port (0 = no proxy)
+  std::string username;   // Optional auth
+  std::string password;
+
+  bool IsEnabled() const { return port != 0 && !host.empty(); }
+};
+
 // Main client configuration
 struct ClientConfig {
   TlsConfig tls;
@@ -117,6 +132,12 @@ struct ClientConfig {
   PoolConfig pool;
   ThreadConfig threads;
   DnsConfig dns;
+  ProxyConfig proxy;
+
+  // Cookie jar for automatic cookie handling (optional, not owned)
+  // If set, cookies will be automatically sent with requests and
+  // Set-Cookie headers will be processed from responses.
+  http::CookieJar* cookie_jar = nullptr;
 
   // Default request timeout
   std::chrono::milliseconds default_timeout{30000};

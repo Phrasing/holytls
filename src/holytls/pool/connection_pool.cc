@@ -88,6 +88,7 @@ HostPool* ConnectionPool::GetOrCreateHostPool(const std::string& host,
   host_config.max_streams_per_connection = config_.max_streams_per_connection;
   host_config.idle_timeout_ms = config_.idle_timeout_ms;
   host_config.connect_timeout_ms = config_.connect_timeout_ms;
+  host_config.proxy = config_.proxy;
 
   auto pool = std::make_unique<HostPool>(host, port, host_config, reactor_,
                                          tls_factory_);

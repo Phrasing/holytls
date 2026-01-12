@@ -29,6 +29,14 @@ int ConnectNonBlocking(socket_t sock, std::string_view ip, uint16_t port,
 // Returns true if connected, false if error
 bool IsConnected(socket_t sock);
 
+// Non-blocking send
+// Returns bytes sent, or -1 if would block
+ssize_t SendNonBlocking(socket_t sock, const void* data, size_t len);
+
+// Non-blocking receive
+// Returns bytes received, 0 on EOF, or -1 if would block
+ssize_t RecvNonBlocking(socket_t sock, void* buf, size_t len);
+
 }  // namespace util
 }  // namespace holytls
 

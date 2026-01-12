@@ -132,5 +132,51 @@ bool IsConnected(socket_t sock) {
   return true;
 }
 
+ssize_t SendNonBlocking(socket_t sock, const void* data, size_t len) {
+#ifdef _WIN32
+  int ret = send(sock, static_cast<const char*>(data), static_cast<int>(len), 0);
+  if (ret == SOCKET_ERROR) {
+    int error = WSAGetLastError();
+    if (error == WSAEWOULDBLOCK) {
+      return -1;  // Would block
+    }
+    return -2;  // Real error
+  }
+  return ret;
+#else
+  ssize_t ret = send(sock, data, len, MSG_NOSIGNAL);
+  if (ret < 0) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      return -1;  // Would block
+    }
+    return -2;  // Real error
+  }
+  return ret;
+#endif
+}
+
+ssize_t RecvNonBlocking(socket_t sock, void* buf, size_t len) {
+#ifdef _WIN32
+  int ret = recv(sock, static_cast<char*>(buf), static_cast<int>(len), 0);
+  if (ret == SOCKET_ERROR) {
+    int error = WSAGetLastError();
+    if (error == WSAEWOULDBLOCK) {
+      return -1;  // Would block
+    }
+    return -2;  // Real error
+  }
+  return ret;  // 0 = EOF, >0 = bytes received
+#else
+  ssize_t ret = recv(sock, buf, len, 0);
+  if (ret < 0) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      return -1;  // Would block
+    }
+    return -2;  // Real error
+  }
+  return ret;  // 0 = EOF, >0 = bytes received
+#endif
+}
+
 }  // namespace util
 }  // namespace holytls

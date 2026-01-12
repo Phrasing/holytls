@@ -77,9 +77,13 @@ bool HostPool::CreateConnection(const std::string& resolved_ip, bool ipv6) {
     return false;
   }
 
+  // Build connection options with proxy config
+  core::ConnectionOptions conn_options;
+  conn_options.proxy = config_.proxy;
+
   // Create the connection
-  auto connection =
-      std::make_unique<core::Connection>(reactor_, tls_factory_, host, port);
+  auto connection = std::make_unique<core::Connection>(
+      reactor_, tls_factory_, host, port, conn_options);
 
   // Create pooled connection wrapper
   auto pooled = std::make_unique<PooledConnection>();

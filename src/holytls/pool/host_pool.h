@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "holytls/config.h"
 #include "holytls/core/connection.h"
 #include "holytls/core/reactor.h"
 #include "holytls/tls/tls_context.h"
@@ -63,6 +64,9 @@ struct HostPoolConfig {
   size_t max_streams_per_connection = 100;
   uint64_t idle_timeout_ms = 300000;    // 5 minutes
   uint64_t connect_timeout_ms = 30000;  // 30 seconds
+
+  // Proxy configuration
+  ProxyConfig proxy;
 };
 
 // Per-host connection pool.

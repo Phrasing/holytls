@@ -213,6 +213,21 @@ std::vector<iovec_t> IoBuffer::GetWritableIovec(size_t len) {
   return iovecs;
 }
 
+size_t IoBuffer::GetReadableIovecInto(iovec_t* out, size_t max_count) const {
+  size_t count = 0;
+  for (const auto& chunk : chunks_) {
+    if (count >= max_count) {
+      break;
+    }
+    if (chunk.ReadableSize() > 0) {
+      out[count].iov_base = chunk.data.get() + chunk.start;
+      out[count].iov_len = chunk.ReadableSize();
+      ++count;
+    }
+  }
+  return count;
+}
+
 void IoBuffer::Clear() {
   chunks_.clear();
   size_ = 0;
@@ -250,6 +265,45 @@ const uint8_t* IoBuffer::Data() const {
     return nullptr;
   }
   return chunks_.front().data.get() + chunks_.front().start;
+}
+
+std::vector<uint8_t> IoBuffer::TakeContiguous() {
+  if (size_ == 0) {
+    Clear();
+    return {};
+  }
+
+  // Fast path: single chunk with data starting at offset 0
+  // We can reuse the underlying buffer directly
+  if (chunks_.size() == 1 && chunks_.front().start == 0) {
+    Chunk& chunk = chunks_.front();
+    std::vector<uint8_t> result;
+
+    // Transfer ownership: create vector that takes the buffer
+    // Note: std::vector can't directly adopt unique_ptr memory, so we still
+    // need to allocate. But we can move if chunk.start == 0.
+    result.resize(chunk.end);
+    std::memcpy(result.data(), chunk.data.get(), chunk.end);
+
+    Clear();
+    return result;
+  }
+
+  // Slow path: multiple chunks or partial chunk - consolidate
+  std::vector<uint8_t> result;
+  result.resize(size_);
+
+  uint8_t* dest = result.data();
+  for (const auto& chunk : chunks_) {
+    size_t readable = chunk.ReadableSize();
+    if (readable > 0) {
+      std::memcpy(dest, chunk.data.get() + chunk.start, readable);
+      dest += readable;
+    }
+  }
+
+  Clear();
+  return result;
 }
 
 void IoBuffer::EnsureCapacity(size_t additional) {
