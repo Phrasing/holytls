@@ -72,7 +72,7 @@ int MakeRequest(holytls::core::Reactor& reactor,
 
         conn->SendRequest(
             "GET", "/", {},
-            [&status, verbose, &host](const holytls::core::Response& response) {
+            [&status, verbose, &host](const holytls::core::RawResponse& response) {
               status = response.status_code;
               if (verbose) {
                 std::println("[DEBUG] Got response from {}: {} ({} bytes)",

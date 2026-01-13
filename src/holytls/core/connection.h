@@ -37,8 +37,8 @@ enum class ConnectionState {
   kError,         // Error occurred
 };
 
-// Response data
-struct Response {
+// Raw response data (internal representation with packed headers)
+struct RawResponse {
   int status_code = 0;
   http2::PackedHeaders headers;
   std::vector<uint8_t> body;
@@ -52,7 +52,7 @@ struct Response {
 class Connection;
 
 // Callback types
-using ResponseCallback = std::function<void(const Response& response)>;
+using ResponseCallback = std::function<void(const RawResponse& response)>;
 using ErrorCallback = std::function<void(const std::string& error)>;
 using IdleCallback = std::function<void(Connection*)>;
 

@@ -552,7 +552,7 @@ class HttpClient::Impl {
         conn_headers, request.header_order,
         [this, ctx, pooled, shared_cb, request_url = std::move(request_url),
          origin_host = std::move(origin_host),
-         origin_port](const core::Response& core_resp) mutable {
+         origin_port](const core::RawResponse& core_resp) mutable {
           // Convert headers
           Headers resp_headers;
           for (size_t i = 0; i < core_resp.headers.size(); ++i) {

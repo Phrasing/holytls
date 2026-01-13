@@ -172,8 +172,8 @@ void Connection::SendRequest(
       auto it = active_requests_.find(sid);
       if (it != active_requests_.end()) {
         if (error_code == 0 && it->second.on_response) {
-          // Build Response from ActiveRequest
-          Response response;
+          // Build RawResponse from ActiveRequest
+          RawResponse response;
           response.status_code = it->second.status_code;
           response.headers = std::move(it->second.headers);
 
