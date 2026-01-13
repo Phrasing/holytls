@@ -178,8 +178,8 @@ int main() {
   // Configure client with Alt-Svc support
   ClientConfig config = ClientConfig::Chrome143();
 
-  // Use H2 for fingerprint verification (H3 via Alt-Svc discovery comes later)
-  config.protocol = ProtocolPreference::kHttp2Preferred;
+  // Use kAuto to allow automatic protocol selection with QUIC fallback
+  config.protocol = ProtocolPreference::kAuto;
   config.alt_svc_cache = &alt_svc_cache;
 
   AsyncClient client(config);
@@ -190,5 +190,11 @@ int main() {
     std::println("\nAlt-Svc cache: {} origin(s) cached", alt_svc_cache.Size());
   }
 
-  return g_results.AllPassed() ? 0 : 1;
+  // Flush stdout since _Exit doesn't flush buffers
+  std::fflush(stdout);
+
+  // Use _Exit to skip destructors which may hang due to libuv handles from
+  // QUIC connection attempts that didn't complete before fallback to TCP.
+  // TODO: Properly close QUIC connections when falling back to TCP
+  _Exit(g_results.AllPassed() ? 0 : 1);
 }

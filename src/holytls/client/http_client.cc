@@ -423,13 +423,14 @@ class HttpClient::Impl {
                     const std::vector<util::ResolvedAddress>& addresses,
                     Request request, ResponseCallback callback, bool use_quic,
                     int retry_count = 0) {
-    constexpr int kMaxRetries = 50;       // Max retries (50 * 100ms = 5s total)
-    constexpr int kRetryDelayMs = 100;    // Delay between retries
+    constexpr int kMaxRetries = 50;          // Max retries (50 * 100ms = 5s total)
+    constexpr int kRetryDelayMs = 100;       // Delay between retries
 
     // Schedule a delayed retry using a timer
+    // Note: Capture kMaxRetries for use in lambda
     auto retry_fn = [this, ctx, parsed, addresses, request = std::move(request),
                      callback = std::move(callback), use_quic,
-                     retry_count]() mutable {
+                     retry_count, kMaxRetries]() mutable {
       auto* pool = ctx->connection_pool.get();
 
 #if HOLYTLS_QUIC_AVAILABLE
@@ -438,6 +439,33 @@ class HttpClient::Impl {
         if (quic_conn && quic_conn->IsConnected()) {
           SendOnQuicConnection(ctx, quic_conn, parsed, std::move(request),
                                std::move(callback));
+          return;
+        }
+
+        // Check if we should fall back to TCP:
+        // 1. QUIC connection is in error/closed state, or
+        // 2. We've exceeded the QUIC retry limit (10 retries = 1 second)
+        bool quic_failed = (quic_conn && quic_conn->quic &&
+                            quic_conn->quic->IsClosed()) ||
+                           (retry_count >= 10);
+
+        if (quic_failed && config_.protocol != ProtocolPreference::kHttp3Only) {
+          // Fall back to TCP - mark H3 failure and create TCP connection
+          if (alt_svc_cache_) {
+            alt_svc_cache_->MarkHttp3Failed(parsed.host, parsed.port);
+          }
+
+          // Create TCP connection before queuing (like ProcessRequest does)
+          auto* host_pool = pool->GetOrCreateHostPool(parsed.host, parsed.port);
+          if (host_pool && !addresses.empty()) {
+            const auto& addr = addresses[0];
+            host_pool->CreateConnection(addr.ip, addr.is_ipv6);
+          }
+
+          // Continue with TCP - keep retry count for overall timeout
+          // (40 more retries = 4 more seconds for TCP to connect)
+          QueueRequest(ctx, parsed, addresses, std::move(request),
+                       std::move(callback), false, retry_count);
           return;
         }
       } else
