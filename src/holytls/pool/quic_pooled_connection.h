@@ -67,6 +67,9 @@ struct QuicPooledConnection {
   void FlushPendingData();
 };
 
+// Type alias for connection container
+using QuicPooledConnectionList = std::vector<std::unique_ptr<QuicPooledConnection>>;
+
 // Per-host QUIC connection pool configuration
 struct QuicHostPoolConfig {
   size_t max_connections = 6;
@@ -127,7 +130,7 @@ class QuicHostPool {
   core::Reactor* reactor_;
   quic::QuicTlsContext* tls_ctx_;
 
-  std::vector<std::unique_ptr<QuicPooledConnection>> connections_;
+  QuicPooledConnectionList connections_;
 };
 
 }  // namespace pool

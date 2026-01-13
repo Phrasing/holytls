@@ -211,7 +211,7 @@ void QuicHostPool::CloseAllConnections(std::function<void()> on_complete) {
   auto completion = std::make_shared<std::function<void()>>(std::move(on_complete));
 
   // Move connections to a shared vector to keep them alive until close completes
-  auto alive_connections = std::make_shared<std::vector<std::unique_ptr<QuicPooledConnection>>>(
+  auto alive_connections = std::make_shared<QuicPooledConnectionList>(
       std::move(connections_));
 
   for (auto& conn : *alive_connections) {
