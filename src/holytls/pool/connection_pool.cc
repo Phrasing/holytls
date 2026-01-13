@@ -306,6 +306,30 @@ QuicHostPool* ConnectionPool::GetOrCreateQuicHostPool(const std::string& host,
 
   return raw_ptr;
 }
+
+void ConnectionPool::RemoveQuicHostPool(const std::string& host, uint16_t port,
+                                        std::function<void()> on_complete) {
+  std::string key = MakeHostKey(host, port);
+
+  auto it = quic_host_pools_.find(key);
+  if (it == quic_host_pools_.end()) {
+    // No pool exists, call completion immediately
+    if (on_complete) {
+      on_complete();
+    }
+    return;
+  }
+
+  // Move the pool out of the map (removes it from tracking)
+  auto pool = std::move(it->second);
+  quic_host_pools_.erase(it);
+
+  // Close all connections asynchronously
+  pool->CloseAllConnections(std::move(on_complete));
+
+  // Note: pool unique_ptr will be destroyed here, but the QuicConnections
+  // inside are still alive until their async close completes
+}
 #endif
 
 std::string ConnectionPool::MakeHostKey(std::string_view host, uint16_t port) {

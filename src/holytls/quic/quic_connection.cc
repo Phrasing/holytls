@@ -390,11 +390,34 @@ void QuicConnection::Close(uint64_t error_code, const std::string& reason) {
 
   state_ = QuicState::kClosed;
 
-  if (timer_active_ && timer_initialized_) {
-    uv_timer_stop(&timer_);
-    timer_active_ = false;
+  // Count pending handles for async close tracking
+  int pending = 0;
+  if (timer_initialized_) pending++;
+  if (udp_socket_ && udp_socket_->IsOpen()) pending++;
+  pending_handles_.store(pending, std::memory_order_release);
+
+  // If no handles to close, signal completion immediately
+  if (pending == 0) {
+    if (on_close_complete_) {
+      on_close_complete_();
+    }
+    return;
   }
-  if (udp_socket_) {
+
+  // Close timer with uv_close (NOT just uv_timer_stop)
+  if (timer_initialized_) {
+    if (timer_active_) {
+      uv_timer_stop(&timer_);
+      timer_active_ = false;
+    }
+    timer_.data = this;
+    uv_close(reinterpret_cast<uv_handle_t*>(&timer_), OnTimerClose);
+    timer_initialized_ = false;
+  }
+
+  // Close UDP socket with completion tracking
+  if (udp_socket_ && udp_socket_->IsOpen()) {
+    udp_socket_->SetCloseCompleteCallback([this]() { OnHandleClosed(); });
     udp_socket_->Close();
   }
 }
@@ -642,6 +665,20 @@ int QuicConnection::OnGetPathChallengeData(ngtcp2_conn* /*conn*/,
 ngtcp2_conn* QuicConnection::GetConn(ngtcp2_crypto_conn_ref* conn_ref) {
   auto* qc = static_cast<QuicConnection*>(conn_ref->user_data);
   return qc->conn_;
+}
+
+void QuicConnection::OnTimerClose(uv_handle_t* handle) {
+  auto* qc = static_cast<QuicConnection*>(handle->data);
+  if (qc) {
+    qc->OnHandleClosed();
+  }
+}
+
+void QuicConnection::OnHandleClosed() {
+  int remaining = pending_handles_.fetch_sub(1, std::memory_order_acq_rel) - 1;
+  if (remaining == 0 && on_close_complete_) {
+    on_close_complete_();
+  }
 }
 
 }  // namespace quic

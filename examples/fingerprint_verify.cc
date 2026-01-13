@@ -190,11 +190,5 @@ int main() {
     std::println("\nAlt-Svc cache: {} origin(s) cached", alt_svc_cache.Size());
   }
 
-  // Flush stdout since _Exit doesn't flush buffers
-  std::fflush(stdout);
-
-  // Use _Exit to skip destructors which may hang due to libuv handles from
-  // QUIC connection attempts that didn't complete before fallback to TCP.
-  // TODO: Properly close QUIC connections when falling back to TCP
-  _Exit(g_results.AllPassed() ? 0 : 1);
+  return g_results.AllPassed() ? 0 : 1;
 }

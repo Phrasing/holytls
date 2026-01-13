@@ -450,10 +450,14 @@ class HttpClient::Impl {
                            (retry_count >= 10);
 
         if (quic_failed && config_.protocol != ProtocolPreference::kHttp3Only) {
-          // Fall back to TCP - mark H3 failure and create TCP connection
+          // Fall back to TCP - mark H3 failure and cleanup QUIC resources
           if (alt_svc_cache_) {
             alt_svc_cache_->MarkHttp3Failed(parsed.host, parsed.port);
           }
+
+          // Remove the failed QUIC host pool to properly close handles
+          // (async cleanup - completion callback not needed for fallback)
+          pool->RemoveQuicHostPool(parsed.host, parsed.port);
 
           // Create TCP connection before queuing (like ProcessRequest does)
           auto* host_pool = pool->GetOrCreateHostPool(parsed.host, parsed.port);

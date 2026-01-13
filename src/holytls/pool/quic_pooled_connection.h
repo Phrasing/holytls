@@ -110,6 +110,10 @@ class QuicHostPool {
   // Cleanup expired idle connections
   size_t CleanupIdle(uint64_t now_ms);
 
+  // Close all connections with optional completion callback
+  // Used for cleanup when falling back from QUIC to TCP
+  void CloseAllConnections(std::function<void()> on_complete = nullptr);
+
   // Pool statistics
   size_t TotalConnections() const { return connections_.size(); }
   size_t ActiveConnections() const;

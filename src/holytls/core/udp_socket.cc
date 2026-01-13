@@ -252,8 +252,11 @@ void UdpSocket::OnSend(uv_udp_send_t* req, int status) {
   }
 }
 
-void UdpSocket::OnClose(uv_handle_t* /*handle*/) {
-  // Handle closed
+void UdpSocket::OnClose(uv_handle_t* handle) {
+  auto* socket = static_cast<UdpSocket*>(handle->data);
+  if (socket && socket->close_complete_callback_) {
+    socket->close_complete_callback_();
+  }
 }
 
 // Helper functions

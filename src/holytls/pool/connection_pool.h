@@ -4,6 +4,7 @@
 #ifndef HOLYTLS_POOL_CONNECTION_POOL_H_
 #define HOLYTLS_POOL_CONNECTION_POOL_H_
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -119,6 +120,11 @@ class ConnectionPool {
 #if defined(HOLYTLS_BUILD_QUIC)
   // Get or create a QUIC host pool
   QuicHostPool* GetOrCreateQuicHostPool(const std::string& host, uint16_t port);
+
+  // Remove a QUIC host pool (for cleanup after fallback to TCP)
+  // Closes all connections asynchronously
+  void RemoveQuicHostPool(const std::string& host, uint16_t port,
+                          std::function<void()> on_complete = nullptr);
 #endif
 
   // Check if QUIC is enabled for this pool

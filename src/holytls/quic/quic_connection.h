@@ -13,6 +13,7 @@
 #include <openssl/ssl.h>
 
 #include <array>
+#include <atomic>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -64,6 +65,7 @@ using QuicStreamCloseCallback = std::function<void(int64_t stream_id,
                                                     uint64_t app_error_code)>;
 using QuicErrorCallback = std::function<void(uint64_t error_code,
                                              const std::string& reason)>;
+using QuicCloseCompleteCallback = std::function<void()>;
 
 // Forward declaration
 class QuicConnection;
@@ -149,6 +151,9 @@ class QuicConnection {
     on_stream_close_ = std::move(cb);
   }
   void SetErrorCallback(QuicErrorCallback cb) { on_error_ = std::move(cb); }
+  void SetCloseCompleteCallback(QuicCloseCompleteCallback cb) {
+    on_close_complete_ = std::move(cb);
+  }
 
   // Get the ALPN protocol negotiated (e.g., "h3")
   std::string_view negotiated_alpn() const { return negotiated_alpn_; }
@@ -206,6 +211,10 @@ class QuicConnection {
   // Timer handling
   void UpdateTimer();
 
+  // Timer close callback (for proper libuv handle cleanup)
+  static void OnTimerClose(uv_handle_t* handle);
+  void OnHandleClosed();
+
   core::Reactor* reactor_;
   QuicTlsContext* tls_ctx_;
   std::string host_;
@@ -248,6 +257,10 @@ class QuicConnection {
   QuicStreamOpenCallback on_stream_open_;
   QuicStreamCloseCallback on_stream_close_;
   QuicErrorCallback on_error_;
+  QuicCloseCompleteCallback on_close_complete_;
+
+  // Pending handle close tracking for async cleanup
+  std::atomic<int> pending_handles_{0};
 
   // Last error info
   std::string last_error_;

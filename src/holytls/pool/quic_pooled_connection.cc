@@ -4,6 +4,7 @@
 #include "holytls/pool/quic_pooled_connection.h"
 
 #include <algorithm>
+#include <atomic>
 
 namespace holytls {
 namespace pool {
@@ -195,6 +196,46 @@ size_t QuicHostPool::CleanupIdle(uint64_t now_ms) {
     }
   }
   return closed;
+}
+
+void QuicHostPool::CloseAllConnections(std::function<void()> on_complete) {
+  if (connections_.empty()) {
+    if (on_complete) {
+      on_complete();
+    }
+    return;
+  }
+
+  // Track pending connection closes with a shared counter
+  auto pending = std::make_shared<std::atomic<size_t>>(connections_.size());
+  auto completion = std::make_shared<std::function<void()>>(std::move(on_complete));
+
+  // Move connections to a shared vector to keep them alive until close completes
+  auto alive_connections = std::make_shared<std::vector<std::unique_ptr<QuicPooledConnection>>>(
+      std::move(connections_));
+
+  for (auto& conn : *alive_connections) {
+    if (conn->quic) {
+      // Capture alive_connections to extend lifetime until all closes complete
+      conn->quic->SetCloseCompleteCallback([pending, completion, alive_connections]() {
+        if (pending->fetch_sub(1, std::memory_order_acq_rel) == 1) {
+          // All connections closed, release the shared vector and call completion
+          if (*completion) {
+            (*completion)();
+          }
+        }
+      });
+      conn->quic->Close();
+    } else {
+      // No QUIC connection, just decrement counter
+      if (pending->fetch_sub(1, std::memory_order_acq_rel) == 1) {
+        if (*completion) {
+          (*completion)();
+        }
+      }
+    }
+  }
+  // connections_ is now empty (moved to alive_connections)
 }
 
 size_t QuicHostPool::ActiveConnections() const {

@@ -48,6 +48,7 @@ using UdpReceiveCallback =
                        socklen_t addr_len)>;
 using UdpSendCallback = std::function<void(int status)>;
 using UdpErrorCallback = std::function<void(int error_code)>;
+using UdpCloseCompleteCallback = std::function<void()>;
 
 // UDP socket wrapper for libuv
 // Provides async send/receive for QUIC connections
@@ -98,6 +99,11 @@ class UdpSocket {
     error_callback_ = std::move(callback);
   }
 
+  // Set close completion callback (called when uv_close finishes)
+  void SetCloseCompleteCallback(UdpCloseCompleteCallback callback) {
+    close_complete_callback_ = std::move(callback);
+  }
+
   // Close the socket
   void Close();
 
@@ -143,6 +149,7 @@ class UdpSocket {
   // Callbacks
   UdpReceiveCallback receive_callback_;
   UdpErrorCallback error_callback_;
+  UdpCloseCompleteCallback close_complete_callback_;
 
   // Pending send requests
   struct SendRequest {
