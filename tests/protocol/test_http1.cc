@@ -4,7 +4,9 @@
 // HTTP/1.1 protocol tests
 // Tests the H1Session class for correct HTTP/1.1 request/response handling
 
+#include <algorithm>
 #include <cassert>
+#include <cctype>
 #include <print>
 #include <string>
 #include <string_view>
@@ -15,6 +17,22 @@
 #include "holytls/http2/packed_headers.h"
 
 using namespace holytls;
+
+namespace {
+
+// Case-insensitive string comparison for HTTP header names
+bool EqualsIgnoreCase(std::string_view a, std::string_view b) {
+  if (a.size() != b.size()) return false;
+  for (size_t i = 0; i < a.size(); ++i) {
+    if (std::tolower(static_cast<unsigned char>(a[i])) !=
+        std::tolower(static_cast<unsigned char>(b[i]))) {
+      return false;
+    }
+  }
+  return true;
+}
+
+}  // namespace
 
 // ============================================================================
 // Test: Basic GET request serialization
@@ -468,14 +486,16 @@ void TestHttp1CustomHeaders() {
 
   session.Receive(reinterpret_cast<const uint8_t*>(response.data()), response.size());
 
-  // Verify we received the custom headers
+  // Verify we received the custom headers (case-insensitive name comparison)
   bool found_response_header = false;
   bool found_another = false;
   for (const auto& h : received_headers) {
-    if (h.first == "x-response-header" && h.second == "response-value") {
+    if (EqualsIgnoreCase(h.first, "X-Response-Header") &&
+        h.second == "response-value") {
       found_response_header = true;
     }
-    if (h.first == "x-another" && h.second == "another-value") {
+    if (EqualsIgnoreCase(h.first, "X-Another") &&
+        h.second == "another-value") {
       found_another = true;
     }
   }
