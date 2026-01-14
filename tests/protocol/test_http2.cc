@@ -140,7 +140,7 @@ void TestHttp2StreamCallbacks() {
 
   // Test calling them
   http2::PackedHeadersBuilder builder;
-  builder.Add(":status", "200");
+  builder.SetStatus("200");
   http2::PackedHeaders headers = std::move(builder).Build();
 
   callbacks.on_headers(1, headers);
