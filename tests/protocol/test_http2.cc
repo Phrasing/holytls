@@ -73,7 +73,7 @@ void TestHttp2PackedHeaders() {
   std::print("Testing HTTP/2 packed headers... ");
 
   http2::PackedHeadersBuilder builder;
-  builder.Add(":status", "200");
+  builder.SetStatus("200");
   builder.Add("content-type", "application/json");
   builder.Add("content-length", "42");
   builder.Add("x-custom", "value");
