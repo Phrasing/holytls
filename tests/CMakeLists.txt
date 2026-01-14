@@ -52,5 +52,8 @@ add_test(NAME packed_headers COMMAND test_packed_headers)
 add_test(NAME chrome_header_builder COMMAND test_chrome_header_builder)
 add_test(NAME top_websites COMMAND test_top_websites)
 
+# Protocol tests (HTTP/1, HTTP/2, HTTP/3)
+add_subdirectory(protocol)
+
 # Stress tests (not part of regular test suite)
 add_subdirectory(stress)
