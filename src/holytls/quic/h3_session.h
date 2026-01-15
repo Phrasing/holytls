@@ -153,8 +153,8 @@ class H3Session {
                            uint64_t app_error_code, void* user_data,
                            void* stream_user_data);
   static int OnShutdown(nghttp3_conn* conn, int64_t id, void* user_data);
-  static int OnRecvSettings(nghttp3_conn* conn, const nghttp3_settings* settings,
-                            void* user_data);
+  static int OnRecvSettings(nghttp3_conn* conn,
+                            const nghttp3_settings* settings, void* user_data);
 
   // Create control and QPACK streams
   bool CreateControlStreams();

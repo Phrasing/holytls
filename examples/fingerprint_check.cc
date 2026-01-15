@@ -23,17 +23,11 @@ using namespace holytls;
 namespace {
 
 void PrintUsage(const char* prog) {
-  std::println(stderr, "Usage: {} [chrome_version]", prog);
-  std::println(stderr,
-               "  chrome_version: 120, 125, 130, 131, or 143 (default: 143)");
+  std::println(stderr, "Usage: {} [ignored]", prog);
+  std::println(stderr, "  (Defaults to Chrome 143)");
 }
 
-ChromeVersion ParseChromeVersion(const std::string& arg) {
-  if (arg == "120") return ChromeVersion::kChrome120;
-  if (arg == "125") return ChromeVersion::kChrome125;
-  if (arg == "130") return ChromeVersion::kChrome130;
-  if (arg == "131") return ChromeVersion::kChrome131;
-  if (arg == "143") return ChromeVersion::kChrome143;
+ChromeVersion ParseChromeVersion(const std::string& /*arg*/) {
   return ChromeVersion::kChrome143;
 }
 
@@ -69,12 +63,14 @@ Task<void> Run(AsyncClient& client) {
                static_cast<int>(client.GetChromeVersion()));
 
   // Test peet.ws
-  if (!co_await TestEndpoint(client, "https://tls.peet.ws/api/all", "Peet.ws")) {
+  if (!co_await TestEndpoint(client, "https://tls.peet.ws/api/all",
+                             "Peet.ws")) {
     g_exit_code = 1;
   }
 
   // Test browserleaks
-  if (!co_await TestEndpoint(client, "https://tls.browserleaks.com/tls?minify=1",
+  if (!co_await TestEndpoint(client,
+                             "https://tls.browserleaks.com/tls?minify=1",
                              "BrowserLeaks")) {
     g_exit_code = 1;
   }

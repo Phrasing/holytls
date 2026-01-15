@@ -74,8 +74,7 @@ inline std::string ToUpper(std::string_view s) {
 
 // Check if string starts with prefix (case-sensitive)
 inline constexpr bool StartsWith(std::string_view s, std::string_view prefix) {
-  return s.size() >= prefix.size() &&
-         s.substr(0, prefix.size()) == prefix;
+  return s.size() >= prefix.size() && s.substr(0, prefix.size()) == prefix;
 }
 
 // Check if string ends with suffix (case-sensitive)
@@ -100,12 +99,12 @@ inline bool EndsWithIgnoreCase(std::string_view s, std::string_view suffix) {
 
 // Alias for backward compatibility with util namespace
 namespace util {
-using sv::Trim;
+using sv::EndsWith;
 using sv::EqualsIgnoreCase;
+using sv::StartsWith;
 using sv::ToLower;
 using sv::ToUpper;
-using sv::StartsWith;
-using sv::EndsWith;
+using sv::Trim;
 }  // namespace util
 
 }  // namespace holytls

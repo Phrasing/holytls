@@ -38,9 +38,9 @@ struct OriginAltSvc {
 // Alt-Svc cache configuration
 struct AltSvcCacheConfig {
   size_t max_entries = 1024;
-  uint64_t default_max_age_ms = 86400000;   // 24 hours
-  uint64_t max_max_age_ms = 604800000;      // 7 days cap
-  uint64_t failure_penalty_ms = 300000;     // 5 minutes
+  uint64_t default_max_age_ms = 86400000;  // 24 hours
+  uint64_t max_max_age_ms = 604800000;     // 7 days cap
+  uint64_t failure_penalty_ms = 300000;    // 5 minutes
 };
 
 // Thread-safe Alt-Svc cache for HTTP/3 discovery
@@ -67,7 +67,7 @@ class AltSvcCache {
   // Get best HTTP/3 endpoint for origin, if available and not expired
   // Returns nullopt if no valid H3 entry exists or H3 recently failed
   std::optional<AltSvcEntry> GetHttp3Endpoint(std::string_view host,
-                                               uint16_t port) const;
+                                              uint16_t port) const;
 
   // Check if origin has valid H3 support cached (and not in failure penalty)
   bool HasHttp3Support(std::string_view host, uint16_t port) const;

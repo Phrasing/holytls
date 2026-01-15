@@ -120,9 +120,10 @@ void HttpProxyTunnel::BuildRequest() {
   }
 
   // Chrome-like headers for the CONNECT request
-  request_ += "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-              "AppleWebKit/537.36 (KHTML, like Gecko) "
-              "Chrome/143.0.0.0 Safari/537.36\r\n";
+  request_ +=
+      "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+      "AppleWebKit/537.36 (KHTML, like Gecko) "
+      "Chrome/143.0.0.0 Safari/537.36\r\n";
   request_ += "Proxy-Connection: keep-alive\r\n";
 
   request_ += "\r\n";
@@ -201,8 +202,10 @@ std::string HttpProxyTunnel::Base64Encode(std::string_view input) {
   size_t i = 0;
   while (i < input.size()) {
     uint32_t octet_a = static_cast<uint8_t>(input[i++]);
-    uint32_t octet_b = (i < input.size()) ? static_cast<uint8_t>(input[i++]) : 0;
-    uint32_t octet_c = (i < input.size()) ? static_cast<uint8_t>(input[i++]) : 0;
+    uint32_t octet_b =
+        (i < input.size()) ? static_cast<uint8_t>(input[i++]) : 0;
+    uint32_t octet_c =
+        (i < input.size()) ? static_cast<uint8_t>(input[i++]) : 0;
 
     uint32_t triple = (octet_a << 16) | (octet_b << 8) | octet_c;
 

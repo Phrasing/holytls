@@ -70,10 +70,10 @@ class H1Session {
  private:
   // Parse state machine
   enum class ParseState {
-    kIdle,              // No request in flight
-    kParsingHeaders,    // Waiting for headers to complete
-    kParsingBody,       // Reading body with Content-Length
-    kParsingChunked,    // Reading chunked body
+    kIdle,            // No request in flight
+    kParsingHeaders,  // Waiting for headers to complete
+    kParsingBody,     // Reading body with Content-Length
+    kParsingChunked,  // Reading chunked body
   };
 
   // Build HTTP/1.1 request string

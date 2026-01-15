@@ -28,10 +28,8 @@ uint64_t ParseHttpDate(std::string_view date) {
   // For now, we'll just try to parse the most common format:
   // "Wed, 09 Jun 2021 10:18:14 GMT"
 
-  static const char* kMonths[] = {
-    "jan", "feb", "mar", "apr", "may", "jun",
-    "jul", "aug", "sep", "oct", "nov", "dec"
-  };
+  static const char* kMonths[] = {"jan", "feb", "mar", "apr", "may", "jun",
+                                  "jul", "aug", "sep", "oct", "nov", "dec"};
 
   // Skip day name if present
   size_t pos = date.find(',');
@@ -86,9 +84,8 @@ uint64_t ParseHttpDate(std::string_view date) {
 
   // Convert to timestamp (simplified - doesn't handle all edge cases)
   // Days since epoch for each month start (non-leap year base)
-  static const int kDaysBeforeMonth[] = {
-    0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334
-  };
+  static const int kDaysBeforeMonth[] = {0,   31,  59,  90,  120, 151,
+                                         181, 212, 243, 273, 304, 334};
 
   // Calculate days since 1970
   int64_t days = (year - 1970) * 365;
@@ -110,7 +107,8 @@ uint64_t ParseHttpDate(std::string_view date) {
 
 }  // namespace
 
-void CookieJar::ProcessSetCookie(std::string_view url, std::string_view header) {
+void CookieJar::ProcessSetCookie(std::string_view url,
+                                 std::string_view header) {
   UrlParts parts;
   if (!ParseUrl(url, &parts)) {
     return;
@@ -136,7 +134,8 @@ void CookieJar::ProcessSetCookie(std::string_view url, std::string_view header) 
     if (lower_host != domain_check) {
       // Check if it's a valid parent domain
       if (lower_host.size() <= domain_check.size() ||
-          lower_host.substr(lower_host.size() - domain_check.size()) != domain_check ||
+          lower_host.substr(lower_host.size() - domain_check.size()) !=
+              domain_check ||
           lower_host[lower_host.size() - domain_check.size() - 1] != '.') {
         return;  // Invalid domain - reject cookie
       }
@@ -258,11 +257,10 @@ void CookieJar::SetCookie(Cookie&& cookie) {
 bool CookieJar::RemoveCookie(std::string_view name, std::string_view domain) {
   std::lock_guard<std::mutex> lock(mutex_);
 
-  auto it = std::remove_if(cookies_.begin(), cookies_.end(),
-                           [&](const Cookie& c) {
-                             return c.name == name &&
-                                    EqualsIgnoreCase(c.domain, domain);
-                           });
+  auto it =
+      std::remove_if(cookies_.begin(), cookies_.end(), [&](const Cookie& c) {
+        return c.name == name && EqualsIgnoreCase(c.domain, domain);
+      });
 
   if (it != cookies_.end()) {
     cookies_.erase(it, cookies_.end());
@@ -292,10 +290,9 @@ size_t CookieJar::ClearDomain(std::string_view domain) {
   std::lock_guard<std::mutex> lock(mutex_);
 
   size_t before = cookies_.size();
-  auto it = std::remove_if(cookies_.begin(), cookies_.end(),
-                           [&](const Cookie& c) {
-                             return EqualsIgnoreCase(c.domain, domain);
-                           });
+  auto it = std::remove_if(
+      cookies_.begin(), cookies_.end(),
+      [&](const Cookie& c) { return EqualsIgnoreCase(c.domain, domain); });
   cookies_.erase(it, cookies_.end());
 
   return before - cookies_.size();
@@ -327,9 +324,8 @@ bool CookieJar::ParseUrl(std::string_view url, UrlParts* parts) {
 
   // Parse host and port
   size_t path_start = url.find('/');
-  std::string_view authority = (path_start != std::string_view::npos)
-                                   ? url.substr(0, path_start)
-                                   : url;
+  std::string_view authority =
+      (path_start != std::string_view::npos) ? url.substr(0, path_start) : url;
 
   size_t port_start = authority.rfind(':');
   if (port_start != std::string_view::npos) {
@@ -349,7 +345,8 @@ bool CookieJar::ParseUrl(std::string_view url, UrlParts* parts) {
   if (path_start != std::string_view::npos) {
     size_t query_start = url.find('?', path_start);
     if (query_start != std::string_view::npos) {
-      parts->path = std::string(url.substr(path_start, query_start - path_start));
+      parts->path =
+          std::string(url.substr(path_start, query_start - path_start));
     } else {
       parts->path = std::string(url.substr(path_start));
     }
@@ -360,7 +357,8 @@ bool CookieJar::ParseUrl(std::string_view url, UrlParts* parts) {
   return !parts->host.empty();
 }
 
-bool CookieJar::Matches(const Cookie& cookie, const UrlParts& url, bool is_secure) {
+bool CookieJar::Matches(const Cookie& cookie, const UrlParts& url,
+                        bool is_secure) {
   // Check secure flag
   if (cookie.secure && !is_secure) {
     return false;
@@ -379,7 +377,8 @@ bool CookieJar::Matches(const Cookie& cookie, const UrlParts& url, bool is_secur
   return true;
 }
 
-bool CookieJar::DomainMatches(std::string_view host, std::string_view cookie_domain) {
+bool CookieJar::DomainMatches(std::string_view host,
+                              std::string_view cookie_domain) {
   // Normalize: remove leading dot from cookie domain for comparison
   std::string_view domain = cookie_domain;
   bool is_domain_cookie = false;
@@ -406,7 +405,8 @@ bool CookieJar::DomainMatches(std::string_view host, std::string_view cookie_dom
   return false;
 }
 
-bool CookieJar::PathMatches(std::string_view request_path, std::string_view cookie_path) {
+bool CookieJar::PathMatches(std::string_view request_path,
+                            std::string_view cookie_path) {
   // Empty cookie path matches everything
   if (cookie_path.empty() || cookie_path == "/") {
     return true;
@@ -417,7 +417,8 @@ bool CookieJar::PathMatches(std::string_view request_path, std::string_view cook
     return false;
   }
 
-  // If request path is longer, next char must be '/' or cookie path must end with '/'
+  // If request path is longer, next char must be '/' or cookie path must end
+  // with '/'
   if (request_path.size() > cookie_path.size()) {
     if (cookie_path.back() != '/' && request_path[cookie_path.size()] != '/') {
       return false;
@@ -434,7 +435,8 @@ uint64_t CookieJar::NowMs() {
       std::chrono::duration_cast<std::chrono::milliseconds>(duration).count());
 }
 
-bool CookieJar::ParseSetCookie(std::string_view header, std::string_view request_host,
+bool CookieJar::ParseSetCookie(std::string_view header,
+                               std::string_view request_host,
                                std::string_view request_path, Cookie* cookie) {
   // Parse name=value pair (required)
   size_t eq_pos = header.find('=');

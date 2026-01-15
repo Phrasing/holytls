@@ -34,9 +34,9 @@ struct MockHttp1Server::ClientConnection {
   uv_tcp_t handle;
   MockHttp1Server* server;
   std::string recv_buffer;
-  size_t last_parse_len = 0;    // For incremental parsing
-  size_t headers_len = 0;       // Length of headers (from phr_parse_request)
-  size_t content_length = 0;    // Content-Length value
+  size_t last_parse_len = 0;  // For incremental parsing
+  size_t headers_len = 0;     // Length of headers (from phr_parse_request)
+  size_t content_length = 0;  // Content-Length value
   bool headers_complete = false;
 };
 
@@ -77,7 +77,8 @@ uint16_t MockHttp1Server::Start() {
     return 0;
   }
 
-  rv = uv_listen(reinterpret_cast<uv_stream_t*>(&server_), 128, OnNewConnection);
+  rv =
+      uv_listen(reinterpret_cast<uv_stream_t*>(&server_), 128, OnNewConnection);
   if (rv != 0) {
     uv_close(reinterpret_cast<uv_handle_t*>(&server_), nullptr);
     return 0;
@@ -121,20 +122,48 @@ void MockHttp1Server::SetResponse(
 
   // Set status text
   switch (status) {
-    case 200: response_.status_text = "OK"; break;
-    case 201: response_.status_text = "Created"; break;
-    case 204: response_.status_text = "No Content"; break;
-    case 301: response_.status_text = "Moved Permanently"; break;
-    case 302: response_.status_text = "Found"; break;
-    case 304: response_.status_text = "Not Modified"; break;
-    case 400: response_.status_text = "Bad Request"; break;
-    case 401: response_.status_text = "Unauthorized"; break;
-    case 403: response_.status_text = "Forbidden"; break;
-    case 404: response_.status_text = "Not Found"; break;
-    case 500: response_.status_text = "Internal Server Error"; break;
-    case 502: response_.status_text = "Bad Gateway"; break;
-    case 503: response_.status_text = "Service Unavailable"; break;
-    default: response_.status_text = "Unknown"; break;
+    case 200:
+      response_.status_text = "OK";
+      break;
+    case 201:
+      response_.status_text = "Created";
+      break;
+    case 204:
+      response_.status_text = "No Content";
+      break;
+    case 301:
+      response_.status_text = "Moved Permanently";
+      break;
+    case 302:
+      response_.status_text = "Found";
+      break;
+    case 304:
+      response_.status_text = "Not Modified";
+      break;
+    case 400:
+      response_.status_text = "Bad Request";
+      break;
+    case 401:
+      response_.status_text = "Unauthorized";
+      break;
+    case 403:
+      response_.status_text = "Forbidden";
+      break;
+    case 404:
+      response_.status_text = "Not Found";
+      break;
+    case 500:
+      response_.status_text = "Internal Server Error";
+      break;
+    case 502:
+      response_.status_text = "Bad Gateway";
+      break;
+    case 503:
+      response_.status_text = "Service Unavailable";
+      break;
+    default:
+      response_.status_text = "Unknown";
+      break;
   }
 
   chunks_.clear();
@@ -178,8 +207,8 @@ void MockHttp1Server::OnNewConnection(uv_stream_t* server, int status) {
     return;
   }
 
-  rv = uv_read_start(reinterpret_cast<uv_stream_t*>(&client->handle),
-                     OnAlloc, OnRead);
+  rv = uv_read_start(reinterpret_cast<uv_stream_t*>(&client->handle), OnAlloc,
+                     OnRead);
   if (rv != 0) {
     uv_close(reinterpret_cast<uv_handle_t*>(&client->handle), nullptr);
     return;
@@ -189,13 +218,13 @@ void MockHttp1Server::OnNewConnection(uv_stream_t* server, int status) {
 }
 
 void MockHttp1Server::OnAlloc(uv_handle_t* /*handle*/, size_t suggested_size,
-                               uv_buf_t* buf) {
+                              uv_buf_t* buf) {
   buf->base = new char[suggested_size];
   buf->len = static_cast<unsigned int>(suggested_size);
 }
 
 void MockHttp1Server::OnRead(uv_stream_t* stream, ssize_t nread,
-                              const uv_buf_t* buf) {
+                             const uv_buf_t* buf) {
   auto* client = static_cast<ClientConnection*>(stream->data);
 
   if (nread < 0) {
@@ -278,8 +307,9 @@ void MockHttp1Server::HandleRequest(ClientConnection* client) {
   auto* write_data = new WriteData;
   write_data->data = std::move(response_data);
 
-  uv_buf_t buf = uv_buf_init(const_cast<char*>(write_data->data.data()),
-                              static_cast<unsigned int>(write_data->data.size()));
+  uv_buf_t buf =
+      uv_buf_init(const_cast<char*>(write_data->data.data()),
+                  static_cast<unsigned int>(write_data->data.size()));
   write_data->req.data = write_data;
 
   uv_write(&write_data->req, reinterpret_cast<uv_stream_t*>(&client->handle),
@@ -294,7 +324,7 @@ void MockHttp1Server::HandleRequest(ClientConnection* client) {
 }
 
 bool MockHttp1Server::ParseRequest(const std::string& data,
-                                    ReceivedRequest* request) {
+                                   ReceivedRequest* request) {
   const char* method;
   size_t method_len;
   const char* path;
@@ -303,9 +333,9 @@ bool MockHttp1Server::ParseRequest(const std::string& data,
   struct phr_header headers[100];
   size_t num_headers = 100;
 
-  int pret = phr_parse_request(data.c_str(), data.size(), &method, &method_len,
-                               &path, &path_len, &minor_version, headers,
-                               &num_headers, 0);
+  int pret =
+      phr_parse_request(data.c_str(), data.size(), &method, &method_len, &path,
+                        &path_len, &minor_version, headers, &num_headers, 0);
 
   if (pret <= 0) {
     // Parse error or incomplete request
@@ -333,7 +363,8 @@ bool MockHttp1Server::ParseRequest(const std::string& data,
 
 std::string MockHttp1Server::BuildResponse() {
   std::ostringstream oss;
-  oss << "HTTP/1.1 " << response_.status_code << " " << response_.status_text << "\r\n";
+  oss << "HTTP/1.1 " << response_.status_code << " " << response_.status_text
+      << "\r\n";
 
   // Add Content-Length if not present
   bool has_content_length = false;
@@ -356,7 +387,8 @@ std::string MockHttp1Server::BuildResponse() {
 
 std::string MockHttp1Server::BuildChunkedResponse() {
   std::ostringstream oss;
-  oss << "HTTP/1.1 " << response_.status_code << " " << response_.status_text << "\r\n";
+  oss << "HTTP/1.1 " << response_.status_code << " " << response_.status_text
+      << "\r\n";
 
   for (const auto& h : response_.headers) {
     oss << h.first << ": " << h.second << "\r\n";
@@ -419,9 +451,7 @@ uint16_t MockHttp2Server::Start() {
   return port_;
 }
 
-void MockHttp2Server::Stop() {
-  running_ = false;
-}
+void MockHttp2Server::Stop() { running_ = false; }
 
 void MockHttp2Server::SetResponse(
     int status, const std::string& body,
@@ -459,9 +489,7 @@ uint16_t MockHttp3Server::Start() {
   return port_;
 }
 
-void MockHttp3Server::Stop() {
-  running_ = false;
-}
+void MockHttp3Server::Stop() { running_ = false; }
 
 void MockHttp3Server::SetResponse(
     int status, const std::string& body,

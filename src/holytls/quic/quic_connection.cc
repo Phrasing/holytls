@@ -24,9 +24,7 @@ void GenerateRandom(uint8_t* dest, size_t len) {
 }
 
 // Get current timestamp in nanoseconds
-ngtcp2_tstamp GetTimestamp() {
-  return static_cast<ngtcp2_tstamp>(uv_hrtime());
-}
+ngtcp2_tstamp GetTimestamp() { return static_cast<ngtcp2_tstamp>(uv_hrtime()); }
 
 }  // namespace
 
@@ -132,7 +130,7 @@ bool QuicConnection::Connect(std::string_view ip, bool ipv6) {
 
   // Initialize QUIC connection
   if (!InitializeConnection(reinterpret_cast<sockaddr*>(&remote_addr_),
-                             remote_addr_len_)) {
+                            remote_addr_len_)) {
     state_ = QuicState::kError;
     return false;
   }
@@ -173,7 +171,7 @@ bool QuicConnection::Connect(std::string_view ip, bool ipv6) {
 }
 
 bool QuicConnection::InitializeConnection(const sockaddr* addr,
-                                           socklen_t addr_len) {
+                                          socklen_t addr_len) {
   // Generate connection IDs
   ngtcp2_cid dcid, scid;
   dcid.datalen = NGTCP2_MIN_INITIAL_DCIDLEN;
@@ -243,12 +241,12 @@ bool QuicConnection::InitializeConnection(const sockaddr* addr,
   path.remote.addr = const_cast<sockaddr*>(addr);
 
   // Create client connection
-  int rv = ngtcp2_conn_client_new(&conn_, &dcid, &scid, &path,
-                                  NGTCP2_PROTO_VER_V1, &callbacks, &settings,
-                                  &params, nullptr, this);
+  int rv =
+      ngtcp2_conn_client_new(&conn_, &dcid, &scid, &path, NGTCP2_PROTO_VER_V1,
+                             &callbacks, &settings, &params, nullptr, this);
   if (rv != 0) {
-    last_error_ = "ngtcp2_conn_client_new failed: " +
-                  std::string(ngtcp2_strerror(rv));
+    last_error_ =
+        "ngtcp2_conn_client_new failed: " + std::string(ngtcp2_strerror(rv));
     return false;
   }
 
@@ -307,7 +305,7 @@ int64_t QuicConnection::OpenUniStream() {
 }
 
 ssize_t QuicConnection::WriteStream(int64_t stream_id, const uint8_t* data,
-                                     size_t len, bool fin) {
+                                    size_t len, bool fin) {
   if (state_ != QuicState::kConnected) {
     return -1;
   }
@@ -316,10 +314,9 @@ ssize_t QuicConnection::WriteStream(int64_t stream_id, const uint8_t* data,
   ngtcp2_vec datav{const_cast<uint8_t*>(data), len};
 
   ngtcp2_pkt_info pi;
-  ngtcp2_ssize nwrite =
-      ngtcp2_conn_writev_stream(conn_, nullptr, &pi, send_buffer_.data(),
-                                 send_buffer_.size(), nullptr, flags, stream_id,
-                                 &datav, 1, GetTimestamp());
+  ngtcp2_ssize nwrite = ngtcp2_conn_writev_stream(
+      conn_, nullptr, &pi, send_buffer_.data(), send_buffer_.size(), nullptr,
+      flags, stream_id, &datav, 1, GetTimestamp());
 
   if (nwrite < 0) {
     if (nwrite == NGTCP2_ERR_WRITE_MORE) {
@@ -342,8 +339,8 @@ bool QuicConnection::ShutdownStream(int64_t stream_id) {
     return false;
   }
 
-  int rv = ngtcp2_conn_shutdown_stream_write(conn_, 0, stream_id,
-                                              NGTCP2_NO_ERROR);
+  int rv =
+      ngtcp2_conn_shutdown_stream_write(conn_, 0, stream_id, NGTCP2_NO_ERROR);
   if (rv != 0) {
     return false;
   }
@@ -374,15 +371,13 @@ void QuicConnection::Close(uint64_t error_code, const std::string& reason) {
   if (conn_) {
     ngtcp2_ccerr ccerr;
     ngtcp2_ccerr_set_application_error(
-        &ccerr, error_code,
-        reinterpret_cast<const uint8_t*>(reason.data()), reason.size());
+        &ccerr, error_code, reinterpret_cast<const uint8_t*>(reason.data()),
+        reason.size());
 
     ngtcp2_pkt_info pi;
-    ngtcp2_ssize nwrite =
-        ngtcp2_conn_write_connection_close(conn_, nullptr, &pi,
-                                            send_buffer_.data(),
-                                            send_buffer_.size(), &ccerr,
-                                            GetTimestamp());
+    ngtcp2_ssize nwrite = ngtcp2_conn_write_connection_close(
+        conn_, nullptr, &pi, send_buffer_.data(), send_buffer_.size(), &ccerr,
+        GetTimestamp());
     if (nwrite > 0 && udp_socket_ && udp_socket_->IsOpen()) {
       udp_socket_->Send(send_buffer_.data(), static_cast<size_t>(nwrite));
     }
@@ -423,7 +418,7 @@ void QuicConnection::Close(uint64_t error_code, const std::string& reason) {
 }
 
 void QuicConnection::OnUdpReceive(const uint8_t* data, size_t len,
-                                   const sockaddr* addr, socklen_t addr_len) {
+                                  const sockaddr* addr, socklen_t addr_len) {
   if (!conn_) {
     return;
   }
@@ -462,8 +457,8 @@ void QuicConnection::OnTimer() {
 
   int rv = ngtcp2_conn_handle_expiry(conn_, GetTimestamp());
   if (rv != 0) {
-    last_error_ = "ngtcp2_conn_handle_expiry: " +
-                  std::string(ngtcp2_strerror(rv));
+    last_error_ =
+        "ngtcp2_conn_handle_expiry: " + std::string(ngtcp2_strerror(rv));
     if (on_error_) {
       on_error_(static_cast<uint64_t>(-rv), last_error_);
     }
@@ -484,7 +479,7 @@ int QuicConnection::WritePackets() {
   for (;;) {
     ngtcp2_ssize nwrite =
         ngtcp2_conn_write_pkt(conn_, nullptr, &pi, send_buffer_.data(),
-                               send_buffer_.size(), GetTimestamp());
+                              send_buffer_.size(), GetTimestamp());
     if (nwrite < 0) {
       if (nwrite == NGTCP2_ERR_WRITE_MORE) {
         continue;
@@ -541,10 +536,10 @@ void QuicConnection::UpdateTimer() {
 // Static ngtcp2 callbacks
 
 int QuicConnection::OnReceiveStreamData(ngtcp2_conn* /*conn*/, uint32_t flags,
-                                         int64_t stream_id, uint64_t /*offset*/,
-                                         const uint8_t* data, size_t datalen,
-                                         void* user_data,
-                                         void* /*stream_user_data*/) {
+                                        int64_t stream_id, uint64_t /*offset*/,
+                                        const uint8_t* data, size_t datalen,
+                                        void* user_data,
+                                        void* /*stream_user_data*/) {
   auto* qc = static_cast<QuicConnection*>(user_data);
   bool fin = (flags & NGTCP2_STREAM_DATA_FLAG_FIN) != 0;
 
@@ -555,18 +550,15 @@ int QuicConnection::OnReceiveStreamData(ngtcp2_conn* /*conn*/, uint32_t flags,
   return 0;
 }
 
-int QuicConnection::OnAckedStreamDataOffset(ngtcp2_conn* /*conn*/,
-                                             int64_t /*stream_id*/,
-                                             uint64_t /*offset*/,
-                                             uint64_t /*datalen*/,
-                                             void* /*user_data*/,
-                                             void* /*stream_user_data*/) {
+int QuicConnection::OnAckedStreamDataOffset(
+    ngtcp2_conn* /*conn*/, int64_t /*stream_id*/, uint64_t /*offset*/,
+    uint64_t /*datalen*/, void* /*user_data*/, void* /*stream_user_data*/) {
   // Data was acknowledged, could free send buffers if tracking them
   return 0;
 }
 
 int QuicConnection::OnStreamOpen(ngtcp2_conn* /*conn*/, int64_t stream_id,
-                                  void* user_data) {
+                                 void* user_data) {
   auto* qc = static_cast<QuicConnection*>(user_data);
 
   if (qc->on_stream_open_) {
@@ -577,9 +569,8 @@ int QuicConnection::OnStreamOpen(ngtcp2_conn* /*conn*/, int64_t stream_id,
 }
 
 int QuicConnection::OnStreamClose(ngtcp2_conn* /*conn*/, uint32_t /*flags*/,
-                                   int64_t stream_id, uint64_t app_error_code,
-                                   void* user_data,
-                                   void* /*stream_user_data*/) {
+                                  int64_t stream_id, uint64_t app_error_code,
+                                  void* user_data, void* /*stream_user_data*/) {
   auto* qc = static_cast<QuicConnection*>(user_data);
 
   if (qc->on_stream_close_) {
@@ -590,9 +581,9 @@ int QuicConnection::OnStreamClose(ngtcp2_conn* /*conn*/, uint32_t /*flags*/,
 }
 
 int QuicConnection::OnStreamReset(ngtcp2_conn* /*conn*/, int64_t stream_id,
-                                   uint64_t /*final_size*/,
-                                   uint64_t app_error_code, void* user_data,
-                                   void* /*stream_user_data*/) {
+                                  uint64_t /*final_size*/,
+                                  uint64_t app_error_code, void* user_data,
+                                  void* /*stream_user_data*/) {
   auto* qc = static_cast<QuicConnection*>(user_data);
 
   if (qc->on_stream_close_) {
@@ -603,7 +594,7 @@ int QuicConnection::OnStreamReset(ngtcp2_conn* /*conn*/, int64_t stream_id,
 }
 
 int QuicConnection::OnHandshakeCompleted(ngtcp2_conn* /*conn*/,
-                                          void* user_data) {
+                                         void* user_data) {
   auto* qc = static_cast<QuicConnection*>(user_data);
 
   // Get negotiated ALPN
@@ -611,8 +602,8 @@ int QuicConnection::OnHandshakeCompleted(ngtcp2_conn* /*conn*/,
   unsigned int alpnlen = 0;
   SSL_get0_alpn_selected(qc->ssl_, &alpn, &alpnlen);
   if (alpn && alpnlen > 0) {
-    qc->negotiated_alpn_ = std::string(reinterpret_cast<const char*>(alpn),
-                                        alpnlen);
+    qc->negotiated_alpn_ =
+        std::string(reinterpret_cast<const char*>(alpn), alpnlen);
   }
 
   qc->state_ = QuicState::kConnected;
@@ -625,19 +616,19 @@ int QuicConnection::OnHandshakeCompleted(ngtcp2_conn* /*conn*/,
 }
 
 int QuicConnection::OnHandshakeConfirmed(ngtcp2_conn* /*conn*/,
-                                          void* /*user_data*/) {
+                                         void* /*user_data*/) {
   // Handshake is confirmed (1-RTT keys are available)
   return 0;
 }
 
 void QuicConnection::OnRand(uint8_t* dest, size_t destlen,
-                             const ngtcp2_rand_ctx* /*rand_ctx*/) {
+                            const ngtcp2_rand_ctx* /*rand_ctx*/) {
   GenerateRandom(dest, destlen);
 }
 
-int QuicConnection::OnGetNewConnectionId(ngtcp2_conn* /*conn*/,
-                                          ngtcp2_cid* cid, uint8_t* token,
-                                          size_t cidlen, void* /*user_data*/) {
+int QuicConnection::OnGetNewConnectionId(ngtcp2_conn* /*conn*/, ngtcp2_cid* cid,
+                                         uint8_t* token, size_t cidlen,
+                                         void* /*user_data*/) {
   GenerateRandom(cid->data, cidlen);
   cid->datalen = cidlen;
   GenerateRandom(token, NGTCP2_STATELESS_RESET_TOKENLEN);
@@ -645,19 +636,19 @@ int QuicConnection::OnGetNewConnectionId(ngtcp2_conn* /*conn*/,
 }
 
 int QuicConnection::OnRemoveConnectionId(ngtcp2_conn* /*conn*/,
-                                          const ngtcp2_cid* /*cid*/,
-                                          void* /*user_data*/) {
+                                         const ngtcp2_cid* /*cid*/,
+                                         void* /*user_data*/) {
   return 0;
 }
 
 int QuicConnection::OnExtendMaxStreams(ngtcp2_conn* /*conn*/,
-                                        uint64_t /*max_streams*/,
-                                        void* /*user_data*/) {
+                                       uint64_t /*max_streams*/,
+                                       void* /*user_data*/) {
   return 0;
 }
 
-int QuicConnection::OnGetPathChallengeData(ngtcp2_conn* /*conn*/,
-                                            uint8_t* data, void* /*user_data*/) {
+int QuicConnection::OnGetPathChallengeData(ngtcp2_conn* /*conn*/, uint8_t* data,
+                                           void* /*user_data*/) {
   GenerateRandom(data, NGTCP2_PATH_CHALLENGE_DATALEN);
   return 0;
 }

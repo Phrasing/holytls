@@ -30,41 +30,40 @@ namespace quic {
 
 // QUIC connection state
 enum class QuicState {
-  kIdle,       // Not connected
-  kConnecting, // Handshake in progress
-  kConnected,  // Handshake complete, ready for streams
-  kDraining,   // Connection draining (graceful shutdown)
-  kClosed,     // Connection closed
-  kError,      // Error occurred
+  kIdle,        // Not connected
+  kConnecting,  // Handshake in progress
+  kConnected,   // Handshake complete, ready for streams
+  kDraining,    // Connection draining (graceful shutdown)
+  kClosed,      // Connection closed
+  kError,       // Error occurred
 };
 
 // Chrome-like QUIC transport parameters
 // These match Chrome 131+ fingerprint
 struct ChromeQuicProfile {
-  uint64_t max_idle_timeout = 30000;          // 30 seconds
-  uint64_t max_udp_payload_size = 1350;       // Standard QUIC MTU
-  uint64_t initial_max_data = 15728640;       // 15 MB
+  uint64_t max_idle_timeout = 30000;                       // 30 seconds
+  uint64_t max_udp_payload_size = 1350;                    // Standard QUIC MTU
+  uint64_t initial_max_data = 15728640;                    // 15 MB
   uint64_t initial_max_stream_data_bidi_local = 6291456;   // 6 MB
   uint64_t initial_max_stream_data_bidi_remote = 6291456;  // 6 MB
   uint64_t initial_max_stream_data_uni = 6291456;          // 6 MB
   uint64_t initial_max_streams_bidi = 100;
   uint64_t initial_max_streams_uni = 100;
   uint64_t ack_delay_exponent = 3;
-  uint64_t max_ack_delay = 25;                // 25ms
+  uint64_t max_ack_delay = 25;  // 25ms
   bool disable_active_migration = false;
   ngtcp2_cc_algo congestion_control = NGTCP2_CC_ALGO_CUBIC;
 };
 
 // Callbacks for QUIC events
 using QuicConnectCallback = std::function<void(bool success)>;
-using QuicStreamDataCallback =
-    std::function<void(int64_t stream_id, const uint8_t* data, size_t len,
-                       bool fin)>;
+using QuicStreamDataCallback = std::function<void(
+    int64_t stream_id, const uint8_t* data, size_t len, bool fin)>;
 using QuicStreamOpenCallback = std::function<void(int64_t stream_id)>;
-using QuicStreamCloseCallback = std::function<void(int64_t stream_id,
-                                                    uint64_t app_error_code)>;
-using QuicErrorCallback = std::function<void(uint64_t error_code,
-                                             const std::string& reason)>;
+using QuicStreamCloseCallback =
+    std::function<void(int64_t stream_id, uint64_t app_error_code)>;
+using QuicErrorCallback =
+    std::function<void(uint64_t error_code, const std::string& reason)>;
 using QuicCloseCompleteCallback = std::function<void()>;
 
 // Forward declaration
@@ -173,33 +172,33 @@ class QuicConnection {
 
   // ngtcp2 callbacks
   static int OnReceiveStreamData(ngtcp2_conn* conn, uint32_t flags,
-                                  int64_t stream_id, uint64_t offset,
-                                  const uint8_t* data, size_t datalen,
-                                  void* user_data, void* stream_user_data);
+                                 int64_t stream_id, uint64_t offset,
+                                 const uint8_t* data, size_t datalen,
+                                 void* user_data, void* stream_user_data);
   static int OnAckedStreamDataOffset(ngtcp2_conn* conn, int64_t stream_id,
-                                      uint64_t offset, uint64_t datalen,
-                                      void* user_data, void* stream_user_data);
+                                     uint64_t offset, uint64_t datalen,
+                                     void* user_data, void* stream_user_data);
   static int OnStreamOpen(ngtcp2_conn* conn, int64_t stream_id,
                           void* user_data);
-  static int OnStreamClose(ngtcp2_conn* conn, uint32_t flags,
-                            int64_t stream_id, uint64_t app_error_code,
-                            void* user_data, void* stream_user_data);
+  static int OnStreamClose(ngtcp2_conn* conn, uint32_t flags, int64_t stream_id,
+                           uint64_t app_error_code, void* user_data,
+                           void* stream_user_data);
   static int OnStreamReset(ngtcp2_conn* conn, int64_t stream_id,
-                            uint64_t final_size, uint64_t app_error_code,
-                            void* user_data, void* stream_user_data);
+                           uint64_t final_size, uint64_t app_error_code,
+                           void* user_data, void* stream_user_data);
   static int OnHandshakeCompleted(ngtcp2_conn* conn, void* user_data);
   static int OnHandshakeConfirmed(ngtcp2_conn* conn, void* user_data);
   static void OnRand(uint8_t* dest, size_t destlen,
                      const ngtcp2_rand_ctx* rand_ctx);
   static int OnGetNewConnectionId(ngtcp2_conn* conn, ngtcp2_cid* cid,
-                                   uint8_t* token, size_t cidlen,
-                                   void* user_data);
+                                  uint8_t* token, size_t cidlen,
+                                  void* user_data);
   static int OnRemoveConnectionId(ngtcp2_conn* conn, const ngtcp2_cid* cid,
-                                   void* user_data);
+                                  void* user_data);
   static int OnExtendMaxStreams(ngtcp2_conn* conn, uint64_t max_streams,
-                                 void* user_data);
+                                void* user_data);
   static int OnGetPathChallengeData(ngtcp2_conn* conn, uint8_t* data,
-                                     void* user_data);
+                                    void* user_data);
 
   // Crypto callbacks for ngtcp2_crypto_conn_ref
   static ngtcp2_conn* GetConn(ngtcp2_crypto_conn_ref* conn_ref);

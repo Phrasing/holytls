@@ -56,7 +56,8 @@ struct ConnectionPoolConfig {
 
 // Result type for protocol-agnostic connection acquisition
 #if defined(HOLYTLS_BUILD_QUIC)
-using AnyPooledConnection = std::variant<PooledConnection*, QuicPooledConnection*>;
+using AnyPooledConnection =
+    std::variant<PooledConnection*, QuicPooledConnection*>;
 #else
 using AnyPooledConnection = std::variant<PooledConnection*>;
 #endif
@@ -77,8 +78,8 @@ class ConnectionPool {
   ConnectionPool& operator=(ConnectionPool&&) = delete;
 
   // Protocol-agnostic connection acquisition
-  // Returns either a TCP connection (HTTP/1 or HTTP/2) or QUIC connection (HTTP/3)
-  // based on the pool's protocol preference
+  // Returns either a TCP connection (HTTP/1 or HTTP/2) or QUIC connection
+  // (HTTP/3) based on the pool's protocol preference
   AnyPooledConnection AcquireAnyConnection(const std::string& host,
                                            uint16_t port);
 
@@ -90,7 +91,8 @@ class ConnectionPool {
 
   // TCP-specific: Acquire a connection to host:port
   // Returns nullptr if pool is exhausted
-  PooledConnection* AcquireTcpConnection(const std::string& host, uint16_t port);
+  PooledConnection* AcquireTcpConnection(const std::string& host,
+                                         uint16_t port);
 
   // TCP-specific: Release a connection back to the pool
   void ReleaseTcpConnection(PooledConnection* conn);
@@ -157,7 +159,8 @@ class ConnectionPool {
 
 #if defined(HOLYTLS_BUILD_QUIC)
   // QUIC host pools (HTTP/3)
-  std::unordered_map<std::string, std::unique_ptr<QuicHostPool>> quic_host_pools_;
+  std::unordered_map<std::string, std::unique_ptr<QuicHostPool>>
+      quic_host_pools_;
   std::unique_ptr<quic::QuicTlsContext> quic_tls_ctx_;
 #endif
 

@@ -57,8 +57,8 @@ int MakeRequest(holytls::core::Reactor& reactor,
           std::println("[DEBUG] Resolved {} to {}", host, addresses[0].ip);
         }
 
-        conn = std::make_unique<holytls::core::Connection>(&reactor, &tls_factory,
-                                                        host, 443);
+        conn = std::make_unique<holytls::core::Connection>(
+            &reactor, &tls_factory, host, 443);
 
         if (!conn->Connect(addresses[0].ip, addresses[0].is_ipv6)) {
           error = "Connect failed";
@@ -72,7 +72,8 @@ int MakeRequest(holytls::core::Reactor& reactor,
 
         conn->SendRequest(
             "GET", "/", {},
-            [&status, &reactor, verbose, &host](const holytls::core::RawResponse& response) {
+            [&status, &reactor, verbose,
+             &host](const holytls::core::RawResponse& response) {
               status = response.status_code;
               if (verbose) {
                 std::println("[DEBUG] Got response from {}: {} ({} bytes)",

@@ -49,8 +49,9 @@ struct Result<void> {
   static Result Err(std::string msg) { return {false, std::move(msg)}; }
 };
 
-// String8 - RAD-style non-owning string (ptr + size, no null terminator required)
-// Inspired by raddebugger. Zero allocations, explicit size, safe operations.
+// String8 - RAD-style non-owning string (ptr + size, no null terminator
+// required) Inspired by raddebugger. Zero allocations, explicit size, safe
+// operations.
 struct String8 {
   const char* str;
   size_t size;
@@ -91,7 +92,8 @@ struct String8 {
 
   // Comparison
   bool operator==(String8 other) const {
-    return size == other.size && (str == other.str || std::memcmp(str, other.str, size) == 0);
+    return size == other.size &&
+           (str == other.str || std::memcmp(str, other.str, size) == 0);
   }
 
   bool operator!=(String8 other) const { return !(*this == other); }

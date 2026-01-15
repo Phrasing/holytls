@@ -19,19 +19,19 @@ namespace proxy {
 
 // State of CONNECT tunnel handshake
 enum class TunnelState {
-  kIdle,           // Not started
-  kSendingRequest, // Sending CONNECT request
-  kReadingResponse,// Reading proxy response
-  kConnected,      // Tunnel established
-  kError,          // Error occurred
+  kIdle,             // Not started
+  kSendingRequest,   // Sending CONNECT request
+  kReadingResponse,  // Reading proxy response
+  kConnected,        // Tunnel established
+  kError,            // Error occurred
 };
 
 // Result of tunnel operations
 enum class TunnelResult {
-  kOk,        // Operation completed successfully
-  kWantWrite, // Need to write more data
-  kWantRead,  // Need to read more data
-  kError,     // Error occurred
+  kOk,         // Operation completed successfully
+  kWantWrite,  // Need to write more data
+  kWantRead,   // Need to read more data
+  kError,      // Error occurred
 };
 
 // HTTP CONNECT tunnel handler.

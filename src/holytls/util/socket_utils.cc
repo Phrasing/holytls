@@ -109,7 +109,8 @@ int ConnectNonBlocking(socket_t sock, std::string_view ip, uint16_t port,
   }
 
   int error = HOLYTLS_SOCKET_ERROR_CODE;
-  if (error == HOLYTLS_IN_PROGRESS_ERROR || error == HOLYTLS_WOULD_BLOCK_ERROR) {
+  if (error == HOLYTLS_IN_PROGRESS_ERROR ||
+      error == HOLYTLS_WOULD_BLOCK_ERROR) {
     return 1;  // Connection in progress
   }
 
@@ -134,7 +135,8 @@ bool IsConnected(socket_t sock) {
 
 ssize_t SendNonBlocking(socket_t sock, const void* data, size_t len) {
 #ifdef _WIN32
-  int ret = send(sock, static_cast<const char*>(data), static_cast<int>(len), 0);
+  int ret =
+      send(sock, static_cast<const char*>(data), static_cast<int>(len), 0);
   if (ret == SOCKET_ERROR) {
     int error = WSAGetLastError();
     if (error == WSAEWOULDBLOCK) {

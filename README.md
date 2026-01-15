@@ -4,7 +4,7 @@ High-performance HTTP/2 client with Chrome TLS fingerprint impersonation.
 
 ## Features
 
-- **Chrome TLS Fingerprinting** - Mimics Chrome 131-143 JA3/JA4 fingerprints using patched BoringSSL
+- **Chrome TLS Fingerprinting** - Mimics Chrome 143 JA3/JA4 fingerprints using patched BoringSSL
 - **HTTP/2** - Full HTTP/2 support via nghttp2 with Chrome-accurate header ordering
 - **Async I/O** - libuv event loop with multi-threaded reactor architecture
 - **Connection Pooling** - Automatic connection reuse with consistent hashing

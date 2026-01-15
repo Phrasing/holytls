@@ -121,7 +121,8 @@ void Connection::SendRequest(
     } else {
       // Auto mode: use Chrome header profile
       auto chrome_version = tls_factory_->chrome_version();
-      const auto& header_profile = http2::GetChromeHeaderProfile(chrome_version);
+      const auto& header_profile =
+          http2::GetChromeHeaderProfile(chrome_version);
 
       // Determine request type and fetch metadata
       http2::RequestType request_type = http2::RequestType::kNavigation;
@@ -245,7 +246,8 @@ void Connection::SendRequest(
     if (h2_) {
       stream_id = h2_->SubmitRequest(h2_headers, stream_callbacks);
     } else if (h1_) {
-      stream_id = h1_->SubmitRequest(h2_headers, stream_callbacks, header_order);
+      stream_id =
+          h1_->SubmitRequest(h2_headers, stream_callbacks, header_order);
     }
     if (stream_id < 0) {
       if (on_error) {
@@ -266,7 +268,7 @@ void Connection::SendRequest(
     // Queue request for when connection is ready
     // Copy header_order span to vector for storage
     std::vector<std::string_view> order_copy(header_order.begin(),
-                                              header_order.end());
+                                             header_order.end());
     pending_requests_.push_back(
         {method, path, headers, std::move(order_copy), on_response, on_error});
   }
@@ -387,7 +389,8 @@ void Connection::HandleConnecting() {
     HandleProxyTunnel();
   } else {
     // No proxy - start TLS handshake directly
-    tls_ = std::make_unique<tls::TlsConnection>(tls_factory_, fd_, host_, port_);
+    tls_ =
+        std::make_unique<tls::TlsConnection>(tls_factory_, fd_, host_, port_);
     state_ = ConnectionState::kTlsHandshake;
 
     // Update reactor to watch for read and write
@@ -425,7 +428,8 @@ void Connection::HandleProxyTunnel() {
     case proxy::TunnelResult::kOk:
       // Tunnel established - proceed to TLS handshake
       proxy_.reset();  // No longer needed
-      tls_ = std::make_unique<tls::TlsConnection>(tls_factory_, fd_, host_, port_);
+      tls_ =
+          std::make_unique<tls::TlsConnection>(tls_factory_, fd_, host_, port_);
       state_ = ConnectionState::kTlsHandshake;
       reactor_->Modify(this, EventType::kReadWrite);
       HandleTlsHandshake();
@@ -605,8 +609,10 @@ void Connection::FlushSendBuffer() {
 
   // Helper to mark data as sent
   auto data_sent = [this](size_t len) {
-    if (h2_) h2_->DataSent(len);
-    else if (h1_) h1_->DataSent(len);
+    if (h2_)
+      h2_->DataSent(len);
+    else if (h1_)
+      h1_->DataSent(len);
   };
 
   // Limit write iterations to prevent blocking on large sends

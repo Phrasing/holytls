@@ -12,9 +12,9 @@ namespace pool {
 // QuicPooledConnection methods
 
 int64_t QuicPooledConnection::SubmitRequest(const http2::H2Headers& headers,
-                                             http2::H2StreamCallbacks callbacks,
-                                             const uint8_t* body,
-                                             size_t body_len) {
+                                            http2::H2StreamCallbacks callbacks,
+                                            const uint8_t* body,
+                                            size_t body_len) {
   if (!h3 || !h3->CanSubmitRequest()) {
     return -1;
   }
@@ -32,7 +32,8 @@ void QuicPooledConnection::FlushPendingData() {
   }
 
   // Keep flushing until no more pending data
-  // H3/QPACK may generate data on multiple streams that need to be sent in order
+  // H3/QPACK may generate data on multiple streams that need to be sent in
+  // order
   constexpr int kMaxFlushIterations = 100;
   for (int iter = 0; iter < kMaxFlushIterations; ++iter) {
     std::vector<int64_t> pending_streams;
@@ -65,11 +66,7 @@ QuicHostPool::QuicHostPool(const std::string& h, uint16_t p,
                            const QuicHostPoolConfig& config,
                            core::Reactor* reactor,
                            quic::QuicTlsContext* tls_ctx)
-    : host(h),
-      port(p),
-      config_(config),
-      reactor_(reactor),
-      tls_ctx_(tls_ctx) {}
+    : host(h), port(p), config_(config), reactor_(reactor), tls_ctx_(tls_ctx) {}
 
 QuicHostPool::~QuicHostPool() {
   // Close all connections
@@ -117,7 +114,8 @@ bool QuicHostPool::CreateConnection(const std::string& resolved_ip, bool ipv6) {
       config_.h3_config.initial_max_stream_data_bidi_local;
   profile.initial_max_stream_data_bidi_remote =
       config_.h3_config.initial_max_stream_data_bidi_remote;
-  profile.initial_max_stream_data_uni = config_.h3_config.initial_max_stream_data_uni;
+  profile.initial_max_stream_data_uni =
+      config_.h3_config.initial_max_stream_data_uni;
   profile.initial_max_streams_bidi = config_.h3_config.initial_max_streams_bidi;
   profile.initial_max_streams_uni = config_.h3_config.initial_max_streams_uni;
   profile.ack_delay_exponent = config_.h3_config.ack_delay_exponent;
@@ -134,8 +132,8 @@ bool QuicHostPool::CreateConnection(const std::string& resolved_ip, bool ipv6) {
   pooled->max_streams = config_.max_streams_per_connection;
 
   // Create QUIC connection
-  pooled->quic = std::make_unique<quic::QuicConnection>(
-      reactor_, tls_ctx_, host, port, profile);
+  pooled->quic = std::make_unique<quic::QuicConnection>(reactor_, tls_ctx_,
+                                                        host, port, profile);
 
   // Set up connection callbacks
   QuicPooledConnection* conn_ptr = pooled.get();
@@ -208,23 +206,27 @@ void QuicHostPool::CloseAllConnections(std::function<void()> on_complete) {
 
   // Track pending connection closes with a shared counter
   auto pending = std::make_shared<std::atomic<size_t>>(connections_.size());
-  auto completion = std::make_shared<std::function<void()>>(std::move(on_complete));
+  auto completion =
+      std::make_shared<std::function<void()>>(std::move(on_complete));
 
-  // Move connections to a shared vector to keep them alive until close completes
-  auto alive_connections = std::make_shared<QuicPooledConnectionList>(
-      std::move(connections_));
+  // Move connections to a shared vector to keep them alive until close
+  // completes
+  auto alive_connections =
+      std::make_shared<QuicPooledConnectionList>(std::move(connections_));
 
   for (auto& conn : *alive_connections) {
     if (conn->quic) {
       // Capture alive_connections to extend lifetime until all closes complete
-      conn->quic->SetCloseCompleteCallback([pending, completion, alive_connections]() {
-        if (pending->fetch_sub(1, std::memory_order_acq_rel) == 1) {
-          // All connections closed, release the shared vector and call completion
-          if (*completion) {
-            (*completion)();
-          }
-        }
-      });
+      conn->quic->SetCloseCompleteCallback(
+          [pending, completion, alive_connections]() {
+            if (pending->fetch_sub(1, std::memory_order_acq_rel) == 1) {
+              // All connections closed, release the shared vector and call
+              // completion
+              if (*completion) {
+                (*completion)();
+              }
+            }
+          });
       conn->quic->Close();
     } else {
       // No QUIC connection, just decrement counter
@@ -259,10 +261,11 @@ size_t QuicHostPool::IdleConnections() const {
 }
 
 void QuicHostPool::RemoveConnection(QuicPooledConnection* conn) {
-  auto it = std::find_if(connections_.begin(), connections_.end(),
-                         [conn](const std::unique_ptr<QuicPooledConnection>& p) {
-                           return p.get() == conn;
-                         });
+  auto it =
+      std::find_if(connections_.begin(), connections_.end(),
+                   [conn](const std::unique_ptr<QuicPooledConnection>& p) {
+                     return p.get() == conn;
+                   });
   if (it != connections_.end()) {
     if ((*it)->quic) {
       (*it)->quic->Close();

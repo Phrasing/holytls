@@ -55,8 +55,7 @@ struct TaskPromise : TaskPromiseBase<T> {
     return FinalAwaiter{};
   }
 
-  void return_value(T value) noexcept(
-      std::is_nothrow_move_constructible_v<T>) {
+  void return_value(T value) noexcept(std::is_nothrow_move_constructible_v<T>) {
     value_.emplace(std::move(value));
   }
 
@@ -167,9 +166,7 @@ class Task {
 
       bool await_ready() noexcept { return false; }
 
-      void await_suspend(std::coroutine_handle<> h) noexcept {
-        handle_ = h;
-      }
+      void await_suspend(std::coroutine_handle<> h) noexcept { handle_ = h; }
 
       void await_resume() noexcept {}
     };
@@ -181,9 +178,8 @@ class Task {
 
       struct promise_type {
         Runner get_return_object() noexcept {
-          return Runner{
-              *static_cast<Task*>(nullptr),
-              *static_cast<bool*>(nullptr)};
+          return Runner{*static_cast<Task*>(nullptr),
+                        *static_cast<bool*>(nullptr)};
         }
         auto initial_suspend() noexcept { return std::suspend_never{}; }
         auto final_suspend() noexcept { return std::suspend_never{}; }

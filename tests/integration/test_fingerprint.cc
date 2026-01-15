@@ -13,51 +13,11 @@
 #include "holytls/http2/chrome_h2_profile.h"
 #include "holytls/tls/chrome_profile.h"
 
-void TestTlsProfile() {
-  std::print("Testing TLS profile configuration... ");
-
-  const auto& profile =
-      holytls::tls::GetChromeTlsProfile(holytls::ChromeVersion::kChrome131);
-
-  // Verify critical settings
-  assert(profile.grease_enabled);
-  assert(profile.permute_extensions);
-  assert(profile.cipher_suites.size() >= 10);
-  assert(profile.supported_groups.size() >= 3);
-  assert(!profile.user_agent.empty());
-
-  std::println("PASSED");
-}
-
-void TestH2Profile() {
-  std::print("Testing HTTP/2 profile configuration... ");
-
-  const auto& profile =
-      holytls::http2::GetChromeH2Profile(holytls::ChromeVersion::kChrome131);
-
-  // Verify Chrome SETTINGS values
-  assert(profile.settings.header_table_size == 65536);
-  assert(profile.settings.enable_push == 0);
-  assert(profile.settings.max_concurrent_streams == 1000);
-  assert(profile.settings.initial_window_size == 6291456);
-  assert(profile.settings.max_frame_size == 16384);
-  assert(profile.settings.max_header_list_size == 262144);
-
-  // Verify window update
-  assert(profile.connection_window_update == 15663105);
-
-  // Verify pseudo-header order
-  assert(profile.pseudo_header_order ==
-         holytls::http2::ChromeH2Profile::PseudoHeaderOrder::kMASP);
-
-  std::println("PASSED");
-}
-
 void TestCipherSuiteString() {
   std::print("Testing cipher suite string generation... ");
 
   std::string ciphers =
-      holytls::tls::GetCipherSuiteString(holytls::ChromeVersion::kChrome131);
+      holytls::tls::GetCipherSuiteString(holytls::ChromeVersion::kChrome143);
 
   // Should contain TLS 1.3 ciphers
   assert(ciphers.find("TLS_AES_128_GCM_SHA256") != std::string::npos);
@@ -67,19 +27,6 @@ void TestCipherSuiteString() {
   // Should contain ECDHE ciphers
   assert(ciphers.find("ECDHE-ECDSA-AES128-GCM-SHA256") != std::string::npos);
   assert(ciphers.find("ECDHE-RSA-CHACHA20-POLY1305") != std::string::npos);
-
-  std::println("PASSED");
-}
-
-void TestClientConfig() {
-  std::print("Testing client configuration... ");
-
-  auto config = holytls::ClientConfig::Chrome131();
-
-  assert(config.tls.chrome_version == holytls::ChromeVersion::kChrome131);
-  assert(config.http2.chrome_version == holytls::ChromeVersion::kChrome131);
-  assert(config.tls.permute_extensions);
-  assert(config.pool.max_connections_per_host == 6);
 
   std::println("PASSED");
 }
@@ -114,7 +61,8 @@ void TestChrome143Profile() {
 
   // Test that latest points to Chrome 143
   auto latest_config = holytls::ClientConfig::ChromeLatest();
-  assert(latest_config.tls.chrome_version == holytls::ChromeVersion::kChrome143);
+  assert(latest_config.tls.chrome_version ==
+         holytls::ChromeVersion::kChrome143);
 
   std::println("PASSED");
 }
@@ -122,10 +70,7 @@ void TestChrome143Profile() {
 int main() {
   std::println("=== Fingerprint Integration Tests ===\n");
 
-  TestTlsProfile();
-  TestH2Profile();
   TestCipherSuiteString();
-  TestClientConfig();
   TestChrome143Profile();
 
   std::println("\nAll fingerprint tests passed!");

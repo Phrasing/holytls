@@ -322,8 +322,9 @@ void H1Session::ParseBody() {
     }
 
     body_received_ += to_consume;
-    recv_buffer_.erase(recv_buffer_.begin(),
-                       recv_buffer_.begin() + static_cast<ptrdiff_t>(to_consume));
+    recv_buffer_.erase(
+        recv_buffer_.begin(),
+        recv_buffer_.begin() + static_cast<ptrdiff_t>(to_consume));
 
     if (body_received_ >= content_length_) {
       CompleteRequest();

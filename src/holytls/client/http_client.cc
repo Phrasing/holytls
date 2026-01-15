@@ -33,33 +33,6 @@
 namespace holytls {
 
 // ClientConfig factory methods
-ClientConfig ClientConfig::Chrome120() {
-  ClientConfig config;
-  config.tls.chrome_version = ChromeVersion::kChrome120;
-  config.http2.chrome_version = ChromeVersion::kChrome120;
-  return config;
-}
-
-ClientConfig ClientConfig::Chrome125() {
-  ClientConfig config;
-  config.tls.chrome_version = ChromeVersion::kChrome125;
-  config.http2.chrome_version = ChromeVersion::kChrome125;
-  return config;
-}
-
-ClientConfig ClientConfig::Chrome130() {
-  ClientConfig config;
-  config.tls.chrome_version = ChromeVersion::kChrome130;
-  config.http2.chrome_version = ChromeVersion::kChrome130;
-  return config;
-}
-
-ClientConfig ClientConfig::Chrome131() {
-  ClientConfig config;
-  config.tls.chrome_version = ChromeVersion::kChrome131;
-  config.http2.chrome_version = ChromeVersion::kChrome131;
-  return config;
-}
 
 ClientConfig ClientConfig::Chrome143() {
   ClientConfig config;
@@ -174,8 +147,8 @@ class HttpClient::Impl {
       : config_(config), reactor_manager_(MakeReactorConfig(config)) {
     // Initialize TLS factory (two-phase init)
     if (!tls_factory_.Initialize(MakeTlsConfig(config))) {
-      // TLS initialization failed - error available via tls_factory_.last_error()
-      // In practice, this rarely fails
+      // TLS initialization failed - error available via
+      // tls_factory_.last_error() In practice, this rarely fails
     }
 
     // Create pool config from client config
@@ -212,7 +185,8 @@ class HttpClient::Impl {
     util::ParsedUrl parsed;
     if (!util::ParseUrl(request.url, &parsed)) {
       if (callback) {
-        callback(Response{}, Error{ErrorCode::kInvalidUrl, "Failed to parse URL"});
+        callback(Response{},
+                 Error{ErrorCode::kInvalidUrl, "Failed to parse URL"});
       }
       return;
     }
@@ -220,7 +194,8 @@ class HttpClient::Impl {
     // Only HTTPS is supported
     if (!parsed.IsHttps()) {
       if (callback) {
-        callback(Response{}, Error{ErrorCode::kInvalidUrl, "Only HTTPS is supported"});
+        callback(Response{},
+                 Error{ErrorCode::kInvalidUrl, "Only HTTPS is supported"});
       }
       return;
     }
@@ -228,7 +203,8 @@ class HttpClient::Impl {
     auto* ctx = reactor_manager_.GetReactorForHost(parsed.host, parsed.port);
     if (!ctx) {
       if (callback) {
-        callback(Response{}, Error{ErrorCode::kInternal, "No reactor available"});
+        callback(Response{},
+                 Error{ErrorCode::kInternal, "No reactor available"});
       }
       return;
     }
@@ -309,9 +285,9 @@ class HttpClient::Impl {
                   const std::string& error) mutable {
           if (!error.empty() || addresses.empty()) {
             if (callback) {
-              callback(
-                  Response{},
-                  Error{ErrorCode::kDns, error.empty() ? "No addresses found" : error});
+              callback(Response{},
+                       Error{ErrorCode::kDns,
+                             error.empty() ? "No addresses found" : error});
             }
             requests_failed_.fetch_add(1, std::memory_order_relaxed);
             return;
@@ -376,8 +352,8 @@ class HttpClient::Impl {
                 pool->GetOrCreateHostPool(parsed.host, parsed.port);
             if (!host_pool) {
               if (callback) {
-                callback(Response{},
-                         Error{ErrorCode::kConnection, "Failed to create host pool"});
+                callback(Response{}, Error{ErrorCode::kConnection,
+                                           "Failed to create host pool"});
               }
               requests_failed_.fetch_add(1, std::memory_order_relaxed);
               return;
@@ -385,8 +361,8 @@ class HttpClient::Impl {
 
             if (!host_pool->CreateConnection(addr.ip, addr.is_ipv6)) {
               if (callback) {
-                callback(Response{},
-                         Error{ErrorCode::kConnection, "Failed to create connection"});
+                callback(Response{}, Error{ErrorCode::kConnection,
+                                           "Failed to create connection"});
               }
               requests_failed_.fetch_add(1, std::memory_order_relaxed);
               return;
@@ -423,14 +399,14 @@ class HttpClient::Impl {
                     const std::vector<util::ResolvedAddress>& addresses,
                     Request request, ResponseCallback callback, bool use_quic,
                     int retry_count = 0) {
-    constexpr int kMaxRetries = 50;          // Max retries (50 * 100ms = 5s total)
-    constexpr int kRetryDelayMs = 100;       // Delay between retries
+    constexpr int kMaxRetries = 50;     // Max retries (50 * 100ms = 5s total)
+    constexpr int kRetryDelayMs = 100;  // Delay between retries
 
     // Schedule a delayed retry using a timer
     // Note: Capture kMaxRetries for use in lambda
     auto retry_fn = [this, ctx, parsed, addresses, request = std::move(request),
-                     callback = std::move(callback), use_quic,
-                     retry_count, kMaxRetries]() mutable {
+                     callback = std::move(callback), use_quic, retry_count,
+                     kMaxRetries]() mutable {
       auto* pool = ctx->connection_pool.get();
 
 #if HOLYTLS_QUIC_AVAILABLE
@@ -445,9 +421,9 @@ class HttpClient::Impl {
         // Check if we should fall back to TCP:
         // 1. QUIC connection is in error/closed state, or
         // 2. We've exceeded the QUIC retry limit (10 retries = 1 second)
-        bool quic_failed = (quic_conn && quic_conn->quic &&
-                            quic_conn->quic->IsClosed()) ||
-                           (retry_count >= 10);
+        bool quic_failed =
+            (quic_conn && quic_conn->quic && quic_conn->quic->IsClosed()) ||
+            (retry_count >= 10);
 
         if (quic_failed && config_.protocol != ProtocolPreference::kHttp3Only) {
           // Fall back to TCP - mark H3 failure and cleanup QUIC resources
@@ -491,8 +467,8 @@ class HttpClient::Impl {
       } else {
         // Max retries exceeded
         if (callback) {
-          callback(Response{},
-                   Error{ErrorCode::kTimeout, "Connection timeout after retries"});
+          callback(Response{}, Error{ErrorCode::kTimeout,
+                                     "Connection timeout after retries"});
         }
         requests_failed_.fetch_add(1, std::memory_order_relaxed);
       }
@@ -510,7 +486,9 @@ class HttpClient::Impl {
             (*fn)();
             delete fn;
             uv_close(reinterpret_cast<uv_handle_t*>(handle),
-                     [](uv_handle_t* h) { delete reinterpret_cast<uv_timer_t*>(h); });
+                     [](uv_handle_t* h) {
+                       delete reinterpret_cast<uv_timer_t*>(h);
+                     });
           },
           kRetryDelayMs, 0);
     } else {
@@ -565,7 +543,8 @@ class HttpClient::Impl {
             for (size_t i = 0; i < core_resp.headers.size(); ++i) {
               std::string_view name = core_resp.headers.name(i);
               if (name == "set-cookie") {
-                cookie_jar_->ProcessSetCookie(request_url, core_resp.headers.value(i));
+                cookie_jar_->ProcessSetCookie(request_url,
+                                              core_resp.headers.value(i));
               }
             }
           }
@@ -576,7 +555,7 @@ class HttpClient::Impl {
               std::string_view name = core_resp.headers.name(i);
               if (name == "alt-svc") {
                 alt_svc_cache_->ProcessAltSvc(origin_host, origin_port,
-                                               core_resp.headers.value(i));
+                                              core_resp.headers.value(i));
               }
             }
           }
@@ -649,89 +628,87 @@ class HttpClient::Impl {
     // Set up stream callbacks
     http2::H2StreamCallbacks stream_callbacks;
 
-    stream_callbacks.on_headers = [this, response_builder, request_url,
-                                   origin_host,
-                                   origin_port](int /*stream_id*/,
-                                                const http2::PackedHeaders& packed) {
-      // Get status code from PackedHeaders (set via SetStatus in H3Session)
-      response_builder->status_code = packed.status_code();
+    stream_callbacks.on_headers =
+        [this, response_builder, request_url, origin_host, origin_port](
+            int /*stream_id*/, const http2::PackedHeaders& packed) {
+          // Get status code from PackedHeaders (set via SetStatus in H3Session)
+          response_builder->status_code = packed.status_code();
 
-      // Extract regular headers
-      for (size_t i = 0; i < packed.size(); ++i) {
-        std::string_view name = packed.name(i);
-        std::string_view value = packed.value(i);
-        if (!name.empty() && name[0] != ':') {
-          // Regular header (skip pseudo-headers)
-          response_builder->headers.push_back(
-              {std::string(name), std::string(value)});
+          // Extract regular headers
+          for (size_t i = 0; i < packed.size(); ++i) {
+            std::string_view name = packed.name(i);
+            std::string_view value = packed.value(i);
+            if (!name.empty() && name[0] != ':') {
+              // Regular header (skip pseudo-headers)
+              response_builder->headers.push_back(
+                  {std::string(name), std::string(value)});
 
-          // Process Set-Cookie headers if cookie jar is available
-          if (cookie_jar_ && name == "set-cookie") {
-            cookie_jar_->ProcessSetCookie(request_url, value);
+              // Process Set-Cookie headers if cookie jar is available
+              if (cookie_jar_ && name == "set-cookie") {
+                cookie_jar_->ProcessSetCookie(request_url, value);
+              }
+
+              // Process Alt-Svc headers (even over H3, server may advertise)
+              if (alt_svc_cache_ && alt_svc_enabled_ && name == "alt-svc") {
+                alt_svc_cache_->ProcessAltSvc(origin_host, origin_port, value);
+              }
+            }
           }
-
-          // Process Alt-Svc headers (even over H3, server may advertise)
-          if (alt_svc_cache_ && alt_svc_enabled_ && name == "alt-svc") {
-            alt_svc_cache_->ProcessAltSvc(origin_host, origin_port, value);
-          }
-        }
-      }
-    };
+        };
 
     stream_callbacks.on_data = [body_buffer](int /*stream_id*/,
                                              const uint8_t* data, size_t len) {
       body_buffer->insert(body_buffer->end(), data, data + len);
     };
 
-    stream_callbacks.on_close = [this, ctx, quic_conn, shared_cb,
-                                 response_builder, body_buffer, origin_host,
-                                 origin_port](int /*stream_id*/,
-                                              uint32_t error_code) {
-      if (error_code == 0) {
-        // Success - clear any H3 failure flag
-        if (alt_svc_cache_) {
-          alt_svc_cache_->ClearHttp3Failure(origin_host, origin_port);
-        }
+    stream_callbacks.on_close =
+        [this, ctx, quic_conn, shared_cb, response_builder, body_buffer,
+         origin_host, origin_port](int /*stream_id*/, uint32_t error_code) {
+          if (error_code == 0) {
+            // Success - clear any H3 failure flag
+            if (alt_svc_cache_) {
+              alt_svc_cache_->ClearHttp3Failure(origin_host, origin_port);
+            }
 
-        response_builder->body = std::move(*body_buffer);
-        ctx->connection_pool->ReleaseQuicConnection(quic_conn);
-        requests_completed_.fetch_add(1, std::memory_order_relaxed);
+            response_builder->body = std::move(*body_buffer);
+            ctx->connection_pool->ReleaseQuicConnection(quic_conn);
+            requests_completed_.fetch_add(1, std::memory_order_relaxed);
 
-        if (*shared_cb) {
-          (*shared_cb)(std::move(*response_builder), Error{});
-        }
-      } else {
-        // Error - mark H3 as failed for this origin
-        if (alt_svc_cache_) {
-          alt_svc_cache_->MarkHttp3Failed(origin_host, origin_port);
-        }
+            if (*shared_cb) {
+              (*shared_cb)(std::move(*response_builder), Error{});
+            }
+          } else {
+            // Error - mark H3 as failed for this origin
+            if (alt_svc_cache_) {
+              alt_svc_cache_->MarkHttp3Failed(origin_host, origin_port);
+            }
 
-        ctx->connection_pool->RemoveQuicConnection(quic_conn);
-        requests_failed_.fetch_add(1, std::memory_order_relaxed);
+            ctx->connection_pool->RemoveQuicConnection(quic_conn);
+            requests_failed_.fetch_add(1, std::memory_order_relaxed);
 
-        if (*shared_cb) {
-          (*shared_cb)(Response{},
-                       Error{ErrorCode::kConnection,
-                             "HTTP/3 stream error: " + std::to_string(error_code)});
-        }
-      }
-    };
+            if (*shared_cb) {
+              (*shared_cb)(Response{}, Error{ErrorCode::kConnection,
+                                             "HTTP/3 stream error: " +
+                                                 std::to_string(error_code)});
+            }
+          }
+        };
 
     // Submit request using H3Session
     const uint8_t* body_data =
         request.body.empty() ? nullptr : request.body.data();
     size_t body_len = request.body.size();
 
-    int64_t stream_id =
-        quic_conn->SubmitRequest(h2_headers, stream_callbacks, body_data, body_len);
+    int64_t stream_id = quic_conn->SubmitRequest(h2_headers, stream_callbacks,
+                                                 body_data, body_len);
 
     if (stream_id < 0) {
       ctx->connection_pool->RemoveQuicConnection(quic_conn);
       requests_failed_.fetch_add(1, std::memory_order_relaxed);
 
       if (*shared_cb) {
-        (*shared_cb)(Response{},
-                     Error{ErrorCode::kConnection, "Failed to submit HTTP/3 request"});
+        (*shared_cb)(Response{}, Error{ErrorCode::kConnection,
+                                       "Failed to submit HTTP/3 request"});
       }
       return;
     }

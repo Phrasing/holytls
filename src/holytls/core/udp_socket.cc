@@ -170,8 +170,8 @@ bool UdpSocket::GetLocalAddress(sockaddr_storage* addr, socklen_t* len) const {
   }
 
   int namelen = sizeof(sockaddr_storage);
-  int rv =
-      uv_udp_getsockname(&udp_handle_, reinterpret_cast<sockaddr*>(addr), &namelen);
+  int rv = uv_udp_getsockname(&udp_handle_, reinterpret_cast<sockaddr*>(addr),
+                              &namelen);
   if (rv != 0) {
     return false;
   }
@@ -225,7 +225,7 @@ void UdpSocket::OnReceive(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
     socklen_t addr_len = 0;
     if (addr) {
       addr_len = (addr->sa_family == AF_INET6) ? sizeof(sockaddr_in6)
-                                                : sizeof(sockaddr_in);
+                                               : sizeof(sockaddr_in);
     }
     socket->receive_callback_(reinterpret_cast<const uint8_t*>(buf->base),
                               static_cast<size_t>(nread), addr, addr_len);
@@ -237,11 +237,9 @@ void UdpSocket::OnSend(uv_udp_send_t* req, int status) {
   auto* socket = send_req->socket;
 
   // Remove from pending list
-  auto it =
-      std::find_if(socket->pending_sends_.begin(), socket->pending_sends_.end(),
-                   [req](const std::unique_ptr<SendRequest>& r) {
-                     return &r->req == req;
-                   });
+  auto it = std::find_if(
+      socket->pending_sends_.begin(), socket->pending_sends_.end(),
+      [req](const std::unique_ptr<SendRequest>& r) { return &r->req == req; });
   if (it != socket->pending_sends_.end()) {
     socket->pending_sends_.erase(it);
   }

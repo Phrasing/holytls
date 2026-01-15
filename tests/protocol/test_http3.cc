@@ -43,9 +43,7 @@ void TestHttp3CallbacksStructure() {
     assert(data != nullptr || len == 0);
   };
 
-  callbacks.on_complete = [&]() {
-    complete_called = true;
-  };
+  callbacks.on_complete = [&]() { complete_called = true; };
 
   callbacks.on_error = [&](uint64_t error_code, const std::string& reason) {
     error_called = true;

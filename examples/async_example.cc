@@ -23,14 +23,15 @@ using namespace holytls;
 // Main coroutine that makes sequential requests
 Task<void> RunAll(AsyncClient& client, std::atomic<bool>& done) {
   std::println("=== holytls Coroutine Example ===");
-  std::println("Chrome version: {}", static_cast<int>(client.GetChromeVersion()));
+  std::println("Chrome version: {}",
+               static_cast<int>(client.GetChromeVersion()));
 
   // TLS Fingerprint Check
   std::println("\n=== TLS Fingerprint Check ===");
   auto result1 = co_await client.Get("https://tls.peet.ws/api/all");
   if (result1) {
-    std::println("Fingerprint check: {} ({} bytes)", result1.value().status_code,
-                 result1.value().body.size());
+    std::println("Fingerprint check: {} ({} bytes)",
+                 result1.value().status_code, result1.value().body.size());
   } else {
     std::println("Fingerprint check failed: {}", result1.error().message);
   }
@@ -76,7 +77,8 @@ int main() {
     client.RunOnce();
     count++;
     if (count % 100 == 0) {
-      std::println("Event loop iteration {}, task.done()={}", count, task.done());
+      std::println("Event loop iteration {}, task.done()={}", count,
+                   task.done());
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }

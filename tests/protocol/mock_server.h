@@ -56,12 +56,14 @@ class MockHttp1Server {
   void Stop();
 
   // Configure response for next request
-  void SetResponse(int status, const std::string& body,
-                   const std::vector<std::pair<std::string, std::string>>& headers = {});
+  void SetResponse(
+      int status, const std::string& body,
+      const std::vector<std::pair<std::string, std::string>>& headers = {});
 
   // Configure chunked response
-  void SetChunkedResponse(int status, const std::vector<std::string>& chunks,
-                          const std::vector<std::pair<std::string, std::string>>& headers = {});
+  void SetChunkedResponse(
+      int status, const std::vector<std::string>& chunks,
+      const std::vector<std::pair<std::string, std::string>>& headers = {});
 
   // Get last received request (for verification)
   const ReceivedRequest& GetLastRequest() const { return last_request_; }
@@ -76,7 +78,8 @@ class MockHttp1Server {
   struct ClientConnection;
 
   static void OnNewConnection(uv_stream_t* server, int status);
-  static void OnAlloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
+  static void OnAlloc(uv_handle_t* handle, size_t suggested_size,
+                      uv_buf_t* buf);
   static void OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf);
   static void OnWrite(uv_write_t* req, int status);
   static void OnClose(uv_handle_t* handle);
@@ -112,8 +115,9 @@ class MockHttp2Server {
   void Stop();
 
   // Configure response
-  void SetResponse(int status, const std::string& body,
-                   const std::vector<std::pair<std::string, std::string>>& headers = {});
+  void SetResponse(
+      int status, const std::string& body,
+      const std::vector<std::pair<std::string, std::string>>& headers = {});
 
   // HTTP/2 specific
   size_t ActiveStreamCount() const { return active_streams_; }
@@ -150,8 +154,9 @@ class MockHttp3Server {
   void Stop();
 
   // Configure response
-  void SetResponse(int status, const std::string& body,
-                   const std::vector<std::pair<std::string, std::string>>& headers = {});
+  void SetResponse(
+      int status, const std::string& body,
+      const std::vector<std::pair<std::string, std::string>>& headers = {});
 
   const ReceivedRequest& GetLastRequest() const { return last_request_; }
   size_t RequestCount() const { return request_count_; }

@@ -21,20 +21,16 @@ class AltSvcCache;
 
 // Chrome version to impersonate
 enum class ChromeVersion {
-  kChrome120 = 120,
-  kChrome125 = 125,
-  kChrome130 = 130,
-  kChrome131 = 131,
   kChrome143 = 143,
   kLatest = kChrome143,
 };
 
 // Protocol preference for connection selection
 enum class ProtocolPreference {
-  kAuto,           // Prefer HTTP/3 if supported, fallback to HTTP/2, then HTTP/1.1
-  kHttp3Only,      // HTTP/3 (QUIC) only - fail if not available
-  kHttp2Preferred, // Prefer HTTP/2, fallback to HTTP/1.1 (no QUIC)
-  kHttp1Only,      // HTTP/1.1 only
+  kAuto,       // Prefer HTTP/3 if supported, fallback to HTTP/2, then HTTP/1.1
+  kHttp3Only,  // HTTP/3 (QUIC) only - fail if not available
+  kHttp2Preferred,  // Prefer HTTP/2, fallback to HTTP/1.1 (no QUIC)
+  kHttp1Only,       // HTTP/1.1 only
 };
 
 // TLS configuration for Chrome impersonation
@@ -89,16 +85,16 @@ struct Http3Config {
   ChromeVersion chrome_version = ChromeVersion::kLatest;
 
   // QUIC transport parameters (Chrome defaults)
-  uint64_t max_idle_timeout = 30000;                     // 30 seconds
-  uint64_t max_udp_payload_size = 1350;                  // Standard QUIC MTU
-  uint64_t initial_max_data = 15728640;                  // 15 MB
-  uint64_t initial_max_stream_data_bidi_local = 6291456; // 6 MB
+  uint64_t max_idle_timeout = 30000;                      // 30 seconds
+  uint64_t max_udp_payload_size = 1350;                   // Standard QUIC MTU
+  uint64_t initial_max_data = 15728640;                   // 15 MB
+  uint64_t initial_max_stream_data_bidi_local = 6291456;  // 6 MB
   uint64_t initial_max_stream_data_bidi_remote = 6291456;
   uint64_t initial_max_stream_data_uni = 6291456;
   uint64_t initial_max_streams_bidi = 100;
   uint64_t initial_max_streams_uni = 100;
   uint64_t ack_delay_exponent = 3;
-  uint64_t max_ack_delay = 25;                           // 25ms
+  uint64_t max_ack_delay = 25;  // 25ms
   bool disable_active_migration = false;
 
   // QPACK settings
@@ -149,9 +145,9 @@ struct DnsConfig {
 
 // Proxy configuration
 struct ProxyConfig {
-  std::string host;       // Proxy hostname or IP
-  uint16_t port = 0;      // Proxy port (0 = no proxy)
-  std::string username;   // Optional auth
+  std::string host;      // Proxy hostname or IP
+  uint16_t port = 0;     // Proxy port (0 = no proxy)
+  std::string username;  // Optional auth
   std::string password;
 
   bool IsEnabled() const { return port != 0 && !host.empty(); }
@@ -213,10 +209,7 @@ struct ClientConfig {
   bool auto_decompress = true;
 
   // Factory methods for common configurations
-  static ClientConfig Chrome120();
-  static ClientConfig Chrome125();
-  static ClientConfig Chrome130();
-  static ClientConfig Chrome131();
+  // Factory methods for common configurations
   static ClientConfig Chrome143();
   static ClientConfig ChromeLatest();
 };

@@ -19,7 +19,8 @@ using namespace holytls;
 Task<void> DemoAutoMode(AsyncClient& client) {
   std::println("=== Auto mode ===");
   auto result = co_await client.Get("https://httpbin.org/headers");
-  std::println("{}\n", result ? result.value().body_string() : result.error().message);
+  std::println("{}\n",
+               result ? result.value().body_string() : result.error().message);
 }
 
 // Append mode: Custom headers added after Chrome's standard headers
@@ -31,7 +32,8 @@ Task<void> DemoAppendMode(AsyncClient& client) {
   };
 
   auto result = co_await client.Get("https://httpbin.org/headers", custom);
-  std::println("{}\n", result ? result.value().body_string() : result.error().message);
+  std::println("{}\n",
+               result ? result.value().body_string() : result.error().message);
 }
 
 // Full control mode: User specifies exact header order
@@ -40,9 +42,8 @@ Task<void> DemoFullControlMode(AsyncClient& client) {
 
   // Define exact order (static, zero allocation)
   static constexpr std::string_view kHeaderOrder[] = {
-      "accept",          "accept-encoding", "accept-language",
-      "sec-ch-ua",       "sec-ch-ua-mobile", "sec-ch-ua-platform",
-      "user-agent",      "x-custom",
+      "accept",           "accept-encoding",    "accept-language", "sec-ch-ua",
+      "sec-ch-ua-mobile", "sec-ch-ua-platform", "user-agent",      "x-custom",
   };
 
   Request req;
@@ -61,7 +62,8 @@ Task<void> DemoFullControlMode(AsyncClient& client) {
   req.header_order = kHeaderOrder;
 
   auto result = co_await client.SendAsync(std::move(req));
-  std::println("{}\n", result ? result.value().body_string() : result.error().message);
+  std::println("{}\n",
+               result ? result.value().body_string() : result.error().message);
 }
 
 Task<void> RunAll(AsyncClient& client) {

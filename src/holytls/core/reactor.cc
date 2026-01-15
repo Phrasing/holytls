@@ -227,8 +227,8 @@ void Reactor::RunFor(int timeout_ms) {
   running_.store(true, std::memory_order_release);
 
   // Check handle state before starting timer
-  // uv_timer_start internally calls uv_timer_stop which dereferences handle->loop
-  // If the handle is not properly initialized, this can crash
+  // uv_timer_start internally calls uv_timer_stop which dereferences
+  // handle->loop If the handle is not properly initialized, this can crash
   if (run_timer_->loop == nullptr) {
     // Handle was corrupted - re-initialize it
     std::memset(run_timer_, 0, sizeof(uv_timer_t));
@@ -242,8 +242,8 @@ void Reactor::RunFor(int timeout_ms) {
   }
 
   // Start a one-shot timer
-  uv_timer_start(run_timer_, OnTimerCallback,
-                 static_cast<uint64_t>(timeout_ms), 0);
+  uv_timer_start(run_timer_, OnTimerCallback, static_cast<uint64_t>(timeout_ms),
+                 0);
 
   while (running_.load(std::memory_order_acquire)) {
     UpdateTime();

@@ -136,7 +136,8 @@ ParsedUrl ParseUrl(const std::string& url) {
 }
 
 void PrintUsage(const char* prog) {
-  std::println(stderr,
+  std::println(
+      stderr,
       "Usage: {} [options]\n"
       "\n"
       "Options:\n"
@@ -261,8 +262,10 @@ void PrintLiveStats(size_t elapsed_sec, const StressMetrics& metrics,
     }
   }
 
-  std::println("[T+{:>3}s] RPS: {:>7} | InFlight: {:>5} | Complete: {:>8} | Failed: {:>5} | P99: {}",
-               elapsed_sec, rps, in_flight, completed, failed, p99_label);
+  std::println(
+      "[T+{:>3}s] RPS: {:>7} | InFlight: {:>5} | Complete: {:>8} | Failed: "
+      "{:>5} | P99: {}",
+      elapsed_sec, rps, in_flight, completed, failed, p99_label);
 }
 
 double CalculatePercentile(std::vector<uint64_t>& samples, double percentile) {
@@ -366,10 +369,9 @@ class StressTest {
     std::println("Connections: {}", config_.num_connections);
     std::println("Duration:    {}s (+ {}s warmup)", config_.duration_sec,
                  config_.warmup_sec);
-    std::println("Target RPS:  {}",
-                 config_.target_rps == 0
-                     ? "unlimited"
-                     : std::to_string(config_.target_rps));
+    std::println("Target RPS:  {}", config_.target_rps == 0
+                                        ? "unlimited"
+                                        : std::to_string(config_.target_rps));
     if (config_.insecure) {
       std::println("TLS Verify:  DISABLED (insecure mode)");
     }
@@ -526,34 +528,34 @@ class StressTest {
 
     metrics_.requests_sent.fetch_add(1, std::memory_order_relaxed);
 
-    client_->SendAsync(std::move(req), [this, start_time](
-                                           holytls::Response response,
-                                           holytls::Error error) {
-      auto end_time = std::chrono::steady_clock::now();
-      uint64_t latency_us =
-          std::chrono::duration_cast<std::chrono::microseconds>(end_time -
-                                                                start_time)
-              .count();
+    client_->SendAsync(
+        std::move(req),
+        [this, start_time](holytls::Response response, holytls::Error error) {
+          auto end_time = std::chrono::steady_clock::now();
+          uint64_t latency_us =
+              std::chrono::duration_cast<std::chrono::microseconds>(end_time -
+                                                                    start_time)
+                  .count();
 
-      if (!error) {
-        metrics_.requests_completed.fetch_add(1, std::memory_order_relaxed);
-        metrics_.bytes_received.fetch_add(response.body.size(),
-                                          std::memory_order_relaxed);
-        if (!warmup_phase_) {
-          metrics_.RecordLatency(latency_us);
-        }
-        // Send another request to maintain concurrency (only on success)
-        if (running_) {
-          SendRequest();
-        }
-      } else {
-        metrics_.requests_failed.fetch_add(1, std::memory_order_relaxed);
-        if (config_.verbose) {
-          std::println(stderr, "Request failed: {}", error.message);
-        }
-        // Don't send new request on failure - let main loop handle pacing
-      }
-    });
+          if (!error) {
+            metrics_.requests_completed.fetch_add(1, std::memory_order_relaxed);
+            metrics_.bytes_received.fetch_add(response.body.size(),
+                                              std::memory_order_relaxed);
+            if (!warmup_phase_) {
+              metrics_.RecordLatency(latency_us);
+            }
+            // Send another request to maintain concurrency (only on success)
+            if (running_) {
+              SendRequest();
+            }
+          } else {
+            metrics_.requests_failed.fetch_add(1, std::memory_order_relaxed);
+            if (config_.verbose) {
+              std::println(stderr, "Request failed: {}", error.message);
+            }
+            // Don't send new request on failure - let main loop handle pacing
+          }
+        });
   }
 
   StressConfig config_;

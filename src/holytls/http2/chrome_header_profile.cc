@@ -30,108 +30,13 @@ ChromeHeaderProfile CreateChrome143Profile() {
   return profile;
 }
 
-// Chrome 131 profile
-ChromeHeaderProfile CreateChrome131Profile() {
-  ChromeHeaderProfile profile;
-  profile.version = ChromeVersion::kChrome131;
-  profile.user_agent =
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
-  profile.accept_navigation =
-      "text/html,application/xhtml+xml,application/xml;q=0.9,"
-      "image/avif,image/webp,image/apng,*/*;q=0.8,"
-      "application/signed-exchange;v=b3;q=0.7";
-  profile.accept_xhr = "*/*";
-  profile.accept_encoding = "gzip, deflate, br, zstd";
-  profile.accept_language = "en-US,en;q=0.9";
-  profile.sec_ch_ua_platform = "\"Windows\"";
-  profile.sec_ch_ua_mobile = false;
-  profile.full_version = "131.0.6778.139";
-  return profile;
-}
-
-// Chrome 130 profile
-ChromeHeaderProfile CreateChrome130Profile() {
-  ChromeHeaderProfile profile;
-  profile.version = ChromeVersion::kChrome130;
-  profile.user_agent =
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
-  profile.accept_navigation =
-      "text/html,application/xhtml+xml,application/xml;q=0.9,"
-      "image/avif,image/webp,image/apng,*/*;q=0.8,"
-      "application/signed-exchange;v=b3;q=0.7";
-  profile.accept_xhr = "*/*";
-  profile.accept_encoding = "gzip, deflate, br, zstd";
-  profile.accept_language = "en-US,en;q=0.9";
-  profile.sec_ch_ua_platform = "\"Windows\"";
-  profile.sec_ch_ua_mobile = false;
-  profile.full_version = "130.0.6723.116";
-  return profile;
-}
-
-// Chrome 125 profile
-ChromeHeaderProfile CreateChrome125Profile() {
-  ChromeHeaderProfile profile;
-  profile.version = ChromeVersion::kChrome125;
-  profile.user_agent =
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
-  profile.accept_navigation =
-      "text/html,application/xhtml+xml,application/xml;q=0.9,"
-      "image/avif,image/webp,image/apng,*/*;q=0.8,"
-      "application/signed-exchange;v=b3;q=0.7";
-  profile.accept_xhr = "*/*";
-  profile.accept_encoding = "gzip, deflate, br";  // No zstd before Chrome 123
-  profile.accept_language = "en-US,en;q=0.9";
-  profile.sec_ch_ua_platform = "\"Windows\"";
-  profile.sec_ch_ua_mobile = false;
-  profile.full_version = "125.0.6422.112";
-  return profile;
-}
-
-// Chrome 120 profile
-ChromeHeaderProfile CreateChrome120Profile() {
-  ChromeHeaderProfile profile;
-  profile.version = ChromeVersion::kChrome120;
-  profile.user_agent =
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-  profile.accept_navigation =
-      "text/html,application/xhtml+xml,application/xml;q=0.9,"
-      "image/avif,image/webp,image/apng,*/*;q=0.8,"
-      "application/signed-exchange;v=b3;q=0.7";
-  profile.accept_xhr = "*/*";
-  profile.accept_encoding = "gzip, deflate, br";  // No zstd before Chrome 123
-  profile.accept_language = "en-US,en;q=0.9";
-  profile.sec_ch_ua_platform = "\"Windows\"";
-  profile.sec_ch_ua_mobile = false;
-  profile.full_version = "120.0.6099.109";
-  return profile;
-}
-
-// Static profile instances
-const ChromeHeaderProfile kProfileChrome120 = CreateChrome120Profile();
-const ChromeHeaderProfile kProfileChrome125 = CreateChrome125Profile();
-const ChromeHeaderProfile kProfileChrome130 = CreateChrome130Profile();
-const ChromeHeaderProfile kProfileChrome131 = CreateChrome131Profile();
 const ChromeHeaderProfile kProfileChrome143 = CreateChrome143Profile();
 
 }  // namespace
 
 const ChromeHeaderProfile& GetChromeHeaderProfile(ChromeVersion version) {
-  switch (version) {
-    case ChromeVersion::kChrome120:
-      return kProfileChrome120;
-    case ChromeVersion::kChrome125:
-      return kProfileChrome125;
-    case ChromeVersion::kChrome130:
-      return kProfileChrome130;
-    case ChromeVersion::kChrome131:
-      return kProfileChrome131;
-    default:
-      return kProfileChrome143;
-  }
+  // We only support Chrome 143 now
+  return kProfileChrome143;
 }
 
 std::string_view FetchSiteToString(FetchSite site) {

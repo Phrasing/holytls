@@ -295,8 +295,8 @@ bool TlsContextFactory::ConfigureCertificateVerification() {
     if (!config_.ca_bundle_path.empty()) {
       if (SSL_CTX_load_verify_locations(
               ctx_.get(), config_.ca_bundle_path.c_str(), nullptr) != 1) {
-        last_error_ = "Failed to load CA certificates from: " +
-                      config_.ca_bundle_path;
+        last_error_ =
+            "Failed to load CA certificates from: " + config_.ca_bundle_path;
         return false;
       }
     } else {
@@ -326,8 +326,8 @@ bool TlsContextFactory::ConfigureClientCertificate() {
   // Load client certificate
   if (SSL_CTX_use_certificate_file(ctx_.get(), config_.client_cert_path.c_str(),
                                    SSL_FILETYPE_PEM) != 1) {
-    last_error_ = "Failed to load client certificate: " +
-                  config_.client_cert_path;
+    last_error_ =
+        "Failed to load client certificate: " + config_.client_cert_path;
     return false;
   }
 
@@ -335,8 +335,8 @@ bool TlsContextFactory::ConfigureClientCertificate() {
   if (!config_.client_key_path.empty()) {
     if (SSL_CTX_use_PrivateKey_file(ctx_.get(), config_.client_key_path.c_str(),
                                     SSL_FILETYPE_PEM) != 1) {
-      last_error_ = "Failed to load client private key: " +
-                    config_.client_key_path;
+      last_error_ =
+          "Failed to load client private key: " + config_.client_key_path;
       return false;
     }
   }

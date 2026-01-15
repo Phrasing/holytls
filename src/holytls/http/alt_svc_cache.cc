@@ -14,8 +14,7 @@ namespace http {
 AltSvcCache::AltSvcCache(const AltSvcCacheConfig& config) : config_(config) {}
 
 void AltSvcCache::ProcessAltSvc(std::string_view origin_host,
-                                 uint16_t origin_port,
-                                 std::string_view header) {
+                                uint16_t origin_port, std::string_view header) {
   std::string key = MakeOriginKey(origin_host, origin_port);
   uint64_t now = NowMs();
 
@@ -37,7 +36,8 @@ void AltSvcCache::ProcessAltSvc(std::string_view origin_host,
   std::lock_guard<std::mutex> lock(mutex_);
 
   // Enforce cache size limit (simple eviction: remove oldest)
-  if (cache_.size() >= config_.max_entries && cache_.find(key) == cache_.end()) {
+  if (cache_.size() >= config_.max_entries &&
+      cache_.find(key) == cache_.end()) {
     // Find and remove oldest entry
     std::string oldest_key;
     uint64_t oldest_time = UINT64_MAX;
@@ -58,7 +58,7 @@ void AltSvcCache::ProcessAltSvc(std::string_view origin_host,
 }
 
 std::optional<AltSvcEntry> AltSvcCache::GetHttp3Endpoint(std::string_view host,
-                                                          uint16_t port) const {
+                                                         uint16_t port) const {
   std::string key = MakeOriginKey(host, port);
   uint64_t now = NowMs();
 
@@ -137,10 +137,10 @@ size_t AltSvcCache::ClearExpired() {
   for (auto it = cache_.begin(); it != cache_.end();) {
     // Remove expired entries from this origin
     auto& entries = it->second.entries;
-    entries.erase(
-        std::remove_if(entries.begin(), entries.end(),
-                       [now](const AltSvcEntry& e) { return e.IsExpired(now); }),
-        entries.end());
+    entries.erase(std::remove_if(
+                      entries.begin(), entries.end(),
+                      [now](const AltSvcEntry& e) { return e.IsExpired(now); }),
+                  entries.end());
 
     // Remove origin if no entries left
     if (entries.empty()) {
@@ -201,10 +201,10 @@ std::string_view AltSvcCache::Trim(std::string_view s) {
 }
 
 bool AltSvcCache::ParseAltSvcHeader(std::string_view header,
-                                     std::vector<AltSvcEntry>* entries,
-                                     uint64_t now_ms,
-                                     uint64_t default_max_age_ms,
-                                     uint64_t max_max_age_ms) {
+                                    std::vector<AltSvcEntry>* entries,
+                                    uint64_t now_ms,
+                                    uint64_t default_max_age_ms,
+                                    uint64_t max_max_age_ms) {
   header = Trim(header);
   if (header.empty()) {
     return false;
@@ -245,9 +245,9 @@ bool AltSvcCache::ParseAltSvcHeader(std::string_view header,
 }
 
 bool AltSvcCache::ParseSingleEntry(std::string_view entry_str,
-                                    AltSvcEntry* entry, uint64_t now_ms,
-                                    uint64_t default_max_age_ms,
-                                    uint64_t max_max_age_ms) {
+                                   AltSvcEntry* entry, uint64_t now_ms,
+                                   uint64_t default_max_age_ms,
+                                   uint64_t max_max_age_ms) {
   entry_str = Trim(entry_str);
   if (entry_str.empty()) {
     return false;
@@ -295,8 +295,8 @@ bool AltSvcCache::ParseSingleEntry(std::string_view entry_str,
   // Parse port
   std::string_view port_str = authority.substr(colon_pos + 1);
   uint16_t port_val = 0;
-  auto [ptr, ec] =
-      std::from_chars(port_str.data(), port_str.data() + port_str.size(), port_val);
+  auto [ptr, ec] = std::from_chars(port_str.data(),
+                                   port_str.data() + port_str.size(), port_val);
   if (ec != std::errc{} || port_val == 0) {
     return false;
   }
@@ -315,10 +315,8 @@ bool AltSvcCache::ParseSingleEntry(std::string_view entry_str,
 
     // Find parameter name=value
     size_t param_end = entry_str.find(';');
-    std::string_view param =
-        Trim(entry_str.substr(0, param_end == std::string_view::npos
-                                     ? entry_str.size()
-                                     : param_end));
+    std::string_view param = Trim(entry_str.substr(
+        0, param_end == std::string_view::npos ? entry_str.size() : param_end));
 
     // Check for ma= parameter
     if (param.size() > 3 && param[0] == 'm' && param[1] == 'a' &&

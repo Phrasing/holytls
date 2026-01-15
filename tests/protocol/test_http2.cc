@@ -200,7 +200,8 @@ void TestHttp2Session() {
   std::print("Testing HTTP/2 session... ");
 
   http2::H2SessionCallbacks callbacks;
-  http2::H2Session session(http2::GetChromeH2Profile(ChromeVersion::kLatest), callbacks);
+  http2::H2Session session(http2::GetChromeH2Profile(ChromeVersion::kLatest),
+                           callbacks);
 
   // Initialize
   assert(session.Initialize());
@@ -260,7 +261,7 @@ void TestHttp2Session() {
     int32_t sid = session.SubmitRequest(headers, stream_callbacks);
     assert(sid > 0);
     assert(sid > stream_ids.back());  // Increasing
-    assert(sid % 2 == 1);  // Odd
+    assert(sid % 2 == 1);             // Odd
     stream_ids.push_back(sid);
   }
 

@@ -44,7 +44,8 @@ bool H3Session::Initialize() {
   settings.enable_connect_protocol = 0;  // Chrome disables by default
 
   // Create client connection
-  int rv = nghttp3_conn_client_new(&conn_, &callbacks, &settings, nullptr, this);
+  int rv =
+      nghttp3_conn_client_new(&conn_, &callbacks, &settings, nullptr, this);
   if (rv != 0) {
     return false;
   }
@@ -85,7 +86,7 @@ bool H3Session::CreateControlStreams() {
   }
 
   rv = nghttp3_conn_bind_qpack_streams(conn_, qpack_enc_stream_id_,
-                                        qpack_dec_stream_id_);
+                                       qpack_dec_stream_id_);
   if (rv != 0) {
     return false;
   }
@@ -144,7 +145,7 @@ int64_t H3Session::SubmitRequest(
   // Submit request
   nghttp3_data_reader* data_reader = nullptr;
   int rv = nghttp3_conn_submit_request(conn_, stream_id, nva.data(), nva.size(),
-                                        data_reader, nullptr);
+                                       data_reader, nullptr);
   if (rv != 0) {
     quic_->ResetStream(stream_id, NGHTTP3_H3_INTERNAL_ERROR);
     return -1;
@@ -164,8 +165,8 @@ int64_t H3Session::SubmitRequest(
 }
 
 int64_t H3Session::SubmitRequest(const http2::H2Headers& headers,
-                                  http2::H2StreamCallbacks stream_callbacks,
-                                  const uint8_t* body, size_t body_len) {
+                                 http2::H2StreamCallbacks stream_callbacks,
+                                 const uint8_t* body, size_t body_len) {
   // Convert H2Headers to vector<pair> format
   std::vector<std::pair<std::string, std::string>> header_pairs;
   header_pairs.reserve(headers.headers.size());
@@ -174,7 +175,8 @@ int64_t H3Session::SubmitRequest(const http2::H2Headers& headers,
   }
 
   // Convert H2StreamCallbacks to H3StreamCallbacks
-  // Note: H2 callbacks include stream_id, H3 callbacks don't (stream tracked internally)
+  // Note: H2 callbacks include stream_id, H3 callbacks don't (stream tracked
+  // internally)
   H3StreamCallbacks h3_callbacks;
 
   // Capture stream_id for forwarding to H2-style callbacks
@@ -189,8 +191,8 @@ int64_t H3Session::SubmitRequest(const http2::H2Headers& headers,
     }
   };
 
-  h3_callbacks.on_data = [stream_callbacks, stream_id_holder](const uint8_t* data,
-                                                               size_t len) {
+  h3_callbacks.on_data = [stream_callbacks, stream_id_holder](
+                             const uint8_t* data, size_t len) {
     if (stream_callbacks.on_data) {
       stream_callbacks.on_data(*stream_id_holder, data, len);
     }
@@ -203,15 +205,18 @@ int64_t H3Session::SubmitRequest(const http2::H2Headers& headers,
   };
 
   h3_callbacks.on_error = [stream_callbacks, stream_id_holder](
-                              uint64_t error_code, const std::string& /*reason*/) {
+                              uint64_t error_code,
+                              const std::string& /*reason*/) {
     if (stream_callbacks.on_close) {
-      stream_callbacks.on_close(*stream_id_holder, static_cast<uint32_t>(error_code));
+      stream_callbacks.on_close(*stream_id_holder,
+                                static_cast<uint32_t>(error_code));
     }
   };
 
   // Submit using the existing method
-  int64_t stream_id = SubmitRequest(headers.method, headers.authority, headers.path,
-                                     header_pairs, {body, body_len}, h3_callbacks);
+  int64_t stream_id =
+      SubmitRequest(headers.method, headers.authority, headers.path,
+                    header_pairs, {body, body_len}, h3_callbacks);
 
   // Store stream_id for callbacks
   *stream_id_holder = stream_id;
@@ -220,13 +225,13 @@ int64_t H3Session::SubmitRequest(const http2::H2Headers& headers,
 }
 
 ssize_t H3Session::WriteStreamData(int64_t stream_id, const uint8_t* data,
-                                    size_t len, bool fin) {
+                                   size_t len, bool fin) {
   // For HTTP/3, body data goes through QUIC directly
   return quic_->WriteStream(stream_id, data, len, fin);
 }
 
 int H3Session::ProcessStreamData(int64_t stream_id, const uint8_t* data,
-                                  size_t len, bool fin) {
+                                 size_t len, bool fin) {
   if (!conn_) {
     return -1;
   }
@@ -251,8 +256,8 @@ int H3Session::GetPendingStreams(std::vector<int64_t>& stream_ids) {
   int pfin;
 
   // Check if there's any stream with pending data
-  nghttp3_ssize sveccnt = nghttp3_conn_writev_stream(conn_, &out_stream_id,
-                                                      &pfin, vec, 8);
+  nghttp3_ssize sveccnt =
+      nghttp3_conn_writev_stream(conn_, &out_stream_id, &pfin, vec, 8);
   if (sveccnt > 0 && out_stream_id >= 0) {
     stream_ids.push_back(out_stream_id);
   }
@@ -261,7 +266,7 @@ int H3Session::GetPendingStreams(std::vector<int64_t>& stream_ids) {
 }
 
 ssize_t H3Session::ReadStreamData(int64_t stream_id, uint8_t* buf,
-                                   size_t buflen, bool& fin) {
+                                  size_t buflen, bool& fin) {
   if (!conn_) {
     return -1;
   }
@@ -272,8 +277,8 @@ ssize_t H3Session::ReadStreamData(int64_t stream_id, uint8_t* buf,
   int64_t out_stream_id;
   int pfin;
 
-  nghttp3_ssize sveccnt = nghttp3_conn_writev_stream(conn_, &out_stream_id,
-                                                      &pfin, vec, 8);
+  nghttp3_ssize sveccnt =
+      nghttp3_conn_writev_stream(conn_, &out_stream_id, &pfin, vec, 8);
   if (sveccnt < 0) {
     return static_cast<ssize_t>(sveccnt);
   }
@@ -341,15 +346,15 @@ void H3Session::Shutdown() {
 // Static nghttp3 callbacks
 
 int H3Session::OnAckedStreamData(nghttp3_conn* /*conn*/, int64_t /*stream_id*/,
-                                  uint64_t /*datalen*/, void* /*user_data*/,
-                                  void* /*stream_user_data*/) {
+                                 uint64_t /*datalen*/, void* /*user_data*/,
+                                 void* /*stream_user_data*/) {
   // Data was acknowledged, could free send buffers
   return 0;
 }
 
 int H3Session::OnStreamClose(nghttp3_conn* /*conn*/, int64_t stream_id,
-                              uint64_t app_error_code, void* user_data,
-                              void* /*stream_user_data*/) {
+                             uint64_t app_error_code, void* user_data,
+                             void* /*stream_user_data*/) {
   auto* session = static_cast<H3Session*>(user_data);
 
   auto it = session->streams_.find(stream_id);
@@ -364,8 +369,8 @@ int H3Session::OnStreamClose(nghttp3_conn* /*conn*/, int64_t stream_id,
 }
 
 int H3Session::OnRecvData(nghttp3_conn* /*conn*/, int64_t stream_id,
-                           const uint8_t* data, size_t datalen,
-                           void* user_data, void* /*stream_user_data*/) {
+                          const uint8_t* data, size_t datalen, void* user_data,
+                          void* /*stream_user_data*/) {
   auto* session = static_cast<H3Session*>(user_data);
 
   auto it = session->streams_.find(stream_id);
@@ -377,20 +382,20 @@ int H3Session::OnRecvData(nghttp3_conn* /*conn*/, int64_t stream_id,
 }
 
 int H3Session::OnDeferredConsume(nghttp3_conn* /*conn*/, int64_t stream_id,
-                                  size_t consumed, void* user_data,
-                                  void* /*stream_user_data*/) {
+                                 size_t consumed, void* user_data,
+                                 void* /*stream_user_data*/) {
   auto* session = static_cast<H3Session*>(user_data);
 
   // Extend stream flow control window
   ngtcp2_conn_extend_max_stream_offset(session->quic_->conn(), stream_id,
-                                        consumed);
+                                       consumed);
   ngtcp2_conn_extend_max_offset(session->quic_->conn(), consumed);
 
   return 0;
 }
 
 int H3Session::OnBeginHeaders(nghttp3_conn* /*conn*/, int64_t stream_id,
-                               void* user_data, void* /*stream_user_data*/) {
+                              void* user_data, void* /*stream_user_data*/) {
   auto* session = static_cast<H3Session*>(user_data);
 
   auto it = session->streams_.find(stream_id);
@@ -404,9 +409,9 @@ int H3Session::OnBeginHeaders(nghttp3_conn* /*conn*/, int64_t stream_id,
 }
 
 int H3Session::OnRecvHeader(nghttp3_conn* /*conn*/, int64_t stream_id,
-                             int32_t /*token*/, nghttp3_rcbuf* name,
-                             nghttp3_rcbuf* value, uint8_t /*flags*/,
-                             void* user_data, void* /*stream_user_data*/) {
+                            int32_t /*token*/, nghttp3_rcbuf* name,
+                            nghttp3_rcbuf* value, uint8_t /*flags*/,
+                            void* user_data, void* /*stream_user_data*/) {
   auto* session = static_cast<H3Session*>(user_data);
 
   auto it = session->streams_.find(stream_id);
@@ -438,8 +443,8 @@ int H3Session::OnRecvHeader(nghttp3_conn* /*conn*/, int64_t stream_id,
 }
 
 int H3Session::OnEndHeaders(nghttp3_conn* /*conn*/, int64_t stream_id,
-                             int /*fin*/, void* user_data,
-                             void* /*stream_user_data*/) {
+                            int /*fin*/, void* user_data,
+                            void* /*stream_user_data*/) {
   auto* session = static_cast<H3Session*>(user_data);
 
   auto it = session->streams_.find(stream_id);
@@ -456,7 +461,7 @@ int H3Session::OnEndHeaders(nghttp3_conn* /*conn*/, int64_t stream_id,
 }
 
 int H3Session::OnEndStream(nghttp3_conn* /*conn*/, int64_t stream_id,
-                            void* user_data, void* /*stream_user_data*/) {
+                           void* user_data, void* /*stream_user_data*/) {
   auto* session = static_cast<H3Session*>(user_data);
 
   auto it = session->streams_.find(stream_id);
@@ -468,23 +473,23 @@ int H3Session::OnEndStream(nghttp3_conn* /*conn*/, int64_t stream_id,
 }
 
 int H3Session::OnStopSending(nghttp3_conn* /*conn*/, int64_t stream_id,
-                              uint64_t app_error_code, void* user_data,
-                              void* /*stream_user_data*/) {
+                             uint64_t app_error_code, void* user_data,
+                             void* /*stream_user_data*/) {
   auto* session = static_cast<H3Session*>(user_data);
   session->quic_->ResetStream(stream_id, app_error_code);
   return 0;
 }
 
 int H3Session::OnResetStream(nghttp3_conn* /*conn*/, int64_t stream_id,
-                              uint64_t app_error_code, void* user_data,
-                              void* /*stream_user_data*/) {
+                             uint64_t app_error_code, void* user_data,
+                             void* /*stream_user_data*/) {
   auto* session = static_cast<H3Session*>(user_data);
   session->quic_->ResetStream(stream_id, app_error_code);
   return 0;
 }
 
 int H3Session::OnShutdown(nghttp3_conn* /*conn*/, int64_t /*id*/,
-                           void* user_data) {
+                          void* user_data) {
   auto* session = static_cast<H3Session*>(user_data);
   session->going_away_ = true;
   session->state_ = H3State::kGoingAway;
@@ -492,8 +497,8 @@ int H3Session::OnShutdown(nghttp3_conn* /*conn*/, int64_t /*id*/,
 }
 
 int H3Session::OnRecvSettings(nghttp3_conn* /*conn*/,
-                               const nghttp3_settings* /*settings*/,
-                               void* /*user_data*/) {
+                              const nghttp3_settings* /*settings*/,
+                              void* /*user_data*/) {
   // Settings received from server
   return 0;
 }

@@ -68,7 +68,8 @@ struct QuicPooledConnection {
 };
 
 // Type alias for connection container
-using QuicPooledConnectionList = std::vector<std::unique_ptr<QuicPooledConnection>>;
+using QuicPooledConnectionList =
+    std::vector<std::unique_ptr<QuicPooledConnection>>;
 
 // Per-host QUIC connection pool configuration
 struct QuicHostPoolConfig {
@@ -88,8 +89,9 @@ class QuicHostPool {
   const std::string host;
   const uint16_t port;
 
-  QuicHostPool(const std::string& h, uint16_t p, const QuicHostPoolConfig& config,
-               core::Reactor* reactor, quic::QuicTlsContext* tls_ctx);
+  QuicHostPool(const std::string& h, uint16_t p,
+               const QuicHostPoolConfig& config, core::Reactor* reactor,
+               quic::QuicTlsContext* tls_ctx);
   ~QuicHostPool();
 
   // Non-copyable, non-movable

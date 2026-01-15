@@ -43,9 +43,8 @@ struct UdpPacket {
 };
 
 // Callback types
-using UdpReceiveCallback =
-    std::function<void(const uint8_t* data, size_t len, const sockaddr* addr,
-                       socklen_t addr_len)>;
+using UdpReceiveCallback = std::function<void(
+    const uint8_t* data, size_t len, const sockaddr* addr, socklen_t addr_len)>;
 using UdpSendCallback = std::function<void(int status)>;
 using UdpErrorCallback = std::function<void(int error_code)>;
 using UdpCloseCompleteCallback = std::function<void()>;

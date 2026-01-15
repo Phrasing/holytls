@@ -51,7 +51,8 @@ void TestHttp1RequestSerialization() {
   bool request_complete = false;
 
   http2::H2StreamCallbacks stream_callbacks;
-  stream_callbacks.on_headers = [&](int32_t, const http2::PackedHeaders& headers) {
+  stream_callbacks.on_headers = [&](int32_t,
+                                    const http2::PackedHeaders& headers) {
     received_status = headers.status_code();
   };
   stream_callbacks.on_data = [&](int32_t, const uint8_t* data, size_t len) {
@@ -120,7 +121,8 @@ void TestHttp1PostWithBody() {
   bool request_complete = false;
 
   http2::H2StreamCallbacks stream_callbacks;
-  stream_callbacks.on_headers = [&](int32_t, const http2::PackedHeaders& headers) {
+  stream_callbacks.on_headers = [&](int32_t,
+                                    const http2::PackedHeaders& headers) {
     received_status = headers.status_code();
   };
   stream_callbacks.on_close = [&](int32_t, uint32_t) {
@@ -157,7 +159,8 @@ void TestHttp1PostWithBody() {
       "Content-Length: 0\r\n"
       "\r\n";
 
-  session.Receive(reinterpret_cast<const uint8_t*>(response.data()), response.size());
+  session.Receive(reinterpret_cast<const uint8_t*>(response.data()),
+                  response.size());
 
   assert(received_status == 201);
   assert(request_complete);
@@ -201,7 +204,8 @@ void TestHttp1StatusCodes() {
     int received_status = 0;
 
     http2::H2StreamCallbacks stream_callbacks;
-    stream_callbacks.on_headers = [&](int32_t, const http2::PackedHeaders& headers) {
+    stream_callbacks.on_headers = [&](int32_t,
+                                      const http2::PackedHeaders& headers) {
       received_status = headers.status_code();
     };
     stream_callbacks.on_close = [](int32_t, uint32_t) {};
@@ -218,11 +222,13 @@ void TestHttp1StatusCodes() {
 
     // Build response with specific status code
     std::string response = "HTTP/1.1 " + std::to_string(tc.status_code) + " " +
-                           std::string(tc.status_text) + "\r\n"
+                           std::string(tc.status_text) +
+                           "\r\n"
                            "Content-Length: 0\r\n"
                            "\r\n";
 
-    session.Receive(reinterpret_cast<const uint8_t*>(response.data()), response.size());
+    session.Receive(reinterpret_cast<const uint8_t*>(response.data()),
+                    response.size());
 
     assert(received_status == tc.status_code);
   }
@@ -246,7 +252,8 @@ void TestHttp1ChunkedEncoding() {
   bool request_complete = false;
 
   http2::H2StreamCallbacks stream_callbacks;
-  stream_callbacks.on_headers = [&](int32_t, const http2::PackedHeaders& headers) {
+  stream_callbacks.on_headers = [&](int32_t,
+                                    const http2::PackedHeaders& headers) {
     received_status = headers.status_code();
   };
   stream_callbacks.on_data = [&](int32_t, const uint8_t* data, size_t len) {
@@ -278,7 +285,8 @@ void TestHttp1ChunkedEncoding() {
       "0\r\n"
       "\r\n";
 
-  session.Receive(reinterpret_cast<const uint8_t*>(response.data()), response.size());
+  session.Receive(reinterpret_cast<const uint8_t*>(response.data()),
+                  response.size());
 
   assert(received_status == 200);
   assert(received_body == "Hello World!");
@@ -327,7 +335,9 @@ void TestHttp1LargeBody() {
 
   std::string response_headers =
       "HTTP/1.1 200 OK\r\n"
-      "Content-Length: " + std::to_string(large_body.size()) + "\r\n"
+      "Content-Length: " +
+      std::to_string(large_body.size()) +
+      "\r\n"
       "\r\n";
 
   // Feed headers first
@@ -337,9 +347,11 @@ void TestHttp1LargeBody() {
   // Feed body in chunks
   size_t offset = 0;
   while (offset < large_body.size()) {
-    size_t chunk_size = std::min<size_t>(kChunkSize, large_body.size() - offset);
-    session.Receive(reinterpret_cast<const uint8_t*>(large_body.data() + offset),
-                    chunk_size);
+    size_t chunk_size =
+        std::min<size_t>(kChunkSize, large_body.size() - offset);
+    session.Receive(
+        reinterpret_cast<const uint8_t*>(large_body.data() + offset),
+        chunk_size);
     offset += chunk_size;
   }
 
@@ -389,7 +401,8 @@ void TestHttp1KeepAlive() {
         "\r\n"
         "first";
 
-    session.Receive(reinterpret_cast<const uint8_t*>(response.data()), response.size());
+    session.Receive(reinterpret_cast<const uint8_t*>(response.data()),
+                    response.size());
 
     assert(received_status == 200);
     assert(complete);
@@ -426,7 +439,8 @@ void TestHttp1KeepAlive() {
         "\r\n"
         "second";
 
-    session.Receive(reinterpret_cast<const uint8_t*>(response.data()), response.size());
+    session.Receive(reinterpret_cast<const uint8_t*>(response.data()),
+                    response.size());
 
     assert(received_status == 200);
     assert(complete);
@@ -449,11 +463,11 @@ void TestHttp1CustomHeaders() {
   std::vector<std::pair<std::string, std::string>> received_headers;
 
   http2::H2StreamCallbacks stream_callbacks;
-  stream_callbacks.on_headers = [&](int32_t, const http2::PackedHeaders& headers) {
+  stream_callbacks.on_headers = [&](int32_t,
+                                    const http2::PackedHeaders& headers) {
     for (size_t i = 0; i < headers.size(); ++i) {
-      received_headers.emplace_back(
-          std::string(headers.name(i)),
-          std::string(headers.value(i)));
+      received_headers.emplace_back(std::string(headers.name(i)),
+                                    std::string(headers.value(i)));
     }
   };
   stream_callbacks.on_close = [](int32_t, uint32_t) {};
@@ -471,8 +485,10 @@ void TestHttp1CustomHeaders() {
   std::string request(reinterpret_cast<const char*>(data), len);
 
   // Verify custom headers in request
-  assert(request.find("X-Custom-Header: custom-value\r\n") != std::string::npos);
-  assert(request.find("Authorization: Bearer token123\r\n") != std::string::npos);
+  assert(request.find("X-Custom-Header: custom-value\r\n") !=
+         std::string::npos);
+  assert(request.find("Authorization: Bearer token123\r\n") !=
+         std::string::npos);
 
   session.DataSent(len);
 
@@ -484,7 +500,8 @@ void TestHttp1CustomHeaders() {
       "X-Another: another-value\r\n"
       "\r\n";
 
-  session.Receive(reinterpret_cast<const uint8_t*>(response.data()), response.size());
+  session.Receive(reinterpret_cast<const uint8_t*>(response.data()),
+                  response.size());
 
   // Verify we received the custom headers (case-insensitive name comparison)
   bool found_response_header = false;
@@ -494,8 +511,7 @@ void TestHttp1CustomHeaders() {
         h.second == "response-value") {
       found_response_header = true;
     }
-    if (EqualsIgnoreCase(h.first, "X-Another") &&
-        h.second == "another-value") {
+    if (EqualsIgnoreCase(h.first, "X-Another") && h.second == "another-value") {
       found_another = true;
     }
   }
@@ -529,7 +545,8 @@ void TestHttp1NoMultiplexing() {
   // First request
   int32_t stream_id = session.SubmitRequest(headers, stream_callbacks);
   assert(stream_id == 1);
-  assert(!session.CanSubmitRequest());  // Cannot submit while first is in flight
+  assert(
+      !session.CanSubmitRequest());  // Cannot submit while first is in flight
 
   // Note: We don't actually try to submit a second request here because
   // SubmitRequest() would call SetError() which permanently marks the session
@@ -544,7 +561,8 @@ void TestHttp1NoMultiplexing() {
       "Content-Length: 0\r\n"
       "\r\n";
 
-  session.Receive(reinterpret_cast<const uint8_t*>(response.data()), response.size());
+  session.Receive(reinterpret_cast<const uint8_t*>(response.data()),
+                  response.size());
 
   // Now we can submit again
   assert(session.CanSubmitRequest());

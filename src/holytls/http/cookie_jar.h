@@ -27,11 +27,13 @@ enum class SameSite {
 struct Cookie {
   std::string name;
   std::string value;
-  std::string domain;   // Domain the cookie applies to (with or without leading dot)
-  std::string path;     // Path the cookie applies to
-  uint64_t expires_ms = 0;  // Expiration time in milliseconds since epoch (0 = session)
-  bool secure = false;      // Only send over HTTPS
-  bool http_only = false;   // Not accessible via JavaScript
+  std::string
+      domain;  // Domain the cookie applies to (with or without leading dot)
+  std::string path;  // Path the cookie applies to
+  uint64_t expires_ms =
+      0;  // Expiration time in milliseconds since epoch (0 = session)
+  bool secure = false;     // Only send over HTTPS
+  bool http_only = false;  // Not accessible via JavaScript
   SameSite same_site = SameSite::kLax;
 
   // Check if cookie has expired
@@ -106,19 +108,23 @@ class CookieJar {
   static bool ParseUrl(std::string_view url, UrlParts* parts);
 
   // Check if a cookie matches a URL
-  static bool Matches(const Cookie& cookie, const UrlParts& url, bool is_secure);
+  static bool Matches(const Cookie& cookie, const UrlParts& url,
+                      bool is_secure);
 
   // Check if host matches cookie domain (handles leading dot)
-  static bool DomainMatches(std::string_view host, std::string_view cookie_domain);
+  static bool DomainMatches(std::string_view host,
+                            std::string_view cookie_domain);
 
   // Check if request path matches cookie path
-  static bool PathMatches(std::string_view request_path, std::string_view cookie_path);
+  static bool PathMatches(std::string_view request_path,
+                          std::string_view cookie_path);
 
   // Get current time in milliseconds
   static uint64_t NowMs();
 
   // Parse Set-Cookie header into Cookie struct
-  static bool ParseSetCookie(std::string_view header, std::string_view request_host,
+  static bool ParseSetCookie(std::string_view header,
+                             std::string_view request_host,
                              std::string_view request_path, Cookie* cookie);
 
   // Parse individual cookie attributes

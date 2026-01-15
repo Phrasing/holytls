@@ -196,18 +196,20 @@ inline SLLNode* SLLPopFront(SLLList* list) {
 #endif
 
 // Iteration macros (outside namespace for proper type resolution)
-#define DLLForEach(list, node) \
-  for (holytls::DLLNode* node = (list)->first; node != nullptr; node = node->next)
+#define DLLForEach(list, node)                                  \
+  for (holytls::DLLNode* node = (list)->first; node != nullptr; \
+       node = node->next)
 
 // Iteration with prefetch (better cache performance for large lists)
-#define DLLForEachPrefetch(list, node)                       \
+#define DLLForEachPrefetch(list, node)                          \
   for (holytls::DLLNode* node = (list)->first; node != nullptr; \
        (node->next ? Prefetch(node->next->next) : (void)0), node = node->next)
 
-#define SLLForEach(list, node) \
-  for (holytls::SLLNode* node = (list)->first; node != nullptr; node = node->next)
+#define SLLForEach(list, node)                                  \
+  for (holytls::SLLNode* node = (list)->first; node != nullptr; \
+       node = node->next)
 
-#define SLLForEachPrefetch(list, node)                       \
+#define SLLForEachPrefetch(list, node)                          \
   for (holytls::SLLNode* node = (list)->first; node != nullptr; \
        (node->next ? Prefetch(node->next->next) : (void)0), node = node->next)
 
