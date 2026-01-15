@@ -296,6 +296,12 @@ void Reactor::ProcessPostedCallbacks() {
   pending_callbacks_.clear();
 }
 
+#include "holytls/core/connection.h"
+
+// ... (existing includes)
+
+// ...
+
 void Reactor::OnPollEvent(uv_poll_t* handle, int status, int events) {
   auto* poll_data = static_cast<PollData*>(handle->data);
   if (!poll_data || !poll_data->handler) {
@@ -304,25 +310,20 @@ void Reactor::OnPollEvent(uv_poll_t* handle, int status, int events) {
 
   EventHandler* handler = poll_data->handler;
 
-  // Handle error
-  if (status < 0) {
-    handler->OnError(-status);
-    return;
-  }
-
-  // Handle readable
-  if ((events & UV_READABLE) != 0) {
-    handler->OnReadable();
-  }
-
-  // Handle writable
-  if ((events & UV_WRITABLE) != 0) {
-    handler->OnWritable();
-  }
-
-  // Handle disconnect
-  if ((events & UV_DISCONNECT) != 0) {
-    handler->OnClose();
+  switch (handler->type) {
+    case EventHandlerType::kConnection: {
+      auto* conn = static_cast<Connection*>(handler);
+      if (status < 0) {
+        conn->OnError(-status);
+        return;
+      }
+      if ((events & UV_READABLE) != 0) conn->OnReadable();
+      if ((events & UV_WRITABLE) != 0) conn->OnWritable();
+      if ((events & UV_DISCONNECT) != 0) conn->OnClose();
+      break;
+    }
+    default:
+      break;
   }
 }
 

@@ -21,7 +21,8 @@ namespace core {
 Connection::Connection(Reactor* reactor, tls::TlsContextFactory* tls_factory,
                        const std::string& host, uint16_t port,
                        const ConnectionOptions& options)
-    : reactor_(reactor),
+    : EventHandler(EventHandlerType::kConnection, -1),
+      reactor_(reactor),
       tls_factory_(tls_factory),
       host_(host),
       port_(port),
@@ -43,6 +44,9 @@ bool Connection::Connect(std::string_view ip, bool ipv6) {
 
   // Create socket
   fd_ = util::CreateTcpSocket(ipv6);
+  // Update base class fd for Reactor dispatch
+  this->fd = static_cast<int>(fd_);
+  
   if (fd_ == util::kInvalidSocket) {
     SetError("Failed to create socket");
     return false;
@@ -282,6 +286,7 @@ void Connection::Close() {
     }
     util::CloseSocket(fd_);
     fd_ = util::kInvalidSocket;
+    this->fd = -1;
   }
   state_ = ConnectionState::kClosed;
   h2_.reset();

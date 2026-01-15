@@ -56,25 +56,28 @@ inline bool HasEvent(EventType events, EventType check) {
   return (static_cast<uint32_t>(events) & static_cast<uint32_t>(check)) != 0;
 }
 
-// Event handler interface - connection objects implement this
-class EventHandler {
- public:
-  virtual ~EventHandler() = default;
+// Event handler type for static dispatch
+enum class EventHandlerType {
+  kConnection,
+  kUnknown
+};
 
-  // Called when socket is readable
-  virtual void OnReadable() = 0;
+// Event handler interface (devirtualized)
+struct EventHandler {
+  EventHandlerType type = EventHandlerType::kUnknown;
+  int fd = -1;
 
-  // Called when socket is writable
-  virtual void OnWritable() = 0;
+  explicit EventHandler(EventHandlerType t, int f) : type(t), fd(f) {}
 
-  // Called on error or hangup
-  virtual void OnError(int error_code) = 0;
+  // No virtual destructor - we don't delete through base pointer
+  ~EventHandler() = default;
 
-  // Called on connection close
-  virtual void OnClose() = 0;
-
-  // Get the file descriptor
-  virtual int fd() const = 0;
+  // Methods are now dispatched statically via Reactor::OnPollEvent
+  // Subclasses (like Connection) must implement:
+  // void OnReadable();
+  // void OnWritable();
+  // void OnError(int error_code);
+  // void OnClose();
 };
 
 // Reactor configuration

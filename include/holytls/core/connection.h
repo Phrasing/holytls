@@ -75,7 +75,7 @@ class Connection : public EventHandler {
   Connection(Reactor* reactor, tls::TlsContextFactory* tls_factory,
              const std::string& host, uint16_t port,
              const ConnectionOptions& options = {});
-  ~Connection() override;
+  ~Connection();
 
   // Non-copyable, non-movable
   Connection(const Connection&) = delete;
@@ -134,11 +134,10 @@ class Connection : public EventHandler {
   size_t ActiveStreamCount() const { return active_requests_.size(); }
 
   // EventHandler interface
-  void OnReadable() override;
-  void OnWritable() override;
-  void OnError(int error_code) override;
-  void OnClose() override;
-  int fd() const override { return static_cast<int>(fd_); }
+  void OnReadable();
+  void OnWritable();
+  void OnError(int error_code);
+  void OnClose();
 
  private:
   void HandleConnecting();
