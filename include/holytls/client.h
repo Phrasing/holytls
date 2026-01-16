@@ -14,6 +14,7 @@
 
 #include "holytls/config.h"
 #include "holytls/error.h"
+#include "holytls/http/ordered_headers.h"
 #include "holytls/types.h"
 
 
@@ -73,6 +74,7 @@ struct Request {
   Request& SetBody(std::string_view b);
   Request& SetTimeout(std::chrono::milliseconds t);
   Request& SetHeaderOrder(std::span<const std::string_view> order);
+  Request& SetHeaders(const http::headers::OrderedHeaders& h);
 };
 
 // Timing information for response

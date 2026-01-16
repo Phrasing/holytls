@@ -100,6 +100,11 @@ Request& Request::SetHeaderOrder(std::span<const std::string_view> order) {
   return *this;
 }
 
+Request& Request::SetHeaders(const http::headers::OrderedHeaders& h) {
+  headers = h.headers;
+  return *this;
+}
+
 // Response implementation
 std::string_view Response::GetHeader(std::string_view name) const {
   for (const auto& header : headers) {

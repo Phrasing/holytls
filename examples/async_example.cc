@@ -3,28 +3,23 @@
 
 // Example: Using the coroutine-based async API
 //
-// This example demonstrates the modern C++20 coroutine API for making
+// This example demonstrates the modern C++23 coroutine API for making
 // HTTP requests with holytls. Instead of callbacks, you can use co_await
 // for clean, sequential async code.
 //
 // Usage: ./async_example
 
-#include <atomic>
 #include <print>
-#include <string>
-#include <thread>
 
 #include "holytls/async.h"
 #include "holytls/client.h"
-#include "holytls/config.h"
 
 using namespace holytls;
 
 // Main coroutine that makes sequential requests
-Task<void> RunAll(AsyncClient& client, std::atomic<bool>& done) {
+Task<void> RunAll(AsyncClient& client) {
   std::println("=== holytls Coroutine Example ===");
-  std::println("Chrome version: {}",
-               static_cast<int>(client.GetChromeVersion()));
+  std::println("Chrome version: {}", static_cast<int>(client.GetChromeVersion()));
 
   // TLS Fingerprint Check
   std::println("\n=== TLS Fingerprint Check ===");
@@ -56,43 +51,24 @@ Task<void> RunAll(AsyncClient& client, std::atomic<bool>& done) {
     std::println("Request 2 failed: {}", result3.error().message);
   }
 
+  // Print stats
+  auto stats = client.GetStats();
+  std::println("\n=== Stats ===");
+  std::println("Requests sent: {}", stats.requests_sent);
+  std::println("Requests completed: {}", stats.requests_completed);
+  std::println("Requests failed: {}", stats.requests_failed);
+  std::println("Connections created: {}", stats.connections_created);
+  std::println("Connections reused: {}", stats.connections_reused);
+
   std::println("\n=== Done ===");
-  done.store(true, std::memory_order_release);
-  co_return;
 }
 
 int main() {
-  std::println("Creating AsyncClient...");
+  std::println("Creating AsyncClient with Chrome 143...");
   AsyncClient client(ClientConfig::Chrome143());
 
-  std::atomic<bool> done{false};
-
-  std::println("Creating and starting task...");
-  auto task = RunAll(client, done);
-  task.resume();
-
-  std::println("Running event loop...");
-  int count = 0;
-  while (!done.load(std::memory_order_acquire) && count < 1000) {
-    client.RunOnce();
-    count++;
-    if (count % 100 == 0) {
-      std::println("Event loop iteration {}, task.done()={}", count,
-                   task.done());
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  }
-
-  std::println("Event loop finished, count={}", count);
-
-  // Print stats
-  auto stats = client.GetStats();
-  std::println("\nStats:");
-  std::println("  Requests sent: {}", stats.requests_sent);
-  std::println("  Requests completed: {}", stats.requests_completed);
-  std::println("  Requests failed: {}", stats.requests_failed);
-  std::println("  Connections created: {}", stats.connections_created);
-  std::println("  Connections reused: {}", stats.connections_reused);
+  // RunAsync handles the event loop - clean C++23 pattern
+  RunAsync(client, RunAll(client));
 
   return 0;
 }

@@ -1,3 +1,6 @@
+// Copyright 2026 HolyTLS Authors
+// SPDX-License-Identifier: MIT
+
 // Example: Using proxies with holytls
 //
 // This example demonstrates how to configure HTTP and SOCKS proxies.
@@ -6,7 +9,7 @@
 // Usage: ./proxy_example <proxy_type> <proxy_host> <proxy_port> [username] [password]
 
 #include <cstdlib>
-#include <iostream>
+#include <print>
 #include <string>
 
 #include "holytls/async.h"
@@ -18,16 +21,16 @@ using namespace holytls;
 constexpr const char* kTestUrl = "https://httpbin.org/ip";
 
 Task<void> FetchThroughProxy(AsyncClient& client) {
-  std::cout << "Fetching " << kTestUrl << " through proxy...\n";
+  std::println("Fetching {} through proxy...", kTestUrl);
 
   auto result = co_await client.Get(kTestUrl);
 
   if (result) {
     const auto& response = result.value();
-    std::cout << "Status: " << response.status_code << "\n";
-    std::cout << "Body: " << response.body_string() << "\n";
+    std::println("Status: {}", response.status_code);
+    std::println("Body: {}", response.body_string());
   } else {
-    std::cerr << "Error: " << result.error().message << "\n";
+    std::println(stderr, "Error: {}", result.error().message);
   }
 }
 
@@ -52,18 +55,17 @@ const char* ProxyTypeToString(ProxyType type) {
 }
 
 void PrintUsage(const char* prog) {
-  std::cerr << "Usage: " << prog
-            << " <proxy_type> <proxy_host> <proxy_port> [username] [password]\n";
-  std::cerr << "\nProxy types:\n";
-  std::cerr << "  http     - HTTP CONNECT proxy\n";
-  std::cerr << "  socks4   - SOCKS4 (requires client-side DNS resolution)\n";
-  std::cerr << "  socks4a  - SOCKS4a (proxy resolves DNS)\n";
-  std::cerr << "  socks5   - SOCKS5 (requires client-side DNS resolution)\n";
-  std::cerr << "  socks5h  - SOCKS5h (proxy resolves DNS) - RECOMMENDED\n";
-  std::cerr << "\nExamples:\n";
-  std::cerr << "  " << prog << " http 127.0.0.1 8080\n";
-  std::cerr << "  " << prog << " socks5h 127.0.0.1 1080\n";
-  std::cerr << "  " << prog << " socks5 proxy.example.com 1080 myuser mypass\n";
+  std::println(stderr, "Usage: {} <proxy_type> <proxy_host> <proxy_port> [username] [password]", prog);
+  std::println(stderr, "\nProxy types:");
+  std::println(stderr, "  http     - HTTP CONNECT proxy");
+  std::println(stderr, "  socks4   - SOCKS4 (requires client-side DNS resolution)");
+  std::println(stderr, "  socks4a  - SOCKS4a (proxy resolves DNS)");
+  std::println(stderr, "  socks5   - SOCKS5 (requires client-side DNS resolution)");
+  std::println(stderr, "  socks5h  - SOCKS5h (proxy resolves DNS) - RECOMMENDED");
+  std::println(stderr, "\nExamples:");
+  std::println(stderr, "  {} http 127.0.0.1 8080", prog);
+  std::println(stderr, "  {} socks5h 127.0.0.1 1080", prog);
+  std::println(stderr, "  {} socks5 proxy.example.com 1080 myuser mypass", prog);
 }
 
 int main(int argc, char* argv[]) {
@@ -75,7 +77,7 @@ int main(int argc, char* argv[]) {
   // Parse command line arguments
   ProxyType proxy_type = ParseProxyType(argv[1]);
   if (proxy_type == ProxyType::kNone) {
-    std::cerr << "Error: Unknown proxy type '" << argv[1] << "'\n\n";
+    std::println(stderr, "Error: Unknown proxy type '{}'\n", argv[1]);
     PrintUsage(argv[0]);
     return 1;
   }
@@ -85,12 +87,11 @@ int main(int argc, char* argv[]) {
   std::string proxy_user = (argc > 4) ? argv[4] : "";
   std::string proxy_pass = (argc > 5) ? argv[5] : "";
 
-  std::cout << "Proxy: " << proxy_host << ":" << proxy_port
-            << " (" << ProxyTypeToString(proxy_type) << ")";
+  std::print("Proxy: {}:{} ({})", proxy_host, proxy_port, ProxyTypeToString(proxy_type));
   if (!proxy_user.empty()) {
-    std::cout << " (with authentication)";
+    std::print(" (with authentication)");
   }
-  std::cout << "\n\n";
+  std::println("\n");
 
   // Configure client with proxy
   ClientConfig config = ClientConfig::ChromeLatest();
@@ -103,7 +104,7 @@ int main(int argc, char* argv[]) {
   // Create async client with proxy configuration
   AsyncClient client(config);
 
-  // Run the async task
+  // RunAsync handles the event loop - clean C++23 pattern
   RunAsync(client, FetchThroughProxy(client));
 
   return 0;

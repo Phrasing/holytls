@@ -7,7 +7,6 @@
 #include <unordered_map>
 
 #include "holytls/http2/chrome_h2_profile.h"
-#include "holytls/http2/chrome_header_profile.h"
 #include "holytls/http2/header_ids.h"
 #include "holytls/proxy/http_proxy.h"
 #include "holytls/util/async_decompressor.h"
@@ -123,32 +122,9 @@ void Connection::SendRequest(
         h2_headers.Add(std::string(name), std::string(value));
       }
     } else {
-      // Auto mode: use Chrome header profile
-      auto chrome_version = tls_factory_->chrome_version();
-      const auto& header_profile =
-          http2::GetChromeHeaderProfile(chrome_version);
-
-      // Determine request type and fetch metadata
-      http2::RequestType request_type = http2::RequestType::kNavigation;
-      http2::FetchSite fetch_site = http2::FetchSite::kNone;
-      http2::FetchMode fetch_mode = http2::FetchMode::kNavigate;
-      http2::FetchDest fetch_dest = http2::FetchDest::kDocument;
-      bool user_activated = true;
-
-      // Convert user headers to HeaderEntry format for custom overrides
-      std::vector<http2::HeaderEntry> custom_headers;
+      // No auto headers - pass through user-provided headers only
       for (const auto& [name, value] : headers) {
-        custom_headers.push_back({name, value});
-      }
-
-      // Build ordered Chrome headers with GREASE sec-ch-ua
-      auto chrome_headers = http2::BuildChromeHeaders(
-          header_profile, request_type, fetch_site, fetch_mode, fetch_dest,
-          user_activated, custom_headers);
-
-      // Add all headers in Chrome's exact order
-      for (const auto& header : chrome_headers) {
-        h2_headers.Add(header.name, header.value);
+        h2_headers.Add(name, value);
       }
     }
 
