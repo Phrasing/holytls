@@ -44,12 +44,19 @@ add_executable(test_chrome_header_builder
 target_include_directories(test_chrome_header_builder PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(test_chrome_header_builder PRIVATE holytls)
 
+add_executable(test_socks_proxy
+  unit/test_socks_proxy.cc
+)
+target_include_directories(test_socks_proxy PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(test_socks_proxy PRIVATE holytls)
+
 # Register tests
 add_test(NAME reactor COMMAND test_reactor)
 add_test(NAME buffer_pool COMMAND test_buffer_pool)
 add_test(NAME arena COMMAND test_arena)
 add_test(NAME packed_headers COMMAND test_packed_headers)
 add_test(NAME chrome_header_builder COMMAND test_chrome_header_builder)
+add_test(NAME socks_proxy COMMAND test_socks_proxy)
 add_test(NAME top_websites COMMAND test_top_websites)
 
 # Protocol tests (HTTP/1, HTTP/2, HTTP/3)

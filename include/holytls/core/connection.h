@@ -21,6 +21,7 @@
 #include "holytls/http1/h1_session.h"
 #include "holytls/http2/h2_session.h"
 #include "holytls/proxy/http_proxy.h"
+#include "holytls/proxy/socks_proxy.h"
 #include "holytls/tls/tls_connection.h"
 
 namespace holytls {
@@ -155,7 +156,8 @@ class Connection : public EventHandler {
   util::socket_t fd_ = util::kInvalidSocket;
   ConnectionState state_ = ConnectionState::kClosed;
 
-  std::unique_ptr<proxy::HttpProxyTunnel> proxy_;
+  std::unique_ptr<proxy::HttpProxyTunnel> http_proxy_;
+  std::unique_ptr<proxy::SocksProxyTunnel> socks_proxy_;
   std::unique_ptr<tls::TlsConnection> tls_;
   std::unique_ptr<http2::H2Session> h2_;
   std::unique_ptr<http1::H1Session> h1_;

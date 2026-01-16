@@ -7,6 +7,7 @@
 #include <cstring>
 #include <utility>
 
+#include "holytls/core/connection.h"
 #include "holytls/memory/slab_allocator.h"
 
 namespace holytls {
@@ -117,11 +118,11 @@ Reactor::~Reactor() {
 }
 
 bool Reactor::Add(EventHandler* handler, EventType events) {
-  if (handler == nullptr || handler->fd() < 0) {
+  if (handler == nullptr || handler->fd < 0) {
     return false;
   }
 
-  int fd = handler->fd();
+  int fd = handler->fd;
 
   // Check bounds and if already registered
   if (static_cast<size_t>(fd) >= kMaxFds || fd_table_.Contains(fd)) {
@@ -159,11 +160,11 @@ bool Reactor::Add(EventHandler* handler, EventType events) {
 }
 
 bool Reactor::Modify(EventHandler* handler, EventType events) {
-  if (handler == nullptr || handler->fd() < 0) {
+  if (handler == nullptr || handler->fd < 0) {
     return false;
   }
 
-  int fd = handler->fd();
+  int fd = handler->fd;
   PollData* poll_data = fd_table_.Get(fd);
   if (!poll_data) {
     return false;
@@ -180,11 +181,11 @@ bool Reactor::Modify(EventHandler* handler, EventType events) {
 }
 
 bool Reactor::Remove(EventHandler* handler) {
-  if (handler == nullptr || handler->fd() < 0) {
+  if (handler == nullptr || handler->fd < 0) {
     return false;
   }
 
-  int fd = handler->fd();
+  int fd = handler->fd;
   PollData* poll_data = fd_table_.Get(fd);
   if (!poll_data) {
     return false;
@@ -295,12 +296,6 @@ void Reactor::ProcessPostedCallbacks() {
   }
   pending_callbacks_.clear();
 }
-
-#include "holytls/core/connection.h"
-
-// ... (existing includes)
-
-// ...
 
 void Reactor::OnPollEvent(uv_poll_t* handle, int status, int events) {
   auto* poll_data = static_cast<PollData*>(handle->data);

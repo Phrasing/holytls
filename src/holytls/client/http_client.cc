@@ -140,140 +140,6 @@ struct PendingRequest {
   ProgressCallback progress;
 };
 
-// Copyright 2026 HolyTLS Authors
-// SPDX-License-Identifier: MIT
-
-#include "holytls/client.h"
-
-#include <atomic>
-#include <chrono>
-#include <deque>
-#include <memory>
-#include <mutex>
-#include <thread>
-#include <unordered_map>
-#include <variant>
-
-#include "holytls/config.h"
-#include "holytls/core/reactor_manager.h"
-#include "holytls/http/alt_svc_cache.h"
-#include "holytls/http/cookie_jar.h"
-#include "holytls/pool/connection_pool.h"
-#include "holytls/pool/host_pool.h"
-#include "holytls/tls/tls_context.h"
-#include "holytls/util/dns_resolver.h"
-#include "holytls/util/url_parser.h"
-
-#if defined(HOLYTLS_BUILD_QUIC)
-#include "holytls/http2/h2_stream.h"
-#include "holytls/pool/quic_pooled_connection.h"
-#define HOLYTLS_QUIC_AVAILABLE 1
-#else
-#define HOLYTLS_QUIC_AVAILABLE 0
-#endif
-
-namespace holytls {
-
-// ClientConfig factory methods
-
-ClientConfig ClientConfig::Chrome143() {
-  ClientConfig config;
-  config.tls.chrome_version = ChromeVersion::kChrome143;
-  config.http2.chrome_version = ChromeVersion::kChrome143;
-  return config;
-}
-
-ClientConfig ClientConfig::ChromeLatest() { return Chrome143(); }
-
-// Method to string conversion
-std::string_view MethodToString(Method method) {
-  switch (method) {
-    case Method::kGet:
-      return "GET";
-    case Method::kPost:
-      return "POST";
-    case Method::kPut:
-      return "PUT";
-    case Method::kDelete:
-      return "DELETE";
-    case Method::kPatch:
-      return "PATCH";
-    case Method::kHead:
-      return "HEAD";
-    case Method::kOptions:
-      return "OPTIONS";
-  }
-  return "GET";
-}
-
-// Request implementation
-Request& Request::SetMethod(Method m) {
-  method = m;
-  return *this;
-}
-
-Request& Request::SetUrl(std::string_view u) {
-  url = std::string(u);
-  return *this;
-}
-
-Request& Request::SetHeader(std::string_view name, std::string_view value) {
-  headers.push_back({std::string(name), std::string(value)});
-  return *this;
-}
-
-Request& Request::SetBody(const uint8_t* data, size_t len) {
-  body.assign(data, data + len);
-  return *this;
-}
-
-Request& Request::SetBody(std::string_view b) {
-  body.assign(b.begin(), b.end());
-  return *this;
-}
-
-Request& Request::SetTimeout(std::chrono::milliseconds t) {
-  timeout = t;
-  return *this;
-}
-
-Request& Request::SetHeaderOrder(std::span<const std::string_view> order) {
-  header_order = order;
-  return *this;
-}
-
-// Response implementation
-std::string_view Response::GetHeader(std::string_view name) const {
-  for (const auto& header : headers) {
-    if (header.name == name) {
-      return header.value;
-    }
-  }
-  return "";
-}
-
-bool Response::HasHeader(std::string_view name) const {
-  for (const auto& header : headers) {
-    if (header.name == name) {
-      return true;
-    }
-  }
-  return false;
-}
-
-std::string_view Response::body_string() const {
-  return std::string_view(reinterpret_cast<const char*>(body.data()),
-                          body.size());
-}
-
-size_t Response::content_length() const {
-  auto cl = GetHeader("content-length");
-  if (cl.empty()) {
-    return body.size();
-  }
-  return static_cast<size_t>(std::stoul(std::string(cl)));
-}
-
 // HttpClient implementation
 
 HttpClient::HttpClient(const ClientConfig& config)
@@ -399,7 +265,7 @@ ChromeVersion HttpClient::GetChromeVersion() const {
   return config_.tls.chrome_version;
 }
 
-tls::TlsConfig HttpClient::MakeTlsConfig(const ClientConfig& config) {
+TlsConfig HttpClient::MakeTlsConfig(const ClientConfig& config) {
   return config.tls;
 }
 
@@ -723,7 +589,7 @@ void HttpClient::SendOnTcpConnection(core::ReactorContext* ctx,
       });
 }
 
-#if defined(HOLYTLS_BUILD_QUIC) || defined(HOLYTLS_QUIC_AVAILABLE)
+#if HOLYTLS_QUIC_AVAILABLE
 void HttpClient::SendOnQuicConnection(core::ReactorContext* ctx,
                                       pool::QuicPooledConnection* quic_conn,
                                       const util::ParsedUrl& parsed,
@@ -858,4 +724,3 @@ void HttpClient::SendOnQuicConnection(core::ReactorContext* ctx,
 #endif
 
 }  // namespace holytls
-}

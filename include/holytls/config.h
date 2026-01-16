@@ -143,14 +143,38 @@ struct DnsConfig {
   std::chrono::seconds cache_ttl{60};
 };
 
+// Proxy type
+enum class ProxyType {
+  kNone,      // No proxy (direct connection)
+  kHttp,      // HTTP CONNECT proxy
+  kSocks4,    // SOCKS4 proxy
+  kSocks4a,   // SOCKS4a proxy (domain name resolution by proxy)
+  kSocks5,    // SOCKS5 proxy (local DNS resolution)
+  kSocks5h,   // SOCKS5h proxy (remote DNS resolution)
+};
+
 // Proxy configuration
 struct ProxyConfig {
+  ProxyType type = ProxyType::kNone;  // Proxy protocol type
   std::string host;      // Proxy hostname or IP
   uint16_t port = 0;     // Proxy port (0 = no proxy)
   std::string username;  // Optional auth
   std::string password;
 
-  bool IsEnabled() const { return port != 0 && !host.empty(); }
+  bool IsEnabled() const {
+    return type != ProxyType::kNone && port != 0 && !host.empty();
+  }
+
+  // Helper to check if this is a SOCKS proxy
+  bool IsSocks() const {
+    return type == ProxyType::kSocks4 || type == ProxyType::kSocks4a ||
+           type == ProxyType::kSocks5 || type == ProxyType::kSocks5h;
+  }
+
+  // Helper to check if domain resolution should be done by proxy
+  bool RemoteDns() const {
+    return type == ProxyType::kSocks4a || type == ProxyType::kSocks5h;
+  }
 };
 
 // Alt-Svc cache configuration for automatic HTTP/3 discovery

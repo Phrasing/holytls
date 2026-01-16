@@ -32,6 +32,9 @@ namespace pool {
 class PooledConnection;
 class QuicPooledConnection;
 }
+namespace util {
+struct ParsedUrl;
+}
 }
 
 namespace holytls {
@@ -144,7 +147,7 @@ class HttpClient {
 
  private:
   // Helpers
-  static tls::TlsConfig MakeTlsConfig(const ClientConfig& config);
+  static TlsConfig MakeTlsConfig(const ClientConfig& config);
   static core::ReactorManagerConfig MakeReactorConfig(const ClientConfig& config);
 
   void ProcessRequest(core::ReactorContext* ctx, Request request,

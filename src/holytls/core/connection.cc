@@ -375,18 +375,38 @@ void Connection::HandleConnecting() {
 
   // TCP connected - check if we need to establish proxy tunnel first
   if (options_.proxy.IsEnabled()) {
-    // Create proxy tunnel handler
-    proxy_ = std::make_unique<proxy::HttpProxyTunnel>(
-        host_, port_, options_.proxy.username, options_.proxy.password);
+    proxy::TunnelResult result;
 
-    // Start tunnel handshake
-    proxy::TunnelResult result = proxy_->Start();
-    if (result == proxy::TunnelResult::kError) {
-      SetError("Proxy tunnel failed: " + proxy_->last_error());
-      state_ = ConnectionState::kError;
-      Close();
-      reactor_->Stop();
-      return;
+    if (options_.proxy.IsSocks()) {
+      // Create SOCKS proxy tunnel handler
+      // For SOCKS4/SOCKS5 (non-'h' variants), we need the resolved IP
+      // For SOCKS4a/SOCKS5h, we pass the hostname and let proxy resolve
+      std::string target_ip;
+      // Note: In production, target_ip should be passed in or resolved earlier
+      // For now, we let the proxy do the resolution for 'h' variants
+      socks_proxy_ = std::make_unique<proxy::SocksProxyTunnel>(
+          options_.proxy.type, host_, port_, target_ip,
+          options_.proxy.username, options_.proxy.password);
+      result = socks_proxy_->Start();
+      if (result == proxy::TunnelResult::kError) {
+        SetError("SOCKS proxy tunnel failed: " + socks_proxy_->last_error());
+        state_ = ConnectionState::kError;
+        Close();
+        reactor_->Stop();
+        return;
+      }
+    } else {
+      // Create HTTP CONNECT proxy tunnel handler
+      http_proxy_ = std::make_unique<proxy::HttpProxyTunnel>(
+          host_, port_, options_.proxy.username, options_.proxy.password);
+      result = http_proxy_->Start();
+      if (result == proxy::TunnelResult::kError) {
+        SetError("HTTP proxy tunnel failed: " + http_proxy_->last_error());
+        state_ = ConnectionState::kError;
+        Close();
+        reactor_->Stop();
+        return;
+      }
     }
 
     state_ = ConnectionState::kProxyTunnel;
@@ -407,7 +427,28 @@ void Connection::HandleConnecting() {
 }
 
 void Connection::HandleProxyTunnel() {
-  if (!proxy_) {
+  proxy::TunnelResult result = proxy::TunnelResult::kOk;
+
+  if (socks_proxy_) {
+    // Drive SOCKS proxy tunnel state machine
+    if (socks_proxy_->WantsWrite()) {
+      result = socks_proxy_->OnWritable(fd_);
+    } else if (socks_proxy_->WantsRead()) {
+      result = socks_proxy_->OnReadable(fd_);
+    }
+  } else if (http_proxy_) {
+    // Drive HTTP proxy tunnel state machine based on current state
+    switch (http_proxy_->state()) {
+      case proxy::TunnelState::kSendingRequest:
+        result = http_proxy_->OnWritable(fd_);
+        break;
+      case proxy::TunnelState::kReadingResponse:
+        result = http_proxy_->OnReadable(fd_);
+        break;
+      default:
+        break;
+    }
+  } else {
     SetError("Proxy tunnel not initialized");
     state_ = ConnectionState::kError;
     Close();
@@ -415,24 +456,11 @@ void Connection::HandleProxyTunnel() {
     return;
   }
 
-  proxy::TunnelResult result = proxy::TunnelResult::kOk;
-
-  // Drive the proxy tunnel state machine based on current state
-  switch (proxy_->state()) {
-    case proxy::TunnelState::kSendingRequest:
-      result = proxy_->OnWritable(fd_);
-      break;
-    case proxy::TunnelState::kReadingResponse:
-      result = proxy_->OnReadable(fd_);
-      break;
-    default:
-      break;
-  }
-
   switch (result) {
     case proxy::TunnelResult::kOk:
       // Tunnel established - proceed to TLS handshake
-      proxy_.reset();  // No longer needed
+      socks_proxy_.reset();
+      http_proxy_.reset();
       tls_ =
           std::make_unique<tls::TlsConnection>(tls_factory_, fd_, host_, port_);
       state_ = ConnectionState::kTlsHandshake;
@@ -448,12 +476,21 @@ void Connection::HandleProxyTunnel() {
       reactor_->Modify(this, EventType::kWrite);
       break;
 
-    case proxy::TunnelResult::kError:
-      SetError("Proxy tunnel failed: " + proxy_->last_error());
+    case proxy::TunnelResult::kError: {
+      std::string error_msg;
+      if (socks_proxy_) {
+        error_msg = "SOCKS proxy tunnel failed: " + socks_proxy_->last_error();
+      } else if (http_proxy_) {
+        error_msg = "HTTP proxy tunnel failed: " + http_proxy_->last_error();
+      } else {
+        error_msg = "Proxy tunnel failed";
+      }
+      SetError(error_msg);
       state_ = ConnectionState::kError;
       Close();
       reactor_->Stop();
       break;
+    }
   }
 }
 
