@@ -91,7 +91,7 @@ holytls/
 
 ## Dependencies
 
-- [BoringSSL](https://github.com/Phrasing/boringssl) (Phrasing fork with impersonation patches)
+- [BoringSSL](https://github.com/Phrasing/boringssl) (fork with impersonation patches)
 - [nghttp2](https://github.com/nghttp2/nghttp2) - HTTP/2 protocol
 - [libuv](https://github.com/libuv/libuv) - Async I/O
 - [zstd](https://github.com/facebook/zstd), [brotli](https://github.com/google/brotli), [zlib](https://github.com/madler/zlib) - Compression

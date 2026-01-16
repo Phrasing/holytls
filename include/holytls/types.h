@@ -22,6 +22,11 @@ struct Header {
 // Collection of HTTP headers
 using Headers = std::vector<Header>;
 
+// Forward declaration for OrderedHeaders (see holytls/http/ordered_headers.h)
+namespace http {
+class OrderedHeaders;
+}  // namespace http
+
 // Result type for operations that can fail
 template <typename T>
 struct Result {
@@ -49,9 +54,8 @@ struct Result<void> {
   static Result Err(std::string msg) { return {false, std::move(msg)}; }
 };
 
-// String8 - RAD-style non-owning string (ptr + size, no null terminator
-// required) Inspired by raddebugger. Zero allocations, explicit size, safe
-// operations.
+// String8 - Non-owning string view (ptr + size, no null terminator required).
+// Zero allocations, explicit size, safe operations.
 struct String8 {
   const char* str;
   size_t size;

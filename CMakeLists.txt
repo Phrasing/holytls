@@ -24,7 +24,6 @@ endif()
 
 # Options
 option(HOLYTLS_BUILD_TESTS "Build tests" ON)
-option(HOLYTLS_BUILD_BENCHMARKS "Build benchmarks" ON)
 option(HOLYTLS_BUILD_QUIC "Build with QUIC/HTTP3 support via ngtcp2/nghttp3" OFF)
 option(HOLYTLS_ASAN "Enable AddressSanitizer" OFF)
 option(HOLYTLS_TSAN "Enable ThreadSanitizer" OFF)
@@ -77,8 +76,10 @@ add_library(holytls STATIC
   src/holytls/pool/connection_pool.cc
   src/holytls/pool/host_pool.cc
   src/holytls/proxy/http_proxy.cc
+  src/holytls/proxy/socks_proxy.cc
   src/holytls/http/cookie_jar.cc
   src/holytls/http/alt_svc_cache.cc
+  src/holytls/http/ordered_headers.cc
   src/holytls/client/http_client.cc
   src/holytls/util/dns_resolver.cc
   src/holytls/util/url_parser.cc
@@ -99,7 +100,6 @@ endif()
 target_include_directories(holytls
   PUBLIC
     ${CMAKE_SOURCE_DIR}/include
-  PRIVATE
     ${CMAKE_SOURCE_DIR}/src
 )
 
@@ -168,21 +168,6 @@ if(HOLYTLS_BUILD_TESTS)
   add_subdirectory(tests)
 endif()
 
-# Benchmarks
-if(HOLYTLS_BUILD_BENCHMARKS)
-  add_executable(bench_core bench/bench_core.cc)
-  target_include_directories(bench_core PRIVATE
-    ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/bench
-  )
-  target_link_libraries(bench_core PRIVATE holytls)
-  if(MSVC)
-    target_compile_options(bench_core PRIVATE /O2)
-  else()
-    target_compile_options(bench_core PRIVATE -O3 -march=native)
-  endif()
-endif()
-
 # Examples
 add_executable(fingerprint_check examples/fingerprint_check.cc)
 target_include_directories(fingerprint_check PRIVATE ${CMAKE_SOURCE_DIR}/src)
@@ -205,6 +190,10 @@ add_executable(cookie_example examples/cookie_example.cc)
 target_include_directories(cookie_example PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(cookie_example PRIVATE holytls)
 target_compile_options(cookie_example PRIVATE ${HOLYTLS_COMMON_FLAGS})
+
+add_executable(ordered_headers_example examples/ordered_headers_example.cc)
+target_link_libraries(ordered_headers_example PRIVATE holytls)
+target_compile_options(ordered_headers_example PRIVATE ${HOLYTLS_COMMON_FLAGS})
 
 add_executable(fingerprint_verify examples/fingerprint_verify.cc)
 target_include_directories(fingerprint_verify PRIVATE ${CMAKE_SOURCE_DIR}/src)

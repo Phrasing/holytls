@@ -1,7 +1,7 @@
 // Copyright 2026 HolyTLS Authors
 // SPDX-License-Identifier: MIT
 
-// Simple arena allocator inspired by raddebugger.
+// Simple arena allocator.
 // Provides fast bump allocation with scope-based cleanup.
 
 #ifndef HOLYTLS_BASE_ARENA_H_

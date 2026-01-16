@@ -7,7 +7,6 @@
 #include <unordered_map>
 
 #include "holytls/http2/chrome_h2_profile.h"
-#include "holytls/http2/chrome_header_profile.h"
 #include "holytls/http2/header_ids.h"
 #include "holytls/proxy/http_proxy.h"
 #include "holytls/util/async_decompressor.h"
@@ -21,7 +20,8 @@ namespace core {
 Connection::Connection(Reactor* reactor, tls::TlsContextFactory* tls_factory,
                        const std::string& host, uint16_t port,
                        const ConnectionOptions& options)
-    : reactor_(reactor),
+    : EventHandler(EventHandlerType::kConnection, -1),
+      reactor_(reactor),
       tls_factory_(tls_factory),
       host_(host),
       port_(port),
@@ -43,6 +43,9 @@ bool Connection::Connect(std::string_view ip, bool ipv6) {
 
   // Create socket
   fd_ = util::CreateTcpSocket(ipv6);
+  // Update base class fd for Reactor dispatch
+  this->fd = static_cast<int>(fd_);
+  
   if (fd_ == util::kInvalidSocket) {
     SetError("Failed to create socket");
     return false;
@@ -119,32 +122,9 @@ void Connection::SendRequest(
         h2_headers.Add(std::string(name), std::string(value));
       }
     } else {
-      // Auto mode: use Chrome header profile
-      auto chrome_version = tls_factory_->chrome_version();
-      const auto& header_profile =
-          http2::GetChromeHeaderProfile(chrome_version);
-
-      // Determine request type and fetch metadata
-      http2::RequestType request_type = http2::RequestType::kNavigation;
-      http2::FetchSite fetch_site = http2::FetchSite::kNone;
-      http2::FetchMode fetch_mode = http2::FetchMode::kNavigate;
-      http2::FetchDest fetch_dest = http2::FetchDest::kDocument;
-      bool user_activated = true;
-
-      // Convert user headers to HeaderEntry format for custom overrides
-      std::vector<http2::HeaderEntry> custom_headers;
+      // No auto headers - pass through user-provided headers only
       for (const auto& [name, value] : headers) {
-        custom_headers.push_back({name, value});
-      }
-
-      // Build ordered Chrome headers with GREASE sec-ch-ua
-      auto chrome_headers = http2::BuildChromeHeaders(
-          header_profile, request_type, fetch_site, fetch_mode, fetch_dest,
-          user_activated, custom_headers);
-
-      // Add all headers in Chrome's exact order
-      for (const auto& header : chrome_headers) {
-        h2_headers.Add(header.name, header.value);
+        h2_headers.Add(name, value);
       }
     }
 
@@ -282,6 +262,7 @@ void Connection::Close() {
     }
     util::CloseSocket(fd_);
     fd_ = util::kInvalidSocket;
+    this->fd = -1;
   }
   state_ = ConnectionState::kClosed;
   h2_.reset();
@@ -370,18 +351,38 @@ void Connection::HandleConnecting() {
 
   // TCP connected - check if we need to establish proxy tunnel first
   if (options_.proxy.IsEnabled()) {
-    // Create proxy tunnel handler
-    proxy_ = std::make_unique<proxy::HttpProxyTunnel>(
-        host_, port_, options_.proxy.username, options_.proxy.password);
+    proxy::TunnelResult result;
 
-    // Start tunnel handshake
-    proxy::TunnelResult result = proxy_->Start();
-    if (result == proxy::TunnelResult::kError) {
-      SetError("Proxy tunnel failed: " + proxy_->last_error());
-      state_ = ConnectionState::kError;
-      Close();
-      reactor_->Stop();
-      return;
+    if (options_.proxy.IsSocks()) {
+      // Create SOCKS proxy tunnel handler
+      // For SOCKS4/SOCKS5 (non-'h' variants), we need the resolved IP
+      // For SOCKS4a/SOCKS5h, we pass the hostname and let proxy resolve
+      std::string target_ip;
+      // Note: In production, target_ip should be passed in or resolved earlier
+      // For now, we let the proxy do the resolution for 'h' variants
+      socks_proxy_ = std::make_unique<proxy::SocksProxyTunnel>(
+          options_.proxy.type, host_, port_, target_ip,
+          options_.proxy.username, options_.proxy.password);
+      result = socks_proxy_->Start();
+      if (result == proxy::TunnelResult::kError) {
+        SetError("SOCKS proxy tunnel failed: " + socks_proxy_->last_error());
+        state_ = ConnectionState::kError;
+        Close();
+        reactor_->Stop();
+        return;
+      }
+    } else {
+      // Create HTTP CONNECT proxy tunnel handler
+      http_proxy_ = std::make_unique<proxy::HttpProxyTunnel>(
+          host_, port_, options_.proxy.username, options_.proxy.password);
+      result = http_proxy_->Start();
+      if (result == proxy::TunnelResult::kError) {
+        SetError("HTTP proxy tunnel failed: " + http_proxy_->last_error());
+        state_ = ConnectionState::kError;
+        Close();
+        reactor_->Stop();
+        return;
+      }
     }
 
     state_ = ConnectionState::kProxyTunnel;
@@ -402,7 +403,28 @@ void Connection::HandleConnecting() {
 }
 
 void Connection::HandleProxyTunnel() {
-  if (!proxy_) {
+  proxy::TunnelResult result = proxy::TunnelResult::kOk;
+
+  if (socks_proxy_) {
+    // Drive SOCKS proxy tunnel state machine
+    if (socks_proxy_->WantsWrite()) {
+      result = socks_proxy_->OnWritable(fd_);
+    } else if (socks_proxy_->WantsRead()) {
+      result = socks_proxy_->OnReadable(fd_);
+    }
+  } else if (http_proxy_) {
+    // Drive HTTP proxy tunnel state machine based on current state
+    switch (http_proxy_->state()) {
+      case proxy::TunnelState::kSendingRequest:
+        result = http_proxy_->OnWritable(fd_);
+        break;
+      case proxy::TunnelState::kReadingResponse:
+        result = http_proxy_->OnReadable(fd_);
+        break;
+      default:
+        break;
+    }
+  } else {
     SetError("Proxy tunnel not initialized");
     state_ = ConnectionState::kError;
     Close();
@@ -410,24 +432,11 @@ void Connection::HandleProxyTunnel() {
     return;
   }
 
-  proxy::TunnelResult result = proxy::TunnelResult::kOk;
-
-  // Drive the proxy tunnel state machine based on current state
-  switch (proxy_->state()) {
-    case proxy::TunnelState::kSendingRequest:
-      result = proxy_->OnWritable(fd_);
-      break;
-    case proxy::TunnelState::kReadingResponse:
-      result = proxy_->OnReadable(fd_);
-      break;
-    default:
-      break;
-  }
-
   switch (result) {
     case proxy::TunnelResult::kOk:
       // Tunnel established - proceed to TLS handshake
-      proxy_.reset();  // No longer needed
+      socks_proxy_.reset();
+      http_proxy_.reset();
       tls_ =
           std::make_unique<tls::TlsConnection>(tls_factory_, fd_, host_, port_);
       state_ = ConnectionState::kTlsHandshake;
@@ -443,12 +452,21 @@ void Connection::HandleProxyTunnel() {
       reactor_->Modify(this, EventType::kWrite);
       break;
 
-    case proxy::TunnelResult::kError:
-      SetError("Proxy tunnel failed: " + proxy_->last_error());
+    case proxy::TunnelResult::kError: {
+      std::string error_msg;
+      if (socks_proxy_) {
+        error_msg = "SOCKS proxy tunnel failed: " + socks_proxy_->last_error();
+      } else if (http_proxy_) {
+        error_msg = "HTTP proxy tunnel failed: " + http_proxy_->last_error();
+      } else {
+        error_msg = "Proxy tunnel failed";
+      }
+      SetError(error_msg);
       state_ = ConnectionState::kError;
       Close();
       reactor_->Stop();
       break;
+    }
   }
 }
 

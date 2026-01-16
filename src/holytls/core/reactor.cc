@@ -7,6 +7,7 @@
 #include <cstring>
 #include <utility>
 
+#include "holytls/core/connection.h"
 #include "holytls/memory/slab_allocator.h"
 
 namespace holytls {
@@ -117,11 +118,11 @@ Reactor::~Reactor() {
 }
 
 bool Reactor::Add(EventHandler* handler, EventType events) {
-  if (handler == nullptr || handler->fd() < 0) {
+  if (handler == nullptr || handler->fd < 0) {
     return false;
   }
 
-  int fd = handler->fd();
+  int fd = handler->fd;
 
   // Check bounds and if already registered
   if (static_cast<size_t>(fd) >= kMaxFds || fd_table_.Contains(fd)) {
@@ -159,11 +160,11 @@ bool Reactor::Add(EventHandler* handler, EventType events) {
 }
 
 bool Reactor::Modify(EventHandler* handler, EventType events) {
-  if (handler == nullptr || handler->fd() < 0) {
+  if (handler == nullptr || handler->fd < 0) {
     return false;
   }
 
-  int fd = handler->fd();
+  int fd = handler->fd;
   PollData* poll_data = fd_table_.Get(fd);
   if (!poll_data) {
     return false;
@@ -180,11 +181,11 @@ bool Reactor::Modify(EventHandler* handler, EventType events) {
 }
 
 bool Reactor::Remove(EventHandler* handler) {
-  if (handler == nullptr || handler->fd() < 0) {
+  if (handler == nullptr || handler->fd < 0) {
     return false;
   }
 
-  int fd = handler->fd();
+  int fd = handler->fd;
   PollData* poll_data = fd_table_.Get(fd);
   if (!poll_data) {
     return false;
@@ -304,25 +305,20 @@ void Reactor::OnPollEvent(uv_poll_t* handle, int status, int events) {
 
   EventHandler* handler = poll_data->handler;
 
-  // Handle error
-  if (status < 0) {
-    handler->OnError(-status);
-    return;
-  }
-
-  // Handle readable
-  if ((events & UV_READABLE) != 0) {
-    handler->OnReadable();
-  }
-
-  // Handle writable
-  if ((events & UV_WRITABLE) != 0) {
-    handler->OnWritable();
-  }
-
-  // Handle disconnect
-  if ((events & UV_DISCONNECT) != 0) {
-    handler->OnClose();
+  switch (handler->type) {
+    case EventHandlerType::kConnection: {
+      auto* conn = static_cast<Connection*>(handler);
+      if (status < 0) {
+        conn->OnError(-status);
+        return;
+      }
+      if ((events & UV_READABLE) != 0) conn->OnReadable();
+      if ((events & UV_WRITABLE) != 0) conn->OnWritable();
+      if ((events & UV_DISCONNECT) != 0) conn->OnClose();
+      break;
+    }
+    default:
+      break;
   }
 }
 

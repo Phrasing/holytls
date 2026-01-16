@@ -14,7 +14,29 @@
 
 #include "holytls/config.h"
 #include "holytls/error.h"
+#include "holytls/http/ordered_headers.h"
 #include "holytls/types.h"
+
+
+#include "holytls/core/reactor_manager.h"
+#include "holytls/tls/tls_context.h"
+#include "holytls/pool/connection_pool.h"
+#include "holytls/http/cookie_jar.h"
+#include "holytls/http/alt_svc_cache.h"
+
+// Forward declarations
+namespace holytls {
+namespace core {
+class ReactorContext;
+}
+namespace pool {
+class PooledConnection;
+class QuicPooledConnection;
+}
+namespace util {
+struct ParsedUrl;
+}
+}
 
 namespace holytls {
 
@@ -52,6 +74,7 @@ struct Request {
   Request& SetBody(std::string_view b);
   Request& SetTimeout(std::chrono::milliseconds t);
   Request& SetHeaderOrder(std::span<const std::string_view> order);
+  Request& SetHeaders(const http::headers::OrderedHeaders& h);
 };
 
 // Timing information for response
@@ -125,8 +148,47 @@ class HttpClient {
   ChromeVersion GetChromeVersion() const;
 
  private:
-  class Impl;
-  std::unique_ptr<Impl> impl_;
+  // Helpers
+  static TlsConfig MakeTlsConfig(const ClientConfig& config);
+  static core::ReactorManagerConfig MakeReactorConfig(const ClientConfig& config);
+
+  void ProcessRequest(core::ReactorContext* ctx, Request request,
+                      util::ParsedUrl parsed, ResponseCallback callback,
+                      ProgressCallback progress);
+
+  void QueueRequest(core::ReactorContext* ctx, const util::ParsedUrl& parsed,
+                    const std::vector<util::ResolvedAddress>& addresses,
+                    Request request, ResponseCallback callback, bool use_quic,
+                    int retry_count = 0);
+
+  void SendOnTcpConnection(core::ReactorContext* ctx,
+                           pool::PooledConnection* pooled,
+                           const util::ParsedUrl& parsed, Request request,
+                           ResponseCallback callback);
+
+#if defined(HOLYTLS_BUILD_QUIC) || defined(HOLYTLS_QUIC_AVAILABLE)
+  void SendOnQuicConnection(core::ReactorContext* ctx,
+                            pool::QuicPooledConnection* quic_conn,
+                            const util::ParsedUrl& parsed, Request request,
+                            ResponseCallback callback);
+#endif
+
+  ClientConfig config_;
+  tls::TlsContextFactory tls_factory_;
+  core::ReactorManager reactor_manager_;
+  std::atomic<bool> running_{false};
+
+  // Cookie jar (borrowed pointer, not owned)
+  http::CookieJar* cookie_jar_ = nullptr;
+
+  // Alt-Svc cache for HTTP/3 discovery (borrowed pointer, not owned)
+  http::AltSvcCache* alt_svc_cache_ = nullptr;
+  bool alt_svc_enabled_ = true;
+
+  // Statistics
+  std::atomic<size_t> requests_sent_{0};
+  std::atomic<size_t> requests_completed_{0};
+  std::atomic<size_t> requests_failed_{0};
 };
 
 }  // namespace holytls

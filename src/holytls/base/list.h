@@ -1,7 +1,7 @@
 // Copyright 2026 HolyTLS Authors
 // SPDX-License-Identifier: MIT
 
-// Intrusive doubly-linked list macros inspired by raddebugger.
+// Intrusive doubly-linked list macros.
 // Zero-allocation list operations - nodes embed the link pointers.
 
 #ifndef HOLYTLS_BASE_LIST_H_

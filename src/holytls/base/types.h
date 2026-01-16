@@ -107,12 +107,12 @@ class FdTable {
 
   void Set(int fd, T* ptr) {
     if (fd >= 0 && static_cast<size_t>(fd) < MaxFds) {
-      if (entries_[fd] == nullptr && ptr != nullptr) {
+      if (entries_[static_cast<size_t>(fd)] == nullptr && ptr != nullptr) {
         ++count_;
-      } else if (entries_[fd] != nullptr && ptr == nullptr) {
+      } else if (entries_[static_cast<size_t>(fd)] != nullptr && ptr == nullptr) {
         --count_;
       }
-      entries_[fd] = ptr;
+      entries_[static_cast<size_t>(fd)] = ptr;
     }
   }
 
